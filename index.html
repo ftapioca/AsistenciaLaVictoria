@@ -368,6 +368,215 @@
       .local-head { flex-direction: column; }
     }
 
+
+
+    /* =====================================================
+       OPTIMIZACIÓN MÓVIL
+       En celulares las tablas dejan de comportarse como tabla
+       y pasan a verse como tarjetas apiladas para evitar cortes.
+    ===================================================== */
+    @media (max-width: 720px) {
+      body {
+        padding: 10px;
+      }
+
+      .dashboard {
+        gap: 14px;
+      }
+
+      .hero {
+        padding: 22px;
+        border-radius: 24px;
+      }
+
+      .brand {
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        padding: 8px 10px;
+      }
+
+      h1 {
+        font-size: 40px;
+        max-width: none;
+      }
+
+      .hero p {
+        font-size: 14px;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .metric {
+        min-height: 88px;
+        padding: 12px 10px;
+        border-radius: 18px;
+      }
+
+      .metric span {
+        font-size: 10px;
+        line-height: 1.15;
+        margin-bottom: 8px;
+      }
+
+      .metric strong {
+        font-size: 36px;
+      }
+
+      .local-card {
+        border-radius: 26px;
+      }
+
+      .local-head {
+        padding: 22px;
+      }
+
+      .local-head h2 {
+        font-size: 30px;
+        line-height: 1.05;
+      }
+
+      .local-head p {
+        font-size: 15px;
+      }
+
+      .count-badge {
+        min-width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        font-size: 25px;
+      }
+
+      .table-wrap {
+        padding: 0;
+        overflow-x: visible;
+      }
+
+      table {
+        min-width: 0;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 14px;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tbody {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      tr {
+        display: grid;
+        gap: 10px;
+        padding: 14px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(47, 32, 23, 0.08);
+        box-shadow: 0 10px 24px rgba(20, 16, 13, 0.06);
+      }
+
+      td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 0;
+        border-bottom: 0;
+        background: transparent;
+      }
+
+      td:nth-child(1) {
+        justify-content: flex-start;
+      }
+
+      td:nth-child(2)::before {
+        content: 'Ingreso';
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 950;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      td:nth-child(3)::before {
+        content: 'Estado';
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 950;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .person {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .person > div:last-child {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-size: 16px;
+      }
+
+      .avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 16px;
+        font-size: 15px;
+      }
+
+      .status-pill {
+        white-space: normal;
+        text-align: right;
+        justify-content: center;
+        max-width: 170px;
+      }
+
+      .empty,
+      .loading,
+      .error {
+        margin: 14px;
+        padding: 18px;
+        border-radius: 20px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      h1 {
+        font-size: 34px;
+      }
+
+      .local-head h2 {
+        font-size: 26px;
+      }
+
+      .metric strong {
+        font-size: 48px;
+      }
+
+      td {
+        align-items: flex-start;
+      }
+
+      td:nth-child(2),
+      td:nth-child(3) {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .status-pill {
+        max-width: 100%;
+        text-align: left;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
     }
