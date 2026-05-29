@@ -209,15 +209,53 @@
     }
 
     .local-head {
+      padding: 0;
+    }
+
+    .accordion-toggle {
+      width: 100%;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       gap: 16px;
       padding: 22px 24px;
+      border: 0;
       background:
         radial-gradient(circle at top right, rgba(255, 201, 40, 0.22), transparent 40%),
         linear-gradient(180deg, #fffaf1, #fff5e4);
-      border-bottom: 1px solid rgba(47, 32, 23, 0.08);
+      border-radius: inherit;
+      text-align: left;
+      cursor: pointer;
+      color: inherit;
+    }
+
+    .accordion-toggle:hover,
+    .accordion-toggle:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 138, 19, 0.18);
+    }
+
+    .accordion-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chevron {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: rgba(255, 245, 228, 0.65);
+      color: #3a220c;
+      font-size: 14px;
+      transition: transform 0.2s ease;
+    }
+
+    .accordion-toggle[aria-expanded="true"] .chevron {
+      transform: rotate(180deg);
     }
 
     .local-head h2 {
@@ -252,6 +290,14 @@
     .table-wrap {
       padding: 18px;
       overflow-x: auto;
+    }
+
+    .accordion-panel {
+      display: none;
+    }
+
+    .accordion-panel.open {
+      display: block;
     }
 
     table {
@@ -618,24 +664,34 @@
     <section class="local-grid" aria-label="Turnos abiertos por local">
       <article class="local-card" id="card-PaseoDelLago">
         <header class="local-head">
-          <div>
-            <h2>Paseo del Lago</h2>
-            <p>Colaboradores pendientes de salida</p>
-          </div>
-          <div class="count-badge" id="badge-PaseoDelLago">0</div>
+          <button class="accordion-toggle" type="button" aria-expanded="false" aria-controls="contenido-PaseoDelLago">
+            <div>
+              <h2>Paseo del Lago</h2>
+              <p>Colaboradores pendientes de salida</p>
+            </div>
+            <div class="accordion-meta">
+              <div class="count-badge" id="badge-PaseoDelLago">0</div>
+              <span class="chevron" aria-hidden="true">▾</span>
+            </div>
+          </button>
         </header>
-        <div id="contenido-PaseoDelLago" class="loading">Cargando turnos abiertos...</div>
+        <div id="contenido-PaseoDelLago" class="accordion-panel loading">Cargando turnos abiertos...</div>
       </article>
 
       <article class="local-card" id="card-SegundaFaja">
         <header class="local-head">
-          <div>
-            <h2>Segunda Faja</h2>
-            <p>Colaboradores pendientes de salida</p>
-          </div>
-          <div class="count-badge" id="badge-SegundaFaja">0</div>
+          <button class="accordion-toggle" type="button" aria-expanded="false" aria-controls="contenido-SegundaFaja">
+            <div>
+              <h2>Segunda Faja</h2>
+              <p>Colaboradores pendientes de salida</p>
+            </div>
+            <div class="accordion-meta">
+              <div class="count-badge" id="badge-SegundaFaja">0</div>
+              <span class="chevron" aria-hidden="true">▾</span>
+            </div>
+          </button>
         </header>
-        <div id="contenido-SegundaFaja" class="loading">Cargando turnos abiertos...</div>
+        <div id="contenido-SegundaFaja" class="accordion-panel loading">Cargando turnos abiertos...</div>
       </article>
     </section>
 
@@ -682,6 +738,42 @@
       $(`contenido-${localId}`).innerText = 'Cargando turnos abiertos...';
       $(`badge-${localId}`).innerText = '...';
       $(`total-${localId}`).innerText = '...';
+    }
+
+    function closeAllAccordions() {
+      LOCALES.forEach(local => {
+        const button = document.querySelector(`#card-${local.id} .accordion-toggle`);
+        const panel = $(`contenido-${local.id}`);
+        if (!button || !panel) return;
+
+        button.setAttribute('aria-expanded', 'false');
+        panel.classList.remove('open');
+      });
+    }
+
+    function toggleAccordion(localId) {
+      const button = document.querySelector(`#card-${localId} .accordion-toggle`);
+      const panel = $(`contenido-${localId}`);
+      const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+      if (!isExpanded) {
+        closeAllAccordions();
+      }
+
+      button.setAttribute('aria-expanded', String(!isExpanded));
+      panel.classList.toggle('open', !isExpanded);
+    }
+
+    function setupAccordions() {
+      LOCALES.forEach(local => {
+        const button = document.querySelector(`#card-${local.id} .accordion-toggle`);
+        const panel = $(`contenido-${local.id}`);
+        if (!button || !panel) return;
+
+        button.setAttribute('aria-expanded', 'false');
+        panel.classList.remove('open');
+        button.addEventListener('click', () => toggleAccordion(local.id));
+      });
     }
 
     function renderLocal(local, turnos) {
