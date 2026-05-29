@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#14100d" />
+  <title>Admin · Turnos Abiertos La Victoria</title>
+  <style>
+    :root {
+      --bun: #ff8a13;
+      --bun-dark: #d96700;
+      --cheese: #ffc928;
+      --ketchup: #ef3b2d;
+      --lettuce: #19a66a;
+      --charcoal: #14100d;
+      --charcoal-2: #211813;
+      --cream: #fff5e4;
+      --paper: rgba(255, 250, 241, 0.94);
+      --muted: #806957;
+      --line: rgba(47, 32, 23, 0.12);
+      --shadow: 0 30px 80px rgba(33, 24, 19, 0.28);
+      --radius-xl: 32px;
+      --radius-md: 18px;
+      --focus: 0 0 0 4px rgba(255, 138, 19, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--charcoal);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(255, 201, 40, 0.32), transparent 28%),
+        radial-gradient(circle at 88% 14%, rgba(239, 59, 45, 0.18), transparent 26%),
+        radial-gradient(circle at 50% 105%, rgba(255, 138, 19, 0.38), transparent 34%),
+        linear-gradient(135deg, #15100d 0%, #2a1710 44%, #5b2a0d 100%);
+      padding: clamp(18px, 4vw, 44px);
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      width: 420px;
+      height: 420px;
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(2px);
+      opacity: 0.9;
+    }
+
+    body::before {
+      left: -180px;
+      top: -150px;
+      background: repeating-radial-gradient(circle, transparent 0 18px, rgba(255, 201, 40, 0.18) 19px 21px),
+                  radial-gradient(circle, rgba(255, 138, 19, 0.55), transparent 66%);
+    }
+
+    body::after {
+      right: -170px;
+      bottom: -190px;
+      background: repeating-radial-gradient(circle, transparent 0 20px, rgba(255, 245, 228, 0.14) 21px 23px),
+                  radial-gradient(circle, rgba(239, 59, 45, 0.42), transparent 62%);
+    }
+
+    .dashboard {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 1320px);
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 22px;
+      align-items: center;
+      padding: clamp(24px, 4vw, 42px);
+      color: var(--cream);
+      border-radius: calc(var(--radius-xl) + 8px);
+      background:
+        linear-gradient(145deg, rgba(255, 245, 228, 0.13), rgba(255, 245, 228, 0.05)),
+        radial-gradient(circle at top right, rgba(255, 138, 19, 0.28), transparent 42%);
+      border: 1px solid rgba(255, 245, 228, 0.18);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      width: fit-content;
+      padding: 10px 13px;
+      border-radius: 999px;
+      color: var(--cheese);
+      background: rgba(255, 201, 40, 0.11);
+      border: 1px solid rgba(255, 201, 40, 0.25);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 18px 0 10px;
+      font-size: clamp(38px, 6vw, 68px);
+      line-height: 0.92;
+      letter-spacing: -0.07em;
+      max-width: 10ch;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255, 245, 228, 0.76);
+      font-size: 16px;
+      line-height: 1.6;
+      max-width: 720px;
+    }
+
+    .hero-actions {
+      display: grid;
+      gap: 12px;
+      justify-items: end;
+    }
+
+    .refresh-info {
+      padding: 14px 16px;
+      border-radius: 18px;
+      color: rgba(255, 245, 228, 0.82);
+      background: rgba(255, 245, 228, 0.08);
+      border: 1px solid rgba(255, 245, 228, 0.12);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: right;
+      min-width: 250px;
+    }
+
+    button {
+      border: 0;
+      min-height: 48px;
+      padding: 13px 16px;
+      border-radius: 17px;
+      font-size: 14px;
+      font-weight: 950;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: transform 0.18s ease, filter 0.18s ease;
+    }
+
+    button:hover { transform: translateY(-2px); filter: saturate(1.05); }
+    button:disabled { opacity: 0.58; cursor: wait; transform: none; }
+
+    .btn-primary {
+      color: #3a220c;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      box-shadow: 0 14px 28px rgba(217, 103, 0, 0.18);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .metric {
+      padding: 20px;
+      border-radius: 26px;
+      background: var(--paper);
+      border: 1px solid rgba(255, 245, 228, 0.20);
+      box-shadow: 0 20px 50px rgba(20, 16, 13, 0.15);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 850;
+      margin-bottom: 8px;
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--bun-dark);
+      font-size: 42px;
+      line-height: 1;
+      letter-spacing: -0.07em;
+    }
+
+    .local-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .local-card {
+      overflow: hidden;
+      border-radius: 30px;
+      background: var(--paper);
+      border: 1px solid rgba(255, 245, 228, 0.20);
+      box-shadow: 0 24px 70px rgba(20, 16, 13, 0.18);
+    }
+
+    .local-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 22px 24px;
+      background:
+        radial-gradient(circle at top right, rgba(255, 201, 40, 0.22), transparent 40%),
+        linear-gradient(180deg, #fffaf1, #fff5e4);
+      border-bottom: 1px solid rgba(47, 32, 23, 0.08);
+    }
+
+    .local-head h2 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .local-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 46px;
+      height: 46px;
+      padding: 0 14px;
+      border-radius: 16px;
+      color: #351a05;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      font-weight: 950;
+      font-size: 20px;
+      box-shadow: 0 12px 24px rgba(217, 103, 0, 0.18);
+    }
+
+    .table-wrap {
+      padding: 18px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 520px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 14px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(47, 32, 23, 0.08);
+      vertical-align: middle;
+    }
+
+    th {
+      color: #65340d;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: rgba(255, 201, 40, 0.20);
+    }
+
+    td {
+      color: #2d2119;
+      background: rgba(255, 255, 255, 0.52);
+      font-weight: 720;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .person {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      color: #351a05;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      font-size: 13px;
+      font-weight: 950;
+      flex: 0 0 auto;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(239, 59, 45, 0.11);
+      color: #8f1b13;
+      border: 1px solid rgba(239, 59, 45, 0.20);
+      font-size: 12px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .empty,
+    .loading,
+    .error {
+      padding: 22px;
+      border-radius: 22px;
+      margin: 18px;
+      font-weight: 850;
+      line-height: 1.45;
+    }
+
+    .empty {
+      background: rgba(25, 166, 106, 0.12);
+      color: #075a37;
+      border: 1px solid rgba(25, 166, 106, 0.22);
+    }
+
+    .loading {
+      background: rgba(255, 201, 40, 0.16);
+      color: #6b3a0c;
+      border: 1px solid rgba(255, 138, 19, 0.22);
+    }
+
+    .error {
+      background: rgba(239, 59, 45, 0.13);
+      color: #8f1b13;
+      border: 1px solid rgba(239, 59, 45, 0.22);
+    }
+
+    .footer-note {
+      color: rgba(255, 245, 228, 0.70);
+      text-align: center;
+      font-size: 13px;
+      padding: 6px 0 0;
+    }
+
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-actions { justify-items: stretch; }
+      .refresh-info { text-align: left; min-width: 0; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .local-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 14px; }
+      .hero, .metric, .local-card { border-radius: 24px; }
+      h1 { font-size: 38px; }
+      .local-head { flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="dashboard">
+    <section class="hero">
+      <div>
+        <div class="brand">🍔 La Victoria · Administración</div>
+        <h1>Turnos abiertos.</h1>
+        <p>Vista simultánea de colaboradores que registraron ingreso y todavía no han marcado salida en cada local.</p>
+      </div>
+
+      <div class="hero-actions">
+        <div class="refresh-info">
+          <div>Última actualización</div>
+          <strong id="ultimaActualizacion">--:--</strong>
+        </div>
+        <button id="btnActualizar" class="btn-primary" type="button" onclick="cargarDashboard()">↻ Actualizar ahora</button>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="Resumen general">
+      <article class="metric">
+        <span>Total turnos abiertos</span>
+        <strong id="totalGeneral">0</strong>
+      </article>
+      <article class="metric">
+        <span>Paseo del Lago</span>
+        <strong id="total-PaseoDelLago">0</strong>
+      </article>
+      <article class="metric">
+        <span>Segunda Faja</span>
+        <strong id="total-SegundaFaja">0</strong>
+      </article>
+    </section>
+
+    <section class="local-grid" aria-label="Turnos abiertos por local">
+      <article class="local-card" id="card-PaseoDelLago">
+        <header class="local-head">
+          <div>
+            <h2>Paseo del Lago</h2>
+            <p>Colaboradores pendientes de salida</p>
+          </div>
+          <div class="count-badge" id="badge-PaseoDelLago">0</div>
+        </header>
+        <div id="contenido-PaseoDelLago" class="loading">Cargando turnos abiertos...</div>
+      </article>
+
+      <article class="local-card" id="card-SegundaFaja">
+        <header class="local-head">
+          <div>
+            <h2>Segunda Faja</h2>
+            <p>Colaboradores pendientes de salida</p>
+          </div>
+          <div class="count-badge" id="badge-SegundaFaja">0</div>
+        </header>
+        <div id="contenido-SegundaFaja" class="loading">Cargando turnos abiertos...</div>
+      </article>
+    </section>
+
+    <div class="footer-note">Actualización automática cada 30 minutos · Dashboard solo lectura</div>
+  </main>
+
+  <script>
+    // ==========================================
+    // CONFIGURACIÓN
+    // ==========================================
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyqIaw4SLUy1pYl7iAv1QPrgWvHNE51H4dVk-R0qRZ8DppTZNAWRhN0W8bdmG3W23rq/exec";
+
+    const LOCALES = [
+      { nombre: "Paseo del Lago", id: "PaseoDelLago" },
+      { nombre: "Segunda Faja", id: "SegundaFaja" }
+    ];
+
+    const REFRESCO_AUTOMATICO_MS = 30 * 60 * 1000;
+
+    const $ = (id) => document.getElementById(id);
+
+    function escaparHTML(valor) {
+      return String(valor || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function actualizarHoraDashboard() {
+      const ahora = new Date();
+      $('ultimaActualizacion').innerText = ahora.toLocaleString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function setLoadingLocal(localId) {
+      $(`contenido-${localId}`).className = 'loading';
+      $(`contenido-${localId}`).innerText = 'Cargando turnos abiertos...';
+      $(`badge-${localId}`).innerText = '...';
+      $(`total-${localId}`).innerText = '...';
+    }
+
+    function renderLocal(local, turnos) {
+      const contenido = $(`contenido-${local.id}`);
+      const total = Array.isArray(turnos) ? turnos.length : 0;
+
+      $(`badge-${local.id}`).innerText = total;
+      $(`total-${local.id}`).innerText = total;
+
+      if (total === 0) {
+        contenido.className = 'empty';
+        contenido.innerText = 'No hay turnos abiertos en este local.';
+        return;
+      }
+
+      contenido.className = 'table-wrap';
+      contenido.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Ingreso</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${turnos.map(turno => `
+              <tr>
+                <td>
+                  <div class="person">
+                    <div class="avatar">${escaparHTML(turno.iniciales || '--')}</div>
+                    <div>${escaparHTML(turno.nombre)}</div>
+                  </div>
+                </td>
+                <td>${escaparHTML(turno.hora || turno.fechaHora || 'Sin hora')}</td>
+                <td><span class="status-pill">● Pendiente de salida</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderErrorLocal(local, mensaje) {
+      const contenido = $(`contenido-${local.id}`);
+      contenido.className = 'error';
+      contenido.innerText = mensaje || 'No se pudo cargar este local.';
+      $(`badge-${local.id}`).innerText = '0';
+      $(`total-${local.id}`).innerText = '0';
+    }
+
+    async function cargarTurnosLocal(local) {
+      setLoadingLocal(local.id);
+      const url = `${WEB_APP_URL}?accion=TurnosAbiertos&local=${encodeURIComponent(local.nombre)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.status !== 'SUCCESS') {
+          renderErrorLocal(local, data.mensaje || 'El servidor no devolvió una respuesta válida.');
+          return 0;
+        }
+
+        const turnos = data.turnosAbiertos || [];
+        renderLocal(local, turnos);
+        return turnos.length;
+      } catch (error) {
+        renderErrorLocal(local, 'Error de conexión. Revisa internet o el Apps Script.');
+        return 0;
+      }
+    }
+
+    async function cargarDashboard() {
+      const boton = $('btnActualizar');
+      boton.disabled = true;
+      boton.innerText = 'Actualizando...';
+
+      const resultados = await Promise.all(
+        LOCALES.map(local => cargarTurnosLocal(local))
+      );
+
+      const totalGeneral = resultados.reduce((suma, valor) => suma + valor, 0);
+      $('totalGeneral').innerText = totalGeneral;
+      actualizarHoraDashboard();
+
+      boton.disabled = false;
+      boton.innerText = '↻ Actualizar ahora';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      cargarDashboard();
+      setInterval(cargarDashboard, REFRESCO_AUTOMATICO_MS);
+    });
+  </script>
+</body>
+</html>
