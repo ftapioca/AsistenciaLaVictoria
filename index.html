@@ -260,6 +260,16 @@
       transform: rotate(180deg);
     }
 
+    @media (min-width: 981px) {
+      details.accordion summary {
+        cursor: default;
+      }
+
+      details.accordion .chevron {
+        transform: none;
+      }
+    }
+
     .local-head h2 {
       margin: 0 0 6px;
       font-size: 24px;
@@ -734,13 +744,46 @@
       $(`total-${localId}`).innerText = '...';
     }
 
+    const MOBILE_BREAKPOINT = 980;
+
+    function isMobileView() {
+      return window.innerWidth <= MOBILE_BREAKPOINT;
+    }
+
+    function updateAccordionMode() {
+      const accordions = document.querySelectorAll('details.accordion');
+      accordions.forEach(details => {
+        if (isMobileView()) {
+          details.removeAttribute('open');
+          const summary = details.querySelector('summary');
+          if (summary) summary.style.cursor = 'pointer';
+        } else {
+          details.setAttribute('open', '');
+          const summary = details.querySelector('summary');
+          if (summary) summary.style.cursor = 'default';
+        }
+      });
+    }
+
     function setupAccordions() {
       const accordions = document.querySelectorAll('details.accordion');
 
       accordions.forEach(details => {
-        details.removeAttribute('open');
+        const summary = details.querySelector('summary');
+        if (!summary) return;
+
+        summary.addEventListener('click', (event) => {
+          if (!isMobileView()) {
+            event.preventDefault();
+          }
+        });
 
         details.addEventListener('toggle', () => {
+          if (!isMobileView()) {
+            details.setAttribute('open', '');
+            return;
+          }
+
           if (details.open) {
             accordions.forEach(other => {
               if (other !== details) {
@@ -750,6 +793,9 @@
           }
         });
       });
+
+      updateAccordionMode();
+      window.addEventListener('resize', updateAccordionMode);
     }
 
     function renderLocal(local, turnos) {
