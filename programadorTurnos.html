@@ -562,6 +562,7 @@
         </div>
       </div>
       <div class="modal-actions">
+      	<button class="btn-danger" type="button" id="btnEliminarTurno">Eliminar turno</button>
         <button class="btn-soft" type="button" id="btnCerrarModal">Cancelar</button>
         <button class="btn-success" type="button" id="btnGuardarTurno">Guardar turno</button>
       </div>
@@ -1056,6 +1057,7 @@
         cargarSemana();
       });
       $("btnSemanaSiguiente").addEventListener("click", () => moverSemana(1));
+      $("btnEliminarTurno").addEventListener("click", eliminarTurnoActual);
       $("btnCerrarModal").addEventListener("click", cerrarModal);
       $("btnGuardarTurno").addEventListener("click", guardarTurno);
       $("modalTipo").addEventListener("change", () => {
@@ -1218,7 +1220,7 @@
 		  }
 		}
 		
-		function abrirModalMasivo(fecha) {
+	function abrirModalMasivo(fecha) {
 		  if (!colaboradoresSeleccionados.size) {
 			mostrarToast("warn", "Selecciona al menos un colaborador antes de aplicar un turno.");
 			return;
@@ -1260,15 +1262,46 @@
 			  $("horarioInfo").className = "horario-box error";
 			  $("horarioInfo").innerText = err.message || "No se pudo cargar el horario del local.";
 			});
-		}
+	}
 		
-		function limpiarSeleccionColaboradores() {
+	function limpiarSeleccionColaboradores() {
 		  colaboradoresSeleccionados.clear();
 		
 		  document.querySelectorAll('.check-colab input[type="checkbox"]').forEach(input => {
 			input.checked = false;
 		  });
+	}
+	
+	async function eliminarTurnoActual() {
+	  if (modoMasivo) {
+		mostrarToast("warn", "La eliminación masiva no está disponible.");
+		return;
+	  }
+	
+	  if (!celdaActual) return;
+	
+	  const confirmado = confirm("¿Seguro que deseas eliminar este turno?");
+	  if (!confirmado) return;
+	
+	  try {
+		const data = await apiGet({
+		  accion: "EliminarTurno",
+		  fecha: celdaActual.fecha,
+		  colaborador: celdaActual.colaborador,
+		  local: localActivo
+		});
+	
+		if (data.status !== "SUCCESS") {
+		  throw new Error(data.mensaje || "No se pudo eliminar el turno.");
 		}
+	
+		cerrarModal();
+		await cargarSemana();
+		mostrarToast("success", "Turno eliminado correctamente.");
+	  } catch (err) {
+		setModalStatus("error", err.message || "Error al eliminar turno.");
+	  }
+	}	
   </script>
   <div id="toast" class="toast"></div>
 </body>
