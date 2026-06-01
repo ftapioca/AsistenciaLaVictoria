@@ -370,7 +370,7 @@
     .modal-head p { margin: 0; color: var(--muted); font-weight: 780; }
     .modal-body { padding: 20px 22px; display: grid; gap: 14px; }
     .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; padding: 0 22px 22px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; padding: 0 22px 22px;}
     .hidden { display: none !important; }
 
     @media (max-width: 900px) {
@@ -561,11 +561,12 @@
           <textarea id="observaciones" rows="3" placeholder="Opcional"></textarea>
         </div>
       </div>
-      <div class="modal-actions">
-      	<button class="btn-danger" type="button" id="btnEliminarTurno">Eliminar turno</button>
-        <button class="btn-soft" type="button" id="btnCerrarModal">Cancelar</button>
-        <button class="btn-success" type="button" id="btnGuardarTurno">Guardar turno</button>
-      </div>
+		<div class="modal-actions">
+		  <button class="btn-danger" type="button" id="btnEliminarTurno">Eliminar turno</button>
+		  <button class="btn-soft" type="button" id="btnCopiarTurno">Copiar turno</button>
+		  <button class="btn-soft" type="button" id="btnCerrarModal">Cancelar</button>
+		  <button class="btn-success" type="button" id="btnGuardarTurno">Guardar turno</button>
+		</div>
     </div>
   </div>
 
@@ -580,6 +581,9 @@
     const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
     const LOCALES = ["Paseo del Lago", "Segunda Faja"];
 
+	// ===================
+	// VARIABLES GLOBALES
+	// ===================
     let localActivo = LOCALES[0];
     let semana = [];
     let colaboradores = [];
@@ -591,6 +595,7 @@
     let colaboradoresSeleccionados = new Set();
 	let modoMasivo = false;
 	let fechaMasivaActual = null;
+	let turnoCopiado = null;
 
     function setStatus(tipo, mensaje) {
       const box = $("statusBox");
@@ -777,6 +782,8 @@
       celdaActual = { colaborador, fecha };
       horarioCeldaActual = null;
       const turno = buscarTurno(colaborador, fecha);
+      $("btnEliminarTurno").classList.toggle("hidden", !turno);
+      $("btnCopiarTurno").classList.toggle("hidden", !turno);
       plantillaAplicadaActual = turno?.plantillaAplicada || "";
 
       $("modalTitle").innerText = "Asignar turno";
@@ -788,6 +795,16 @@
       $("inicio2").value = turno?.inicio2 || "";
       $("fin2").value = turno?.fin2 || "";
       $("observaciones").value = turno?.observaciones || "";
+      if (!turno && turnoCopiado) {
+		  $("modalTipo").value = turnoCopiado.tipoTurno || "Simple";
+		  $("modalEstado").value = turnoCopiado.estado || "Programado";
+		  $("inicio1").value = turnoCopiado.inicio1 || "";
+		  $("fin1").value = turnoCopiado.fin1 || "";
+		  $("inicio2").value = turnoCopiado.inicio2 || "";
+		  $("fin2").value = turnoCopiado.fin2 || "";
+		  $("observaciones").value = turnoCopiado.observaciones || "";
+		  plantillaAplicadaActual = turnoCopiado.plantillaAplicada || "";
+		}
       $("horarioInfo").className = "horario-box";
       $("horarioInfo").innerText = "Cargando horario del local...";
       refrescarCamposModal();
@@ -1058,6 +1075,7 @@
       });
       $("btnSemanaSiguiente").addEventListener("click", () => moverSemana(1));
       $("btnEliminarTurno").addEventListener("click", eliminarTurnoActual);
+      $("btnCopiarTurno").addEventListener("click", copiarTurnoActual);
       $("btnCerrarModal").addEventListener("click", cerrarModal);
       $("btnGuardarTurno").addEventListener("click", guardarTurno);
       $("modalTipo").addEventListener("change", () => {
@@ -1234,6 +1252,8 @@
 		
 		  limpiarModalStatus();
 		
+		  $("btnEliminarTurno").classList.add("hidden");
+		  $("btnCopiarTurno").classList.add("hidden");
 		  $("modalTitle").innerText = "Asignar turno masivo";
 		  $("modalSubtitle").innerText = `${colaboradoresSeleccionados.size} colaboradores · ${fecha} · ${localActivo}`;
 		  $("modalTipo").value = "Simple";
@@ -1302,6 +1322,31 @@
 		setModalStatus("error", err.message || "Error al eliminar turno.");
 	  }
 	}	
+	
+	function copiarTurnoActual() {
+	  if (modoMasivo || !celdaActual) return;
+	
+	  const turno = buscarTurno(celdaActual.colaborador, celdaActual.fecha);
+	
+	  if (!turno) {
+		setModalStatus("error", "No hay turno para copiar.");
+		return;
+	  }
+	
+	  turnoCopiado = {
+		tipoTurno: turno.tipoTurno,
+		estado: turno.estado,
+		inicio1: turno.inicio1,
+		fin1: turno.fin1,
+		inicio2: turno.inicio2,
+		fin2: turno.fin2,
+		observaciones: turno.observaciones || "",
+		plantillaAplicada: turno.plantillaAplicada || ""
+	  };
+	
+	  cerrarModal();
+	  mostrarToast("success", "Turno copiado. Ahora haz clic en otra celda para pegarlo.");
+	}
   </script>
   <div id="toast" class="toast"></div>
 </body>
