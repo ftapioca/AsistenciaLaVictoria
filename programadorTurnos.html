@@ -400,6 +400,41 @@
 	  background: linear-gradient(135deg, var(--cheese), var(--bun));
 	  color: #351a05;
 	}
+	
+	.btn-mini {
+	  margin-top: 8px;
+	  min-height: 30px;
+	  padding: 7px 10px;
+	  border-radius: 999px;
+	  font-size: 11px;
+	}
+	
+	.check-colab {
+	  display: flex;
+	  align-items: center;
+	  gap: 9px;
+	  cursor: pointer;
+	}
+	
+	.check-colab input {
+	  width: 16px;
+	  height: 16px;
+	  accent-color: var(--bun);
+	}
+	
+	.btn-apply-day {
+	  margin-top: 6px;
+	  width: 28px;
+	  height: 28px;
+	  min-height: 28px;
+	  padding: 0;
+	  border-radius: 999px;
+	  color: #351a05;
+	  background: linear-gradient(135deg, var(--cheese), var(--bun));
+	  font-size: 18px;
+	  line-height: 1;
+	  box-shadow: none;
+	}
   </style>
 </head>
 <body>
@@ -552,6 +587,9 @@
     let horarioCeldaActual = null;
     let plantillasTurnos = [];
     let plantillaAplicadaActual = "";
+    let colaboradoresSeleccionados = new Set();
+	let modoMasivo = false;
+	let fechaMasivaActual = null;
 
     function setStatus(tipo, mensaje) {
       const box = $("statusBox");
@@ -681,7 +719,20 @@
       const head = $("tableHead");
       const body = $("tableBody");
 
-      head.innerHTML = `<tr><th>Colaborador</th>${semana.map((d, i) => `<th>${dias[i]}<br><span>${fechaCL(d)}</span></th>`).join("")}</tr>`;
+      head.innerHTML = `
+		  <tr>
+			<th>Colaborador</th>
+			${semana.map((d, i) => `
+			  <th>
+				${dias[i]}<br>
+				<span>${fechaCL(d)}</span><br>
+				<button type="button" class="btn-apply-day" onclick="abrirModalMasivo('${fechaISO(d)}')" title="Aplicar turno a seleccionados">
+				  +
+				</button>
+			  </th>
+			`).join("")}
+		  </tr>
+		`;
 
       if (!colaboradores.length) {
         body.innerHTML = `<tr><td colspan="8">No hay colaboradores para este local.</td></tr>`;
@@ -695,7 +746,17 @@
           const turno = buscarTurno(nombre, iso);
           return `<td class="day-cell" data-colaborador="${escapeHtml(nombre)}" data-fecha="${iso}" onclick="abrirModal('${escapeAttr(nombre)}','${iso}')">${renderTurno(turno)}</td>`;
         }).join("");
-        return `<tr><td>${escapeHtml(nombre)}</td>${cells}</tr>`;
+        return `
+		  <tr>
+			<td>
+			  <label class="check-colab">
+				<input type="checkbox" onchange="toggleColaboradorSeleccionado('${escapeAttr(nombre)}', this.checked)">
+				<span>${escapeHtml(nombre)}</span>
+			  </label>
+			</td>
+			${cells}
+		  </tr>
+		`;
       }).join("");
 
       $("totalTurnos").innerText = `${turnos.length} turnos cargados`;
@@ -755,11 +816,14 @@
       $("horarioInfo").innerText = `Horario ${horario.origen || ""}${extra}: ${horario.horaApertura || "--:--"} a ${horario.horaCierre || "--:--"} · ${trasnoche}`;
     }
 
-    function cerrarModal() {
-      $("modalBackdrop").classList.remove("show");
-      celdaActual = null;
-      horarioCeldaActual = null;
-    }
+	function cerrarModal() {
+	  $("modalBackdrop").classList.remove("show");
+	  celdaActual = null;
+	  horarioCeldaActual = null;
+	  modoMasivo = false;
+	  fechaMasivaActual = null;
+	  plantillaAplicadaActual = "";
+	}
 
 	function refrescarCamposModal() {
 	  const tipo = $("modalTipo").value;
@@ -780,7 +844,7 @@
 	}
 
     async function guardarTurno() {
-      if (!celdaActual) return;
+      if (!celdaActual && !modoMasivo) return;
       $("btnGuardarTurno").disabled = true;
 
       try {
@@ -821,8 +885,8 @@
 		
         const payload = {
           accion: "GuardarTurno",
-          fecha: celdaActual.fecha,
-          colaborador: celdaActual.colaborador,
+		  fecha: modoMasivo ? fechaMasivaActual : celdaActual.fecha,
+		  colaborador: modoMasivo ? "" : celdaActual.colaborador,
           local: localActivo,
           tipoTurno: $("modalTipo").value,
           estado: $("modalEstado").value,
@@ -837,10 +901,36 @@
         const validacion = validarTurnoContraHorario(payload, horarioCeldaActual);
         if (!validacion.ok) throw new Error(validacion.mensaje);
 
-        const data = await apiPost(payload);
-        if (data.status !== "SUCCESS") throw new Error(data.mensaje || "No se pudo guardar el turno.");
-        cerrarModal();
-        await cargarSemana();
+		if (modoMasivo) {
+		  const colaboradoresArray = Array.from(colaboradoresSeleccionados);
+		
+		  for (const colaborador of colaboradoresArray) {
+			const payloadMasivo = {
+			  ...payload,
+			  fecha: fechaMasivaActual,
+			  colaborador: colaborador
+			};
+		
+			const data = await apiPost(payloadMasivo);
+		
+			if (data.status !== "SUCCESS") {
+			  throw new Error(data.mensaje || `No se pudo guardar el turno para ${colaborador}.`);
+			}
+		  }
+		
+		  limpiarSeleccionColaboradores();
+		
+		  cerrarModal();
+		  await cargarSemana();
+		
+		  mostrarToast("success", `Turno asignado a ${colaboradoresArray.length} colaboradores.`);
+		} else {
+		  const data = await apiPost(payload);
+		  if (data.status !== "SUCCESS") throw new Error(data.mensaje || "No se pudo guardar el turno.");
+		
+		  cerrarModal();
+		  await cargarSemana();
+		}
       } catch (err) {
         setModalStatus("error", err.message || "Error al guardar turno.");
       } finally {
@@ -1119,6 +1209,66 @@
 	
 	  refrescarCamposModal();
 	}
+	
+	function toggleColaboradorSeleccionado(nombre, checked) {
+		  if (checked) {
+			colaboradoresSeleccionados.add(nombre);
+		  } else {
+			colaboradoresSeleccionados.delete(nombre);
+		  }
+		}
+		
+		function abrirModalMasivo(fecha) {
+		  if (!colaboradoresSeleccionados.size) {
+			mostrarToast("warn", "Selecciona al menos un colaborador antes de aplicar un turno.");
+			return;
+		  }
+		
+		  modoMasivo = true;
+		  fechaMasivaActual = fecha;
+		  celdaActual = null;
+		  horarioCeldaActual = null;
+		  plantillaAplicadaActual = "";
+		
+		  limpiarModalStatus();
+		
+		  $("modalTitle").innerText = "Asignar turno masivo";
+		  $("modalSubtitle").innerText = `${colaboradoresSeleccionados.size} colaboradores · ${fecha} · ${localActivo}`;
+		  $("modalTipo").value = "Simple";
+		  $("modalEstado").value = "Programado";
+		  $("inicio1").value = "";
+		  $("fin1").value = "";
+		  $("inicio2").value = "";
+		  $("fin2").value = "";
+		  $("observaciones").value = "";
+		  $("horarioInfo").className = "horario-box";
+		  $("horarioInfo").innerText = "Cargando horario del local...";
+		
+		  refrescarCamposModal();
+		  $("modalBackdrop").classList.add("show");
+		  renderPlantillasModal();
+		
+		  apiGet({ accion: "HorarioLocal", local: localActivo, fecha })
+			.then(data => {
+			  if (data.status !== "SUCCESS") throw new Error(data.mensaje || "No se encontró horario configurado.");
+			  horarioCeldaActual = { origen: data.origen, ...(data.horario || {}) };
+			  mostrarHorarioAplicable(horarioCeldaActual);
+			  $("inicio1").value = horarioCeldaActual.horaApertura || "";
+			  $("fin1").value = horarioCeldaActual.horaCierre || "";
+			})
+			.catch(err => {
+			  $("horarioInfo").className = "horario-box error";
+			  $("horarioInfo").innerText = err.message || "No se pudo cargar el horario del local.";
+			});
+		}
+		
+		function limpiarSeleccionColaboradores() {
+		  colaboradoresSeleccionados.clear();
+		
+		  document.querySelectorAll('.check-colab input[type="checkbox"]').forEach(input => {
+			input.checked = false;
+		  });
+		}
   </script>
   <div id="toast" class="toast"></div>
 </body>
