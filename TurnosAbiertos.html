@@ -131,60 +131,6 @@
       justify-items: end;
     }
 
-    .site-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 320px));
-      gap: 18px;
-      align-items: start;
-    }
-
-    .site-card {
-      background: var(--paper);
-      color: var(--charcoal-2);
-      padding: 22px;
-      border-radius: 20px;
-      min-width: 260px;
-      box-shadow: 0 18px 40px rgba(20,16,13,0.12);
-      border: 1px solid rgba(33,24,19,0.04);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .site-card h2 {
-      margin: 0;
-      color: var(--bun-dark);
-      font-size: 20px;
-      letter-spacing: -0.02em;
-    }
-
-    .site-card p {
-      margin: 0;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    .selector-wrap {
-      display: inline-flex;
-      gap: 10px;
-      align-items: center;
-      background: rgba(255, 245, 228, 0.06);
-      padding: 10px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 245, 228, 0.08);
-    }
-
-    #pageSelector {
-      min-width: 180px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(33, 24, 19, 0.06);
-      background: rgba(255, 255, 255, 0.82);
-      color: var(--charcoal);
-      font-weight: 800;
-      appearance: none;
-    }
-
     .refresh-info {
       padding: 14px 16px;
       border-radius: 18px;
@@ -691,35 +637,260 @@
     <section class="hero">
       <div>
         <div class="brand">🍔 La Victoria · Administración</div>
-        <h1>Selecciona un sitio</h1>
-        <p>Elige una de las herramientas internas para administrar o ver turnos.</p>
+        <h1>Turnos abiertos.</h1>
+        <p>Vista simultánea de colaboradores que registraron ingreso y todavía no han marcado salida en cada local.</p>
       </div>
 
       <div class="hero-actions">
-        <!-- Contenedor de las dos cajas flotantes -->
-        <div class="site-grid" aria-label="Selector de sitios">
-          <article class="site-card">
-            <h2>Turnos Abiertos</h2>
-            <p>Visualiza colaboradores que registraron ingreso y aún no marcaron salida. Vista en tiempo real.</p>
-            <div style="margin-top:12px">
-              <button class="btn-primary" type="button" onclick="location.href='TurnosAbiertos.html'">Ver Turnos Abiertos</button>
-            </div>
-          </article>
-
-          <article class="site-card">
-            <h2>Programador de Turnos</h2>
-            <p>Herramienta para editar y programar turnos por local y por colaborador.</p>
-            <div style="margin-top:12px">
-              <button class="btn-primary" type="button" onclick="location.href='programadorTurnos.html'">Abrir Programador</button>
-            </div>
-          </article>
+        <div class="refresh-info">
+          <div>Última actualización</div>
+          <strong id="ultimaActualizacion">--:--</strong>
         </div>
+        <button id="btnActualizar" class="btn-primary" type="button" onclick="cargarDashboard()">↻ Actualizar ahora</button>
       </div>
     </section>
+
+    <section class="summary-grid" aria-label="Resumen general">
+      <article class="metric">
+        <span>Total turnos abiertos</span>
+        <strong id="totalGeneral">0</strong>
+      </article>
+      <article class="metric">
+        <span>Paseo del Lago</span>
+        <strong id="total-PaseoDelLago">0</strong>
+      </article>
+      <article class="metric">
+        <span>Segunda Faja</span>
+        <strong id="total-SegundaFaja">0</strong>
+      </article>
+    </section>
+
+    <section class="local-grid" aria-label="Turnos abiertos por local">
+      <article class="local-card" id="card-PaseoDelLago">
+        <details class="accordion" data-local-id="PaseoDelLago">
+          <summary class="accordion-toggle" aria-controls="contenido-PaseoDelLago">
+            <div>
+              <h2>Paseo del Lago</h2>
+              <p>Colaboradores pendientes de salida</p>
+            </div>
+            <div class="accordion-meta">
+              <div class="count-badge" id="badge-PaseoDelLago">0</div>
+              <span class="chevron" aria-hidden="true">▾</span>
+            </div>
+          </summary>
+          <div id="contenido-PaseoDelLago" class="accordion-panel loading">Cargando turnos abiertos...</div>
+        </details>
+      </article>
+
+      <article class="local-card" id="card-SegundaFaja">
+        <details class="accordion" data-local-id="SegundaFaja">
+          <summary class="accordion-toggle" aria-controls="contenido-SegundaFaja">
+            <div>
+              <h2>Segunda Faja</h2>
+              <p>Colaboradores pendientes de salida</p>
+            </div>
+            <div class="accordion-meta">
+              <div class="count-badge" id="badge-SegundaFaja">0</div>
+              <span class="chevron" aria-hidden="true">▾</span>
+            </div>
+          </summary>
+          <div id="contenido-SegundaFaja" class="accordion-panel loading">Cargando turnos abiertos...</div>
+        </details>
+      </article>
+    </section>
+
+    <div class="footer-note">Actualización automática cada 30 minutos · Dashboard solo lectura</div>
   </main>
 
   <script>
-    // Index minimal: navegación mediante botones, no script necesario.
+    // ==========================================
+    // CONFIGURACIÓN
+    // ==========================================
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyqIaw4SLUy1pYl7iAv1QPrgWvHNE51H4dVk-R0qRZ8DppTZNAWRhN0W8bdmG3W23rq/exec";
+
+    const LOCALES = [
+      { nombre: "Paseo del Lago", id: "PaseoDelLago" },
+      { nombre: "Segunda Faja", id: "SegundaFaja" }
+    ];
+
+    const REFRESCO_AUTOMATICO_MS = 30 * 60 * 1000;
+
+    const $ = (id) => document.getElementById(id);
+
+    function escaparHTML(valor) {
+      return String(valor || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function actualizarHoraDashboard() {
+      const ahora = new Date();
+      $('ultimaActualizacion').innerText = ahora.toLocaleString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function setLoadingLocal(localId) {
+      $(`contenido-${localId}`).className = 'loading';
+      $(`contenido-${localId}`).innerText = 'Cargando turnos abiertos...';
+      $(`badge-${localId}`).innerText = '...';
+      $(`total-${localId}`).innerText = '...';
+    }
+
+    const MOBILE_BREAKPOINT = 980;
+
+    function isMobileView() {
+      return window.innerWidth <= MOBILE_BREAKPOINT;
+    }
+
+    function updateAccordionMode() {
+      const accordions = document.querySelectorAll('details.accordion');
+      accordions.forEach(details => {
+        if (isMobileView()) {
+          details.removeAttribute('open');
+          const summary = details.querySelector('summary');
+          if (summary) summary.style.cursor = 'pointer';
+        } else {
+          details.setAttribute('open', '');
+          const summary = details.querySelector('summary');
+          if (summary) summary.style.cursor = 'default';
+        }
+      });
+    }
+
+    function setupAccordions() {
+      const accordions = document.querySelectorAll('details.accordion');
+
+      accordions.forEach(details => {
+        const summary = details.querySelector('summary');
+        if (!summary) return;
+
+        summary.addEventListener('click', (event) => {
+          if (!isMobileView()) {
+            event.preventDefault();
+          }
+        });
+
+        details.addEventListener('toggle', () => {
+          if (!isMobileView()) {
+            details.setAttribute('open', '');
+            return;
+          }
+
+          if (details.open) {
+            accordions.forEach(other => {
+              if (other !== details) {
+                other.removeAttribute('open');
+              }
+            });
+          }
+        });
+      });
+
+      updateAccordionMode();
+      window.addEventListener('resize', updateAccordionMode);
+    }
+
+    function renderLocal(local, turnos) {
+      const contenido = $(`contenido-${local.id}`);
+      const total = Array.isArray(turnos) ? turnos.length : 0;
+
+      $(`badge-${local.id}`).innerText = total;
+      $(`total-${local.id}`).innerText = total;
+
+      if (total === 0) {
+        contenido.className = 'empty';
+        contenido.innerText = 'No hay turnos abiertos en este local.';
+        return;
+      }
+
+      contenido.className = 'table-wrap';
+      contenido.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Ingreso</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${turnos.map(turno => `
+              <tr>
+                <td>
+                  <div class="person">
+                    <div class="avatar">${escaparHTML(turno.iniciales || '--')}</div>
+                    <div>${escaparHTML(turno.nombre)}</div>
+                  </div>
+                </td>
+                <td>${escaparHTML(turno.hora || turno.fechaHora || 'Sin hora')}</td>
+                <td><span class="status-pill">● Pendiente de salida</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderErrorLocal(local, mensaje) {
+      const contenido = $(`contenido-${local.id}`);
+      contenido.className = 'error';
+      contenido.innerText = mensaje || 'No se pudo cargar este local.';
+      $(`badge-${local.id}`).innerText = '0';
+      $(`total-${local.id}`).innerText = '0';
+    }
+
+    async function cargarTurnosLocal(local) {
+      setLoadingLocal(local.id);
+      const url = `${WEB_APP_URL}?accion=TurnosAbiertos&local=${encodeURIComponent(local.nombre)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.status !== 'SUCCESS') {
+          renderErrorLocal(local, data.mensaje || 'El servidor no devolvió una respuesta válida.');
+          return 0;
+        }
+
+        const turnos = data.turnosAbiertos || [];
+        renderLocal(local, turnos);
+        return turnos.length;
+      } catch (error) {
+        renderErrorLocal(local, 'Error de conexión. Revisa internet o el Apps Script.');
+        return 0;
+      }
+    }
+
+    async function cargarDashboard() {
+      const boton = $('btnActualizar');
+      boton.disabled = true;
+      boton.innerText = 'Actualizando...';
+
+      const resultados = await Promise.all(
+        LOCALES.map(local => cargarTurnosLocal(local))
+      );
+
+      const totalGeneral = resultados.reduce((suma, valor) => suma + valor, 0);
+      $('totalGeneral').innerText = totalGeneral;
+      actualizarHoraDashboard();
+
+      boton.disabled = false;
+      boton.innerText = '↻ Actualizar ahora';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      setupAccordions();
+      cargarDashboard();
+      setInterval(cargarDashboard, REFRESCO_AUTOMATICO_MS);
+    });
   </script>
 </body>
 </html>
