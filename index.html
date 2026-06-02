@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#14100d" />
-  <title>Admin · Turnos Abiertos La Victoria</title>
+  <title>Ingreso por Rol · La Victoria</title>
   <style>
     :root {
       --bun: #ff8a13;
@@ -16,6 +16,7 @@
       --charcoal-2: #211813;
       --cream: #fff5e4;
       --paper: rgba(255, 250, 241, 0.94);
+      --paper-strong: rgba(255, 250, 241, 0.98);
       --muted: #806957;
       --line: rgba(47, 32, 23, 0.12);
       --shadow: 0 30px 80px rgba(33, 24, 19, 0.28);
@@ -67,10 +68,10 @@
                   radial-gradient(circle, rgba(239, 59, 45, 0.42), transparent 62%);
     }
 
-    .dashboard {
+    .shell {
       position: relative;
       z-index: 1;
-      width: min(100%, 1320px);
+      width: min(100%, 1180px);
       margin: 0 auto;
       display: grid;
       gap: 20px;
@@ -78,19 +79,26 @@
 
     .hero {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1.2fr) minmax(300px, 420px);
       gap: 22px;
-      align-items: center;
-      padding: clamp(24px, 4vw, 42px);
-      color: var(--cream);
-      border-radius: calc(var(--radius-xl) + 8px);
-      background:
-        linear-gradient(145deg, rgba(255, 245, 228, 0.13), rgba(255, 245, 228, 0.05)),
-        radial-gradient(circle at top right, rgba(255, 138, 19, 0.28), transparent 42%);
-      border: 1px solid rgba(255, 245, 228, 0.18);
+      align-items: stretch;
+    }
+
+    .hero-copy,
+    .login-card {
+      border-radius: 30px;
       box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 245, 228, 0.18);
       overflow: hidden;
+    }
+
+    .hero-copy {
+      padding: clamp(28px, 4vw, 44px);
+      color: var(--cream);
+      background:
+        linear-gradient(145deg, rgba(255, 245, 228, 0.12), rgba(255, 245, 228, 0.05)),
+        radial-gradient(circle at top right, rgba(255, 138, 19, 0.28), transparent 42%);
+      backdrop-filter: blur(18px);
     }
 
     .brand {
@@ -110,98 +118,120 @@
     }
 
     h1 {
-      margin: 18px 0 10px;
-      font-size: clamp(38px, 6vw, 68px);
+      margin: 18px 0 12px;
+      font-size: clamp(44px, 7vw, 76px);
       line-height: 0.92;
       letter-spacing: -0.07em;
-      max-width: 10ch;
+      max-width: 8ch;
     }
 
-    .hero p {
+    .hero-copy p {
       margin: 0;
       color: rgba(255, 245, 228, 0.76);
       font-size: 16px;
-      line-height: 1.6;
-      max-width: 720px;
+      line-height: 1.7;
+      max-width: 56ch;
     }
 
-    .hero-actions {
+    .feature-grid {
+      margin-top: 26px;
       display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
-      justify-items: end;
     }
 
-    .site-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 320px));
-      gap: 18px;
-      align-items: start;
-    }
-
-    .site-card {
-      background: var(--paper);
-      color: var(--charcoal-2);
-      padding: 22px;
+    .feature {
+      padding: 16px;
       border-radius: 20px;
-      min-width: 260px;
-      box-shadow: 0 18px 40px rgba(20,16,13,0.12);
-      border: 1px solid rgba(33,24,19,0.04);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      background: rgba(255, 245, 228, 0.08);
+      border: 1px solid rgba(255, 245, 228, 0.12);
     }
 
-    .site-card h2 {
-      margin: 0;
+    .feature strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .feature span {
+      color: rgba(255, 245, 228, 0.72);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .login-card {
+      background: var(--paper-strong);
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .eyebrow {
       color: var(--bun-dark);
-      font-size: 20px;
-      letter-spacing: -0.02em;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
-    .site-card p {
+    .login-card h2 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1;
+      letter-spacing: -0.05em;
+      color: var(--charcoal-2);
+    }
+
+    .login-card p {
       margin: 0;
       color: var(--muted);
+      line-height: 1.6;
       font-weight: 700;
     }
 
-    .selector-wrap {
-      display: inline-flex;
-      gap: 10px;
-      align-items: center;
-      background: rgba(255, 245, 228, 0.06);
-      padding: 10px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 245, 228, 0.08);
+    .field {
+      display: grid;
+      gap: 8px;
     }
 
-    #pageSelector {
-      min-width: 180px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(33, 24, 19, 0.06);
-      background: rgba(255, 255, 255, 0.82);
-      color: var(--charcoal);
-      font-weight: 800;
-      appearance: none;
-    }
-
-    .refresh-info {
-      padding: 14px 16px;
-      border-radius: 18px;
-      color: rgba(255, 245, 228, 0.82);
-      background: rgba(255, 245, 228, 0.08);
-      border: 1px solid rgba(255, 245, 228, 0.12);
+    label {
+      color: #3a2a20;
       font-size: 13px;
+      font-weight: 900;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 16px 18px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.84);
+      color: var(--charcoal);
+      font-size: 16px;
       font-weight: 800;
-      text-align: right;
-      min-width: 250px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: rgba(255, 138, 19, 0.72);
+      box-shadow: var(--focus);
+      background: #fff;
+    }
+
+    #pinInput {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 0.28em;
+      text-align: center;
     }
 
     button {
       border: 0;
-      min-height: 48px;
-      padding: 13px 16px;
-      border-radius: 17px;
+      min-height: 50px;
+      padding: 14px 18px;
+      border-radius: 18px;
       font-size: 14px;
       font-weight: 950;
       cursor: pointer;
@@ -218,239 +248,57 @@
       box-shadow: 0 14px 28px rgba(217, 103, 0, 0.18);
     }
 
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .metric {
-      padding: 20px;
-      border-radius: 26px;
-      background: var(--paper);
-      border: 1px solid rgba(255, 245, 228, 0.20);
-      box-shadow: 0 20px 50px rgba(20, 16, 13, 0.15);
-    }
-
-    .metric span {
-      display: block;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 850;
-      margin-bottom: 8px;
-    }
-
-    .metric strong {
-      display: block;
-      color: var(--bun-dark);
-      font-size: 42px;
-      line-height: 1;
-      letter-spacing: -0.07em;
-    }
-
-    .local-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 18px;
-    }
-
-    .local-card {
-      overflow: hidden;
-      border-radius: 30px;
-      background: var(--paper);
-      border: 1px solid rgba(255, 245, 228, 0.20);
-      box-shadow: 0 24px 70px rgba(20, 16, 13, 0.18);
-    }
-
-    .local-head {
-      padding: 0;
-    }
-
-    details.accordion {
-      border-radius: inherit;
-      overflow: hidden;
-    }
-
-    details.accordion summary {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      padding: 22px 24px;
-      list-style: none;
-      background:
-        radial-gradient(circle at top right, rgba(255, 201, 40, 0.22), transparent 40%),
-        linear-gradient(180deg, #fffaf1, #fff5e4);
-      color: inherit;
-      cursor: pointer;
-    }
-
-    details.accordion summary::-webkit-details-marker,
-    details.accordion summary::marker {
-      display: none;
-    }
-
-    .accordion-meta {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .chevron {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 30px;
-      height: 30px;
-      border-radius: 999px;
-      background: rgba(255, 245, 228, 0.65);
-      color: #3a220c;
-      font-size: 14px;
-      transition: transform 0.2s ease;
-    }
-
-    details.accordion[open] .chevron {
-      transform: rotate(180deg);
-    }
-
-    @media (min-width: 981px) {
-      details.accordion summary {
-        cursor: default;
-      }
-
-      details.accordion .chevron {
-        transform: none;
-      }
-    }
-
-    .local-head h2 {
-      margin: 0 0 6px;
-      font-size: 24px;
-      line-height: 1;
-      letter-spacing: -0.04em;
-    }
-
-    .local-head p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 750;
-    }
-
-    .count-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 46px;
-      height: 46px;
-      padding: 0 14px;
-      border-radius: 16px;
-      color: #351a05;
-      background: linear-gradient(135deg, var(--cheese), var(--bun));
-      font-weight: 950;
-      font-size: 20px;
-      box-shadow: 0 12px 24px rgba(217, 103, 0, 0.18);
-    }
-
-    .table-wrap {
-      padding: 18px;
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 520px;
-      font-size: 14px;
-    }
-
-    th,
-    td {
-      padding: 14px 12px;
-      text-align: left;
-      border-bottom: 1px solid rgba(47, 32, 23, 0.08);
-      vertical-align: middle;
-    }
-
-    th {
+    .btn-soft {
       color: #65340d;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      background: rgba(255, 201, 40, 0.20);
+      background: rgba(255, 201, 40, 0.18);
+      border: 1px solid rgba(217, 103, 0, 0.16);
     }
 
-    td {
-      color: #2d2119;
-      background: rgba(255, 255, 255, 0.52);
-      font-weight: 720;
-    }
-
-    tr:last-child td { border-bottom: 0; }
-
-    .person {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .avatar {
-      display: grid;
-      place-items: center;
-      width: 38px;
-      height: 38px;
-      border-radius: 14px;
-      color: #351a05;
-      background: linear-gradient(135deg, var(--cheese), var(--bun));
-      font-size: 13px;
-      font-weight: 950;
-      flex: 0 0 auto;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: rgba(239, 59, 45, 0.11);
-      color: #8f1b13;
-      border: 1px solid rgba(239, 59, 45, 0.20);
-      font-size: 12px;
-      font-weight: 950;
-      white-space: nowrap;
-    }
-
-    .empty,
-    .loading,
-    .error {
-      padding: 22px;
-      border-radius: 22px;
-      margin: 18px;
+    .status {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 18px;
       font-weight: 850;
       line-height: 1.45;
+      font-size: 14px;
     }
 
-    .empty {
-      background: rgba(25, 166, 106, 0.12);
+    .status.show { display: block; }
+    .status.loading { background: rgba(255, 201, 40, 0.16); color: #6b3a0c; border: 1px solid rgba(255, 138, 19, 0.22); }
+    .status.success { background: rgba(25, 166, 106, 0.13); color: #075a37; border: 1px solid rgba(25, 166, 106, 0.22); }
+    .status.error { background: rgba(239, 59, 45, 0.12); color: #8f1b13; border: 1px solid rgba(239, 59, 45, 0.20); }
+
+    .session-card {
+      display: none;
+      gap: 12px;
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(25, 166, 106, 0.10);
+      border: 1px solid rgba(25, 166, 106, 0.18);
+    }
+
+    .session-card.show {
+      display: grid;
+    }
+
+    .session-card strong {
+      font-size: 18px;
       color: #075a37;
-      border: 1px solid rgba(25, 166, 106, 0.22);
     }
 
-    .loading {
-      background: rgba(255, 201, 40, 0.16);
-      color: #6b3a0c;
-      border: 1px solid rgba(255, 138, 19, 0.22);
+    .session-card span {
+      color: #0f5c3b;
+      font-weight: 800;
+      line-height: 1.5;
     }
 
-    .error {
-      background: rgba(239, 59, 45, 0.13);
-      color: #8f1b13;
-      border: 1px solid rgba(239, 59, 45, 0.22);
+    .session-actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
     }
 
-    .footer-note {
+    .note {
       color: rgba(255, 245, 228, 0.70);
       text-align: center;
       font-size: 13px;
@@ -459,267 +307,286 @@
 
     @media (max-width: 980px) {
       .hero { grid-template-columns: 1fr; }
-      .hero-actions { justify-items: stretch; }
-      .refresh-info { text-align: left; min-width: 0; }
-      .summary-grid { grid-template-columns: 1fr; }
-      .local-grid { grid-template-columns: 1fr; }
+
+      h1 {
+        max-width: none;
+      }
     }
 
     @media (max-width: 560px) {
-      body { padding: 14px; }
-      .hero, .metric, .local-card { border-radius: 24px; }
-      h1 { font-size: 38px; }
-      .local-head { flex-direction: column; }
-    }
-
-
-
-    /* =====================================================
-       OPTIMIZACIÓN MÓVIL
-       En celulares las tablas dejan de comportarse como tabla
-       y pasan a verse como tarjetas apiladas para evitar cortes.
-    ===================================================== */
-    @media (max-width: 720px) {
       body {
-        padding: 10px;
+        padding: 14px;
       }
 
-      .dashboard {
-        gap: 14px;
-      }
-
-      .hero {
-        padding: 22px;
+      .hero-copy,
+      .login-card {
         border-radius: 24px;
       }
 
-      .brand {
-        font-size: 11px;
-        letter-spacing: 0.05em;
-        padding: 8px 10px;
+      .feature-grid {
+        grid-template-columns: 1fr;
       }
-
-      h1 {
-        font-size: 40px;
-        max-width: none;
-      }
-
-      .hero p {
-        font-size: 14px;
-      }
-
-      .summary-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-      }
-
-      .metric {
-        min-height: 88px;
-        padding: 12px 10px;
-        border-radius: 18px;
-      }
-
-      .metric span {
-        font-size: 10px;
-        line-height: 1.15;
-        margin-bottom: 8px;
-      }
-
-      .metric strong {
-        font-size: 36px;
-      }
-
-      .local-card {
-        border-radius: 26px;
-      }
-
-      .local-head {
-        padding: 22px;
-      }
-
-      .local-head h2 {
-        font-size: 30px;
-        line-height: 1.05;
-      }
-
-      .local-head p {
-        font-size: 15px;
-      }
-
-      .count-badge {
-        min-width: 58px;
-        height: 58px;
-        border-radius: 18px;
-        font-size: 25px;
-      }
-
-      .table-wrap {
-        padding: 0;
-        overflow-x: visible;
-      }
-
-      table {
-        min-width: 0;
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        font-size: 14px;
-      }
-
-      thead {
-        display: none;
-      }
-
-      tbody {
-        display: grid;
-        gap: 12px;
-        padding: 14px;
-      }
-
-      tr {
-        display: grid;
-        gap: 10px;
-        padding: 14px;
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.72);
-        border: 1px solid rgba(47, 32, 23, 0.08);
-        box-shadow: 0 10px 24px rgba(20, 16, 13, 0.06);
-      }
-
-      td {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        padding: 0;
-        border-bottom: 0;
-        background: transparent;
-      }
-
-      td:nth-child(1) {
-        justify-content: flex-start;
-      }
-
-      td:nth-child(2)::before {
-        content: 'Ingreso';
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 950;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-
-      td:nth-child(3)::before {
-        content: 'Estado';
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 950;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-
-      .person {
-        width: 100%;
-        min-width: 0;
-      }
-
-      .person > div:last-child {
-        min-width: 0;
-        overflow-wrap: anywhere;
-        font-size: 16px;
-      }
-
-      .avatar {
-        width: 46px;
-        height: 46px;
-        border-radius: 16px;
-        font-size: 15px;
-      }
-
-      .status-pill {
-        white-space: normal;
-        text-align: right;
-        justify-content: center;
-        max-width: 170px;
-      }
-
-      .empty,
-      .loading,
-      .error {
-        margin: 14px;
-        padding: 18px;
-        border-radius: 20px;
-      }
-    }
-
-    @media (max-width: 390px) {
-      h1 {
-        font-size: 34px;
-      }
-
-      .local-head h2 {
-        font-size: 26px;
-      }
-
-      .metric strong {
-        font-size: 48px;
-      }
-
-      td {
-        align-items: flex-start;
-      }
-
-      td:nth-child(2),
-      td:nth-child(3) {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .status-pill {
-        max-width: 100%;
-        text-align: left;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
     }
   </style>
 </head>
 <body>
-  <main class="dashboard">
+  <main class="shell">
     <section class="hero">
-      <div>
-        <div class="brand">🍔 La Victoria · Administración</div>
-        <h1>Selecciona un sitio</h1>
-        <p>Elige una de las herramientas internas para administrar o ver turnos.</p>
-      </div>
+      <article class="hero-copy">
+        <div class="brand">La Victoria · Acceso Interno</div>
+        <h1>Ingreso por rol.</h1>
+        <p>
+          Accede a tu espacio interno de forma segura. El sistema valida tu identidad antes de habilitar la navegación
+          correspondiente a tu perfil.
+        </p>
 
-      <div class="hero-actions">
-        <!-- Contenedor de las dos cajas flotantes -->
-        <div class="site-grid" aria-label="Selector de sitios">
-          <article class="site-card">
-            <h2>Turnos Abiertos</h2>
-            <p>Visualiza colaboradores que registraron ingreso y aún no marcaron salida. Vista en tiempo real.</p>
-            <div style="margin-top:12px">
-              <button class="btn-primary" type="button" onclick="location.href='TurnosAbiertos.html'">Ver Turnos Abiertos</button>
-            </div>
-          </article>
-
-          <article class="site-card">
-            <h2>Programador de Turnos</h2>
-            <p>Herramienta para editar y programar turnos por local y por colaborador.</p>
-            <div style="margin-top:12px">
-              <button class="btn-primary" type="button" onclick="location.href='programadorTurnos.html'">Abrir Programador</button>
-            </div>
-          </article>
+        <div class="feature-grid">
+          <div class="feature">
+            <strong>Acceso personalizado</strong>
+            <span>Cada persona ingresa solo a las secciones que le corresponden.</span>
+          </div>
+          <div class="feature">
+            <strong>Consulta de turnos</strong>
+            <span>Puedes revisar tu información asignada desde una vista simple y protegida.</span>
+          </div>
+          <div class="feature">
+            <strong>Sesión protegida</strong>
+            <span>El acceso se conserva solo durante la sesión activa de esta pestaña.</span>
+          </div>
+          <div class="feature">
+            <strong>Validación segura</strong>
+            <span>La identidad y los permisos se verifican antes de mostrar cualquier contenido.</span>
+          </div>
         </div>
-      </div>
+      </article>
+
+      <aside class="login-card" aria-label="Ingreso seguro">
+        <div class="eyebrow">Autenticación</div>
+        <h2>Ingresa tus credenciales</h2>
+        <p>Selecciona tu rol. Si eres colaborador, elige tu nombre de la lista; si eres administrador, ingresa tu usuario y tu PIN.</p>
+
+        <form id="loginForm">
+          <div class="field">
+            <label for="roleSelect">Rol</label>
+            <select id="roleSelect" name="role">
+              <option value="">Selecciona un rol</option>
+              <option value="Administrador">Administrador</option>
+              <option value="Colaborador">Colaborador</option>
+            </select>
+          </div>
+
+          <div class="field" id="nameSelectField">
+            <label for="nameSelect">Nombre</label>
+            <select id="nameSelect" name="nombre" disabled>
+              <option value="">Selecciona primero un rol</option>
+            </select>
+          </div>
+
+          <div class="field" id="adminUserField" style="display:none;">
+            <label for="adminUserInput">Usuario administrador</label>
+            <input id="adminUserInput" name="admin_username" type="text" autocomplete="username" placeholder="Ingresa tu usuario" />
+          </div>
+
+          <div class="field">
+            <label for="pinInput">PIN de acceso</label>
+            <input id="pinInput" name="pin" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="••••" />
+          </div>
+
+          <div id="loginStatus" class="status"></div>
+
+          <div class="session-actions">
+            <button id="btnLogin" class="btn-primary" type="submit">Ingresar</button>
+            <button id="btnLogout" class="btn-soft" type="button">Cerrar sesión</button>
+          </div>
+        </form>
+
+        <section id="sessionCard" class="session-card" aria-live="polite">
+          <strong id="sessionTitle">Sesión activa</strong>
+          <span id="sessionDescription"></span>
+          <button id="btnContinue" class="btn-primary" type="button">Continuar</button>
+        </section>
+      </aside>
     </section>
+
+    <div class="note">Si accedes por URL directa sin sesión válida, el sistema volverá a esta pantalla.</div>
   </main>
 
+  <script src="app-config.js"></script>
+  <script src="auth.js"></script>
   <script>
-    // Index minimal: navegación mediante botones, no script necesario.
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(type, message) {
+      const box = $("loginStatus");
+      box.className = `status show ${type}`;
+      box.innerText = message;
+    }
+
+    function clearStatus() {
+      const box = $("loginStatus");
+      box.className = "status";
+      box.innerText = "";
+    }
+
+    async function cargarUsuariosPorRol(role) {
+      const select = $("nameSelect");
+      select.disabled = true;
+      select.innerHTML = `<option value="">Cargando nombres...</option>`;
+
+      if (!role) {
+        select.innerHTML = `<option value="">Selecciona primero un rol</option>`;
+        return;
+      }
+
+      try {
+        const url = `${APP_CONFIG.WEB_APP_URL}?${new URLSearchParams({
+          accion: "UsuariosPorRol",
+          role
+        }).toString()}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status !== "SUCCESS") {
+          throw new Error(data.mensaje || "No se pudo cargar la lista de usuarios.");
+        }
+
+        const usuarios = Array.isArray(data.usuarios) ? data.usuarios : [];
+        select.innerHTML = `<option value="">Selecciona tu nombre</option>` +
+          usuarios.map((nombre) => `<option value="${nombre}">${nombre}</option>`).join("");
+
+        select.disabled = false;
+      } catch (error) {
+        select.innerHTML = `<option value="">No se pudo cargar la lista</option>`;
+        setStatus("error", error.message || "Error al cargar usuarios.");
+      }
+    }
+
+    function syncCredentialMode(role) {
+      const isAdmin = role === "Administrador";
+      $("nameSelectField").style.display = isAdmin ? "none" : "grid";
+      $("adminUserField").style.display = isAdmin ? "grid" : "none";
+
+      if (isAdmin) {
+        $("nameSelect").disabled = true;
+        $("nameSelect").innerHTML = `<option value="">No aplica para administradores</option>`;
+      } else if (!role) {
+        $("nameSelect").disabled = true;
+        $("nameSelect").innerHTML = `<option value="">Selecciona primero un rol</option>`;
+      }
+    }
+
+    function updateSessionCard(session) {
+      const card = $("sessionCard");
+      if (!session) {
+        card.className = "session-card";
+        $("sessionDescription").innerText = "";
+        return;
+      }
+
+      $("sessionTitle").innerText = `Sesión activa · ${session.role}`;
+      $("sessionDescription").innerText = `${session.displayName || "Usuario"} autenticado. Continúa a tu panel permitido.`;
+      $("btnContinue").dataset.href = LVAuth.getDefaultLandingPage(session.role);
+      card.className = "session-card show";
+    }
+
+    function handleReasonMessage() {
+      const params = new URLSearchParams(window.location.search);
+      const reason = params.get("reason");
+      if (reason === "session") {
+        setStatus("error", "Tu sesión no existe o expiró. Ingresa nuevamente con tu PIN.");
+      } else if (reason === "forbidden") {
+        setStatus("error", "Tu sesión no tiene permisos para esa vista.");
+      }
+    }
+
+    async function refreshSessionUI() {
+      const current = LVAuth.getSession();
+      if (!current) {
+        updateSessionCard(null);
+        return;
+      }
+
+      try {
+        const session = await LVAuth.validateSession();
+        updateSessionCard(session);
+        if (session) {
+          setStatus("success", `${session.displayName || "Usuario"} autenticado como ${session.role}.`);
+        }
+      } catch (error) {
+        LVAuth.clearSession();
+        updateSessionCard(null);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      handleReasonMessage();
+      await refreshSessionUI();
+      syncCredentialMode("");
+
+      $("roleSelect").addEventListener("change", async (event) => {
+        clearStatus();
+        const role = event.target.value;
+        $("adminUserInput").value = "";
+        syncCredentialMode(role);
+        if (role === "Colaborador") {
+          await cargarUsuariosPorRol(role);
+        }
+      });
+
+      $("loginForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        clearStatus();
+
+        const role = $("roleSelect").value.trim();
+        const nombre = role === "Administrador"
+          ? $("adminUserInput").value.trim()
+          : $("nameSelect").value.trim();
+        const pin = $("pinInput").value.trim();
+
+        if (!role) {
+          setStatus("error", "Debes seleccionar un rol.");
+          return;
+        }
+
+        if (!nombre) {
+          setStatus("error", role === "Administrador" ? "Debes ingresar tu usuario." : "Debes seleccionar un nombre.");
+          return;
+        }
+
+        if (!pin) {
+          setStatus("error", "Debes ingresar un PIN.");
+          return;
+        }
+
+        $("btnLogin").disabled = true;
+        setStatus("loading", "Validando credenciales...");
+
+        try {
+          const session = await LVAuth.loginBySelection(role, nombre, pin);
+          $("pinInput").value = "";
+          updateSessionCard(session);
+          setStatus("success", `${session.displayName || "Usuario"} autenticado como ${session.role}.`);
+          window.location.href = LVAuth.getDefaultLandingPage(session.role);
+        } catch (error) {
+          updateSessionCard(null);
+          setStatus("error", error.message || "No se pudo validar el acceso.");
+        } finally {
+          $("btnLogin").disabled = false;
+        }
+      });
+
+      $("btnContinue").addEventListener("click", () => {
+        const href = $("btnContinue").dataset.href || "index.html";
+        window.location.href = href;
+      });
+
+      $("btnLogout").addEventListener("click", async () => {
+        await LVAuth.logout();
+        updateSessionCard(null);
+        clearStatus();
+      });
+    });
   </script>
 </body>
 </html>

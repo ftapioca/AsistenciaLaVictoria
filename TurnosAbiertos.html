@@ -131,6 +131,24 @@
       justify-items: end;
     }
 
+    .auth-stack {
+      display: grid;
+      gap: 10px;
+      justify-items: end;
+    }
+
+    .auth-user {
+      padding: 12px 14px;
+      border-radius: 18px;
+      color: rgba(255, 245, 228, 0.82);
+      background: rgba(255, 245, 228, 0.08);
+      border: 1px solid rgba(255, 245, 228, 0.12);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: right;
+      min-width: 250px;
+    }
+
     .refresh-info {
       padding: 14px 16px;
       border-radius: 18px;
@@ -642,6 +660,10 @@
       </div>
 
       <div class="hero-actions">
+        <div class="auth-stack">
+          <div class="auth-user" id="authUser">Validando sesión...</div>
+          <button id="btnLogout" class="btn-primary" type="button">Cerrar sesión</button>
+        </div>
         <div class="refresh-info">
           <div>Última actualización</div>
           <strong id="ultimaActualizacion">--:--</strong>
@@ -702,11 +724,13 @@
     <div class="footer-note">Actualización automática cada 30 minutos · Dashboard solo lectura</div>
   </main>
 
+  <script src="app-config.js"></script>
+  <script src="auth.js"></script>
   <script>
     // ==========================================
     // CONFIGURACIÓN
     // ==========================================
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyqIaw4SLUy1pYl7iAv1QPrgWvHNE51H4dVk-R0qRZ8DppTZNAWRhN0W8bdmG3W23rq/exec";
+    const WEB_APP_URL = APP_CONFIG.WEB_APP_URL;
 
     const LOCALES = [
       { nombre: "Paseo del Lago", id: "PaseoDelLago" },
@@ -849,11 +873,8 @@
 
     async function cargarTurnosLocal(local) {
       setLoadingLocal(local.id);
-      const url = `${WEB_APP_URL}?accion=TurnosAbiertos&local=${encodeURIComponent(local.nombre)}`;
-
       try {
-        const res = await fetch(url);
-        const data = await res.json();
+        const data = await LVAuth.apiGet({ accion: "TurnosAbiertos", local: local.nombre });
 
         if (data.status !== 'SUCCESS') {
           renderErrorLocal(local, data.mensaje || 'El servidor no devolvió una respuesta válida.');
@@ -864,6 +885,10 @@
         renderLocal(local, turnos);
         return turnos.length;
       } catch (error) {
+        if (error.code === "UNAUTHORIZED" || error.code === "FORBIDDEN") {
+          LVAuth.redirectToIndex("session");
+          return 0;
+        }
         renderErrorLocal(local, 'Error de conexión. Revisa internet o el Apps Script.');
         return 0;
       }
@@ -886,7 +911,16 @@
       boton.innerText = '↻ Actualizar ahora';
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+      const session = await LVAuth.protectPage(["Administrador"]);
+      if (!session) return;
+
+      $('authUser').innerText = `${session.displayName || 'Administrador'} · ${session.role}`;
+      $('btnLogout').addEventListener('click', async function() {
+        await LVAuth.logout();
+        LVAuth.redirectToIndex();
+      });
+
       setupAccordions();
       cargarDashboard();
       setInterval(cargarDashboard, REFRESCO_AUTOMATICO_MS);
