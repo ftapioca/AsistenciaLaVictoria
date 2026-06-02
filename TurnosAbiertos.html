@@ -74,6 +74,53 @@
       margin: 0 auto;
       display: grid;
       gap: 20px;
+      transition: filter .18s ease, opacity .18s ease;
+    }
+
+    body.page-loading .dashboard {
+      filter: blur(5px);
+      opacity: .72;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .page-loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      background: rgba(20, 16, 13, .18);
+      backdrop-filter: blur(2px);
+    }
+
+    body.page-loading .page-loading-overlay {
+      display: grid;
+    }
+
+    .page-loading-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 999px;
+      color: #351a05;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      box-shadow: 0 18px 38px rgba(217,103,0,.24);
+      font-weight: 950;
+    }
+
+    .page-loading-spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 3px solid rgba(53, 26, 5, .24);
+      border-top-color: #351a05;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     .hero {
@@ -180,6 +227,19 @@
       color: #3a220c;
       background: linear-gradient(135deg, var(--cheese), var(--bun));
       box-shadow: 0 14px 28px rgba(217, 103, 0, 0.18);
+    }
+
+    .btn-soft {
+      color: #fff5e4;
+      background: rgba(255, 245, 228, 0.14);
+      border: 1px solid rgba(255, 245, 228, 0.22);
+    }
+
+    .auth-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     .summary-grid {
@@ -662,7 +722,10 @@
       <div class="hero-actions">
         <div class="auth-stack">
           <div class="auth-user" id="authUser">Validando sesión...</div>
-          <button id="btnLogout" class="btn-primary" type="button">Cerrar sesión</button>
+          <div class="auth-buttons">
+            <button id="btnBackPanel" class="btn-soft" type="button">Volver al panel</button>
+            <button id="btnLogout" class="btn-primary" type="button">Cerrar sesión</button>
+          </div>
         </div>
         <div class="refresh-info">
           <div>Última actualización</div>
@@ -916,7 +979,12 @@
       if (!session) return;
 
       $('authUser').innerText = `${session.displayName || 'Administrador'} · ${session.role}`;
+      $('btnBackPanel').addEventListener('click', function() {
+        window.location.href = 'adminPanel.html';
+      });
       $('btnLogout').addEventListener('click', async function() {
+        setPageLoading(true, "Cerrando sesión...");
+        await esperarSiguienteRender();
         await LVAuth.logout();
         LVAuth.redirectToIndex();
       });
@@ -925,6 +993,23 @@
       cargarDashboard();
       setInterval(cargarDashboard, REFRESCO_AUTOMATICO_MS);
     });
+  </script>
+  <div class="page-loading-overlay" aria-live="polite" aria-busy="true">
+    <div class="page-loading-card">
+      <span class="page-loading-spinner" aria-hidden="true"></span>
+      <span id="pageLoadingText">Procesando...</span>
+    </div>
+  </div>
+
+  <script>
+    function setPageLoading(loading, mensaje = "Procesando...") {
+      document.body.classList.toggle("page-loading", loading);
+      document.getElementById("pageLoadingText").innerText = mensaje;
+    }
+
+    function esperarSiguienteRender() {
+      return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    }
   </script>
 </body>
 </html>

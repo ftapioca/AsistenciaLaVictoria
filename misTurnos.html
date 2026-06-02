@@ -43,6 +43,53 @@
       margin: 0 auto;
       display: grid;
       gap: 18px;
+      transition: filter .18s ease, opacity .18s ease;
+    }
+
+    body.page-loading .page {
+      filter: blur(5px);
+      opacity: .72;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .page-loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      background: rgba(20, 16, 13, .18);
+      backdrop-filter: blur(2px);
+    }
+
+    body.page-loading .page-loading-overlay {
+      display: grid;
+    }
+
+    .page-loading-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 999px;
+      color: #351a05;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      box-shadow: 0 18px 38px rgba(217,103,0,.24);
+      font-weight: 950;
+    }
+
+    .page-loading-spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 3px solid rgba(53, 26, 5, .24);
+      border-top-color: #351a05;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     .topbar,
@@ -373,8 +420,11 @@
       border-radius: 22px;
       background: rgba(255,255,255,.72);
       border: 1px solid rgba(47,32,23,.08);
-      display: grid;
-      gap: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
     }
 
     .summary-head {
@@ -382,6 +432,7 @@
       justify-content: space-between;
       gap: 14px;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .summary-head h3 {
@@ -394,6 +445,22 @@
       color: var(--muted);
       font-weight: 800;
       font-size: 13px;
+    }
+
+    .summary-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .summary-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
     }
 
     .legend-inline {
@@ -489,7 +556,7 @@
       background: rgba(33, 24, 19, 0.96);
       color: var(--cream);
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 400;
       line-height: 1.45;
       box-shadow: 0 18px 30px rgba(20,16,13,.24);
       opacity: 0;
@@ -497,6 +564,10 @@
       pointer-events: none;
       transition: opacity .14s ease, transform .14s ease;
       white-space: normal;
+    }
+
+    .tooltip strong {
+      font-weight: 900;
     }
 
     .tooltip::after {
@@ -627,6 +698,7 @@
               <h3>Resumen mensual</h3>
               <span id="totalTurnos">0 turnos</span>
             </div>
+            <div class="summary-legend" id="summaryLegend"></div>
           </section>
           <div class="month-meta">
             <h2 id="monthTitle">Mes</h2>
@@ -635,19 +707,6 @@
           <div class="calendar-grid" id="calendarGrid">
             <div class="empty-state">Cargando turnos...</div>
           </div>
-          <section class="summary-card">
-            <div class="summary-head">
-              <h3>Leyenda</h3>
-            </div>
-            <div class="legend-inline">
-              <span class="pill libre">Libre</span>
-              <span>Turno libre</span>
-              <span class="pill programado">Local</span>
-              <span>Turno simple</span>
-              <span class="pill partido">Local</span>
-              <span>Turno partido</span>
-            </div>
-          </section>
         </div>
       </div>
       <div class="grid-loading-overlay" aria-live="polite" aria-busy="true">
@@ -657,6 +716,12 @@
         </div>
       </div>
     </section>
+  </div>
+  <div class="page-loading-overlay" aria-live="polite" aria-busy="true">
+    <div class="page-loading-card">
+      <span class="page-loading-spinner" aria-hidden="true"></span>
+      <span id="pageLoadingText">Procesando...</span>
+    </div>
   </div>
   <div id="toast" class="toast"></div>
 
@@ -689,6 +754,15 @@
 
     function setGridLoading(loading) {
       $("gridWrap").classList.toggle("loading", loading);
+    }
+
+    function setPageLoading(loading, mensaje = "Procesando...") {
+      document.body.classList.toggle("page-loading", loading);
+      $("pageLoadingText").innerText = mensaje;
+    }
+
+    function esperarSiguienteRender() {
+      return new Promise((resolve) => requestAnimationFrame(() => resolve()));
     }
 
     function fechaISO(date) {
@@ -788,6 +862,13 @@
       return "programado";
     }
 
+    function legendLabel(turno) {
+      if (String(turno.tipoTurno || "").toLowerCase() === "libre" || String(turno.estado || "").toLowerCase() === "libre") {
+        return "Libre";
+      }
+      return String(turno.tipoTurno || "Programado").trim();
+    }
+
     function pillLabel(turno) {
       if (String(turno.tipoTurno || "").toLowerCase() === "libre" || String(turno.estado || "").toLowerCase() === "libre") {
         return "Libre";
@@ -796,13 +877,20 @@
     }
 
     function tooltipTexto(turno) {
+      const observaciones = turno.observaciones || "Sin observaciones";
       return [
-        turno.local || "Local sin definir",
-        `Tipo: ${turno.tipoTurno || "Programado"}`,
-        `Horario: ${horarioTexto(turno)}`,
-        `Estado: ${turno.estado || "--"}`,
-        `Observaciones: ${turno.observaciones || "Sin observaciones"}`
+        `Local: ${turno.local || "Local sin definir"}`,
+        `Turno: ${horarioTexto(turno)}`,
+        `Observaciones: ${observaciones}`
       ].join("\n");
+    }
+
+    function tooltipHtml(turno) {
+      return `
+        <strong>Local:</strong> ${escapeHtml(turno.local || "Local sin definir")}<br>
+        <strong>Turno:</strong> ${escapeHtml(horarioTexto(turno))}<br>
+        <strong>Observaciones:</strong> ${escapeHtml(turno.observaciones || "Sin observaciones")}
+      `;
     }
 
     function escapeHtml(str) {
@@ -811,6 +899,49 @@
 
     function primerNombre(nombreCompleto) {
       return String(nombreCompleto || "").trim().split(/\s+/)[0] || "colaborador";
+    }
+
+    function esTurnoLibre(turno) {
+      return String(turno.tipoTurno || "").toLowerCase() === "libre" || String(turno.estado || "").toLowerCase() === "libre";
+    }
+
+    function compactarTurnosDelDia(turnosDia) {
+      if (!Array.isArray(turnosDia) || !turnosDia.length) return [];
+
+      const turnosActivos = turnosDia.filter((turno) => !esTurnoLibre(turno));
+      if (turnosActivos.length) {
+        return turnosActivos;
+      }
+
+      return [turnosDia[0]];
+    }
+
+    function renderSummaryLegend(turnos) {
+      const container = $("summaryLegend");
+      if (!container) return;
+
+      const resumen = new Map();
+
+      turnos.forEach((turno) => {
+        const label = legendLabel(turno);
+        const className = pillClass(turno);
+        const key = `${className}:${label.toLowerCase()}`;
+        const actual = resumen.get(key) || { label, className, count: 0 };
+        actual.count += 1;
+        resumen.set(key, actual);
+      });
+
+      if (!resumen.size) {
+        container.innerHTML = `<span class="summary-legend-item">Sin turnos para este mes.</span>`;
+        return;
+      }
+
+      container.innerHTML = Array.from(resumen.values()).map((item) => `
+        <span class="summary-legend-item">
+          <span class="pill ${item.className}">${escapeHtml(item.label)}</span>
+          <span>${item.count}</span>
+        </span>
+      `).join("");
     }
 
     function renderCalendario(turnos) {
@@ -823,7 +954,14 @@
         turnosPorFecha[turno.fecha].push(turno);
       });
 
-      $("totalTurnos").innerText = `${turnos.length} turnos`;
+      Object.keys(turnosPorFecha).forEach((fecha) => {
+        turnosPorFecha[fecha] = compactarTurnosDelDia(turnosPorFecha[fecha]);
+      });
+
+      const turnosCompactados = Object.values(turnosPorFecha).flat();
+
+      $("totalTurnos").innerText = `Tienes ${turnosCompactados.length} turnos cargados este mes`;
+      renderSummaryLegend(turnosCompactados);
 
       if (!turnos.length) {
         grid.innerHTML = `<div class="empty-state">No tienes turnos asignados para este mes.</div>`;
@@ -841,11 +979,7 @@
           <div class="tooltip-wrap" tabindex="0">
             <span class="pill ${pillClass(turno)}" title="${escapeHtml(tooltipTexto(turno)).replace(/\n/g, " · ")}">${escapeHtml(pillLabel(turno))}</span>
             <div class="tooltip">
-              ${escapeHtml(turno.local || "Local sin definir")}<br>
-              ${escapeHtml(turno.tipoTurno || "Programado")}<br>
-              ${escapeHtml(horarioTexto(turno))}<br>
-              ${escapeHtml(turno.estado || "--")}<br>
-              ${escapeHtml(turno.observaciones || "Sin observaciones")}
+              ${tooltipHtml(turno)}
             </div>
           </div>
         `).join("");
@@ -927,6 +1061,8 @@
       });
       $("btnMesSiguiente").addEventListener("click", () => moverMes(1));
       $("btnLogout").addEventListener("click", async () => {
+        setPageLoading(true, "Cerrando sesión...");
+        await esperarSiguienteRender();
         await LVAuth.logout();
         LVAuth.redirectToIndex();
       });
