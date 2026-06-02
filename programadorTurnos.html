@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#14100d" />
-  <title>Programador de Turnos v2.2 · La Victoria</title>
+  <title>Programador de Turnos v2.3 · La Victoria</title>
   <style>
     :root {
       --bun: #ff8a13;
@@ -44,6 +44,28 @@
       margin: 0 auto;
       display: grid;
       gap: 18px;
+      transition: filter .18s ease, opacity .18s ease;
+    }
+
+    body.page-loading .page {
+      filter: blur(5px);
+      opacity: .72;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .page-loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      place-items: center;
+      background: rgba(20, 16, 13, .18);
+      backdrop-filter: blur(2px);
+    }
+
+    body.page-loading .page-loading-overlay {
+      display: grid;
     }
 
     .topbar {
@@ -79,9 +101,11 @@
       width: fit-content;
       padding: 9px 13px;
       border-radius: 999px;
-      color: #65340d;
-      background: rgba(255, 201, 40, 0.25);
-      border: 1px solid rgba(217, 103, 0, 0.18);
+      color: #fff7e8;
+      background: linear-gradient(135deg, rgba(255, 201, 40, 0.34), rgba(217, 103, 0, 0.46));
+      border: 1px solid rgba(255, 201, 40, 0.34);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 10px 26px rgba(0,0,0,.18);
+      text-shadow: 0 1px 1px rgba(0,0,0,.22);
       font-size: 13px;
       font-weight: 900;
       white-space: nowrap;
@@ -94,10 +118,11 @@
     }
 
     .session-user {
-      color: rgba(255, 245, 228, 0.82);
+      color: rgba(255, 245, 228, 0.94);
       font-size: 13px;
       font-weight: 800;
       text-align: right;
+      text-shadow: 0 1px 1px rgba(0,0,0,.22);
     }
 
     .controls {
@@ -178,6 +203,23 @@
 
     .btn-primary { color: #351a05; background: linear-gradient(135deg, var(--cheese), var(--bun)); }
     .btn-soft { color: #65340d; background: rgba(255, 201, 40, 0.20); border: 1px solid rgba(217,103,0,.16); }
+    .topbar .btn-soft {
+      color: #fff7e8;
+      background: linear-gradient(135deg, rgba(255, 201, 40, 0.30), rgba(217, 103, 0, 0.42));
+      border: 1px solid rgba(255, 201, 40, 0.28);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 12px 26px rgba(0,0,0,.14);
+      text-shadow: 0 1px 1px rgba(0,0,0,.22);
+    }
+    .controls .btn-soft {
+      color: #5b2c08;
+      background: linear-gradient(135deg, #ffe9a9, #f6c193);
+      border: 1px solid rgba(240, 177, 76, 0.70);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 16px 32px rgba(83, 46, 15, .12);
+      text-shadow: none;
+    }
+    .controls .btn-soft:hover {
+      filter: saturate(1.02) brightness(.98);
+    }
     .btn-danger { color: white; background: linear-gradient(135deg, var(--ketchup), #a91f17); }
     .btn-success { color: white; background: linear-gradient(135deg, #18b979, #118252); }
 
@@ -288,8 +330,8 @@
     }
 
     .week-head {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       gap: 14px;
       align-items: center;
       padding: 18px 20px;
@@ -298,6 +340,25 @@
     }
     .week-head h2 { margin: 0; font-size: 24px; letter-spacing: -.035em; }
     .week-head span { color: var(--muted); font-weight: 800; font-size: 13px; }
+    .week-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .week-actions .btn-soft {
+      min-height: 40px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: #5b2c08;
+      background: linear-gradient(135deg, #ffe9a9, #f6c193);
+      border: 1px solid rgba(240, 177, 76, 0.70);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 12px 26px rgba(83, 46, 15, .10);
+    }
+    .week-count {
+      justify-self: end;
+      white-space: nowrap;
+    }
 
     .table-scroll { overflow: auto; max-height: calc(100vh - 300px); }
     table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 980px; }
@@ -373,6 +434,7 @@
       box-shadow: var(--shadow);
       overflow: hidden;
       border: 1px solid rgba(255,245,228,.24);
+      position: relative;
     }
     .modal-head {
       padding: 20px 22px;
@@ -385,10 +447,69 @@
     .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; padding: 0 22px 22px;}
     .hidden { display: none !important; }
+    .modal-shell {
+      transition: filter .18s ease, opacity .18s ease;
+    }
+    .modal.loading .modal-shell {
+      filter: blur(5px);
+      opacity: .72;
+      pointer-events: none;
+      user-select: none;
+    }
+    .modal-loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      z-index: 5;
+      background: rgba(255, 250, 241, .34);
+      backdrop-filter: blur(2px);
+    }
+    .modal.loading .modal-loading-overlay {
+      display: grid;
+    }
+    .apply-days-box {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 201, 40, 0.12);
+      border: 1px solid rgba(217,103,0,.12);
+    }
+    .apply-days-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .apply-day-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid rgba(47,32,23,.08);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 850;
+      color: #3a2a20;
+    }
+    .apply-day-option input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--bun);
+    }
+    .apply-day-option.current-day {
+      background: rgba(25,166,106,.10);
+      border-color: rgba(25,166,106,.18);
+    }
 
     @media (max-width: 900px) {
       .topbar, .controls { grid-template-columns: 1fr; }
       .modal-grid { grid-template-columns: 1fr; }
+      .apply-days-grid { grid-template-columns: 1fr; }
+      .week-head { grid-template-columns: 1fr; }
+      .week-actions, .week-count { justify-content: flex-start; justify-self: start; }
       .table-scroll { max-height: none; }
     }
     .plantillas-box {
@@ -455,7 +576,7 @@
     <header class="topbar">
       <div class="title-wrap">
         <span class="badge">🍔 La Victoria · Programación semanal</span>
-        <h1>Programador de Turnos v2.2</h1>
+        <h1>Programador de Turnos v2.3</h1>
         <p>Asigna turnos por colaborador, local y semana. Las pestañas de local viven junto a la grilla y la barra superior queda dedicada a navegación semanal.</p>
       </div>
       <div class="session-tools">
@@ -482,10 +603,6 @@
         <label>&nbsp;</label>
         <button class="btn-soft" id="btnSemanaSiguiente" type="button">Semana siguiente →</button>
       </div>
-      <div class="field">
-  		<label>&nbsp;</label>
-  		<button class="btn-soft" id="btnCopiarSemanaAnterior" type="button">📋 Copiar semana anterior</button>
-	  </div>
     </section>
 
     <div id="statusBox" class="status"></div>
@@ -498,9 +615,12 @@
         <div class="week-head">
           <div>
             <h2 id="weekTitle">Semana</h2>
-            <span id="weekSubtitle">Selecciona local y semana para cargar colaboradores.</span>
           </div>
-          <span id="totalTurnos">0 turnos cargados</span>
+          <div class="week-actions">
+            <button class="btn-soft" id="btnCopiarSemanaAnterior" type="button">📋 Copiar semana anterior</button>
+            <button class="btn-soft" id="btnCopiarSemanaSiguiente" type="button">📋 Copiar turnos para la siguiente semana</button>
+          </div>
+          <span class="week-count" id="totalTurnos">0 turnos cargados</span>
         </div>
         <div class="table-scroll">
           <table id="turnosTable">
@@ -517,73 +637,94 @@
       </div>
     </section>
   </div>
+  <div class="page-loading-overlay" aria-live="polite" aria-busy="true">
+    <div class="grid-loading-card">
+      <span class="grid-loading-spinner" aria-hidden="true"></span>
+      <span id="pageLoadingText">Procesando...</span>
+    </div>
+  </div>
 
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal-head">
-        <h3 id="modalTitle">Asignar turno</h3>
-        <p id="modalSubtitle">Colaborador · Fecha</p>
-      </div>
-      <div class="modal-body">
-        <div id="horarioInfo" class="horario-box">Selecciona una celda para cargar el horario del local.</div>
-        <div class="field">
-		  <label>Plantillas rápidas</label>
-		  <div id="plantillasBox" class="plantillas-box">
-			<span class="meta">Cargando plantillas...</span>
+      <div class="modal-shell">
+        <div class="modal-head">
+          <h3 id="modalTitle">Asignar turno</h3>
+          <p id="modalSubtitle">Colaborador · Fecha</p>
+        </div>
+        <div class="modal-body">
+          <div id="horarioInfo" class="horario-box">Selecciona una celda para cargar el horario del local.</div>
+          <div class="field">
+		    <label>Plantillas rápidas</label>
+		    <div id="plantillasBox" class="plantillas-box">
+			  <span class="meta">Cargando plantillas...</span>
+		    </div>
 		  </div>
-		</div>
-        <div id="modalStatus" class="status"></div>
-        <div class="modal-grid">
-          <div class="field">
-            <label for="modalTipo">Tipo turno</label>
-            <select id="modalTipo">
-              <option value="Simple">Simple</option>
-              <option value="Partido">Partido</option>
-              <option value="Libre">Libre</option>
-            </select>
+          <div id="modalStatus" class="status"></div>
+          <div class="modal-grid">
+            <div class="field">
+              <label for="modalTipo">Tipo turno</label>
+              <select id="modalTipo">
+                <option value="Simple">Simple</option>
+                <option value="Partido">Partido</option>
+                <option value="Libre">Libre</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="modalEstado">Estado</label>
+              <select id="modalEstado">
+                <option value="Programado">Programado</option>
+                <option value="Libre">Libre</option>
+              </select>
+            </div>
           </div>
+
+          <div class="modal-grid" id="tramo1Box">
+            <div class="field">
+              <label for="inicio1">Hora inicio turno</label>
+			  <input type="text" id="inicio1" placeholder="13:00" />
+            </div>
+            <div class="field">
+              <label for="fin1">Hora fin turno</label>
+              <input type="text" id="fin1" placeholder="22:00" />
+            </div>
+          </div>
+
+          <div class="modal-grid hidden" id="tramo2Box">
+            <div class="field">
+              <label for="inicio2">Hora inicio turno 2</label>
+              <input type="text" id="inicio2" placeholder="20:00" />
+            </div>
+            <div class="field">
+              <label for="fin2">Hora fin turno 2</label>
+              <input type="text" id="fin2" placeholder="00:30" />
+            </div>
+          </div>
+
           <div class="field">
-            <label for="modalEstado">Estado</label>
-            <select id="modalEstado">
-              <option value="Programado">Programado</option>
-              <option value="Libre">Libre</option>
-            </select>
+            <label for="observaciones">Observaciones</label>
+            <textarea id="observaciones" rows="3" placeholder="Opcional"></textarea>
+          </div>
+          <div class="field hidden" id="applyDaysField">
+            <label>Guardar también en otros días de esta semana</label>
+            <div class="apply-days-box">
+              <span class="meta">El mismo turno se copiará al colaborador en los días seleccionados.</span>
+              <div id="applyDaysGrid" class="apply-days-grid"></div>
+            </div>
           </div>
         </div>
-
-        <div class="modal-grid" id="tramo1Box">
-          <div class="field">
-            <label for="inicio1">Hora inicio turno</label>
-			<input type="text" id="inicio1" placeholder="13:00" />
-          </div>
-          <div class="field">
-            <label for="fin1">Hora fin turno</label>
-            <input type="text" id="fin1" placeholder="22:00" />
-          </div>
-        </div>
-
-        <div class="modal-grid hidden" id="tramo2Box">
-          <div class="field">
-            <label for="inicio2">Hora inicio turno 2</label>
-            <input type="text" id="inicio2" placeholder="20:00" />
-          </div>
-          <div class="field">
-            <label for="fin2">Hora fin turno 2</label>
-            <input type="text" id="fin2" placeholder="00:30" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="observaciones">Observaciones</label>
-          <textarea id="observaciones" rows="3" placeholder="Opcional"></textarea>
+		  <div class="modal-actions">
+		    <button class="btn-danger" type="button" id="btnEliminarTurno">Eliminar turno</button>
+		    <button class="btn-soft" type="button" id="btnCopiarTurno">Copiar turno</button>
+		    <button class="btn-soft" type="button" id="btnCerrarModal">Cancelar</button>
+		    <button class="btn-success" type="button" id="btnGuardarTurno">Guardar turno</button>
+		  </div>
+      </div>
+      <div class="modal-loading-overlay" aria-live="polite" aria-busy="true">
+        <div class="grid-loading-card">
+          <span class="grid-loading-spinner" aria-hidden="true"></span>
+          <span>Guardando turno...</span>
         </div>
       </div>
-		<div class="modal-actions">
-		  <button class="btn-danger" type="button" id="btnEliminarTurno">Eliminar turno</button>
-		  <button class="btn-soft" type="button" id="btnCopiarTurno">Copiar turno</button>
-		  <button class="btn-soft" type="button" id="btnCerrarModal">Cancelar</button>
-		  <button class="btn-success" type="button" id="btnGuardarTurno">Guardar turno</button>
-		</div>
     </div>
   </div>
 
@@ -615,6 +756,7 @@
 	let modoMasivo = false;
 	let fechaMasivaActual = null;
 	let turnoCopiado = null;
+    let fechasAplicacionAdicional = [];
 
     function setStatus(tipo, mensaje) {
       const box = $("statusBox");
@@ -632,6 +774,21 @@
       $("gridWrap").classList.toggle("loading", loading);
     }
 
+    function setPageLoading(loading, mensaje = "Procesando...") {
+      document.body.classList.toggle("page-loading", loading);
+      $("pageLoadingText").innerText = mensaje;
+    }
+
+    function setModalLoading(loading) {
+      const modal = document.querySelector("#modalBackdrop .modal");
+      if (!modal) return;
+      modal.classList.toggle("loading", loading);
+    }
+
+    function esperarSiguienteRender() {
+      return new Promise(resolve => requestAnimationFrame(() => resolve()));
+    }
+
     function actualizarReloj() {
       $("clock").innerText = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
     }
@@ -646,10 +803,16 @@
     }
 
 	async function cambiarLocal(local) {
-	  localActivo = local;
-	  renderLocalTabs();
-	  await cargarPlantillasTurnos();
-	  cargarSemana();
+      setPageLoading(true, "Cambiando local...");
+      await esperarSiguienteRender();
+      try {
+	    localActivo = local;
+	    renderLocalTabs();
+	    await cargarPlantillasTurnos();
+	    await cargarSemana(false);
+      } finally {
+        setPageLoading(false);
+      }
 	}
 
     function fechaISO(date) {
@@ -688,7 +851,6 @@
       });
       $("fechaSemana").value = fechaISO(base);
       $("weekTitle").innerText = `Semana ${fechaCL(semana[0])} al ${fechaCL(semana[6])}`;
-      $("weekSubtitle").innerText = `Local activo: ${localActivo}`;
     }
 
     async function apiGet(params) {
@@ -699,12 +861,16 @@
       return await LVAuth.apiPost(params);
     }
 
-    async function cargarSemana() {
+    async function cargarSemana(usePageLoading = true) {
       if (!WEB_APP_URL || WEB_APP_URL.includes("PEGA_AQUI")) {
         setStatus("error", "Debes configurar WEB_APP_URL en el HTML antes de usar el programador.");
         return;
       }
 
+      if (usePageLoading) {
+        setPageLoading(true, "Cargando semana...");
+        await esperarSiguienteRender();
+      }
       limpiarStatus();
       setGridLoading(true);
       try {
@@ -730,6 +896,7 @@
         setStatus("error", err.message || "Error al cargar la semana.");
       } finally {
         setGridLoading(false);
+        if (usePageLoading) setPageLoading(false);
       }
     }
 
@@ -800,6 +967,7 @@
       limpiarModalStatus();
       celdaActual = { colaborador, fecha };
       horarioCeldaActual = null;
+      fechasAplicacionAdicional = [];
       const turno = buscarTurno(colaborador, fecha);
       $("btnEliminarTurno").classList.toggle("hidden", !turno);
       $("btnCopiarTurno").classList.toggle("hidden", !turno);
@@ -814,6 +982,8 @@
       $("inicio2").value = turno?.inicio2 || "";
       $("fin2").value = turno?.fin2 || "";
       $("observaciones").value = turno?.observaciones || "";
+      $("applyDaysField").classList.remove("hidden");
+      renderOpcionesDiasAplicacion(fecha);
       if (!turno && turnoCopiado) {
 		  $("modalTipo").value = turnoCopiado.tipoTurno || "Simple";
 		  $("modalEstado").value = turnoCopiado.estado || "Programado";
@@ -854,12 +1024,14 @@
     }
 
 	function cerrarModal() {
+      setModalLoading(false);
 	  $("modalBackdrop").classList.remove("show");
 	  celdaActual = null;
 	  horarioCeldaActual = null;
 	  modoMasivo = false;
 	  fechaMasivaActual = null;
 	  plantillaAplicadaActual = "";
+      fechasAplicacionAdicional = [];
 	}
 
 	function refrescarCamposModal() {
@@ -882,7 +1054,9 @@
 
     async function guardarTurno() {
       if (!celdaActual && !modoMasivo) return;
+      setModalLoading(true);
       $("btnGuardarTurno").disabled = true;
+      await esperarSiguienteRender();
 
       try {
       	const horas = [
@@ -962,15 +1136,17 @@
 		
 		  mostrarToast("success", `Turno asignado a ${colaboradoresArray.length} colaboradores.`);
 		} else {
-		  const data = await apiPost(payload);
-		  if (data.status !== "SUCCESS") throw new Error(data.mensaje || "No se pudo guardar el turno.");
+          const fechasGuardar = obtenerFechasSeleccionadasParaGuardado();
+          await guardarTurnoPorColaboradorEnFechas(payload, celdaActual.colaborador, fechasGuardar);
 		
 		  cerrarModal();
 		  await cargarSemana();
+          mostrarToast("success", fechasGuardar.length > 1 ? `Turno guardado en ${fechasGuardar.length} días para ${celdaActual.colaborador}.` : "Turno guardado correctamente.");
 		}
       } catch (err) {
         setModalStatus("error", err.message || "Error al guardar turno.");
       } finally {
+        setModalLoading(false);
         $("btnGuardarTurno").disabled = false;
       }
     }
@@ -1011,6 +1187,78 @@
       }
 
       return { ok: true };
+    }
+
+    function renderOpcionesDiasAplicacion(fechaBase) {
+      const grid = $("applyDaysGrid");
+      const fechaActual = fechaBase || celdaActual?.fecha;
+
+      if (!fechaActual) {
+        grid.innerHTML = "";
+        $("applyDaysField").classList.add("hidden");
+        return;
+      }
+
+      grid.innerHTML = semana.map((date, index) => {
+        const iso = fechaISO(date);
+        const esFechaActual = iso === fechaActual;
+        const checked = esFechaActual || fechasAplicacionAdicional.includes(iso);
+
+        return `
+          <label class="apply-day-option ${esFechaActual ? "current-day" : ""}">
+            <input
+              type="checkbox"
+              ${checked ? "checked" : ""}
+              ${esFechaActual ? "disabled" : ""}
+              onchange="toggleFechaAplicacion('${iso}', this.checked)"
+            >
+            <span>${dias[index]} · ${fechaCL(date)}</span>
+          </label>
+        `;
+      }).join("");
+    }
+
+    function toggleFechaAplicacion(fecha, checked) {
+      if (checked) {
+        if (!fechasAplicacionAdicional.includes(fecha)) fechasAplicacionAdicional.push(fecha);
+      } else {
+        fechasAplicacionAdicional = fechasAplicacionAdicional.filter(item => item !== fecha);
+      }
+    }
+
+    function obtenerFechasSeleccionadasParaGuardado() {
+      if (!celdaActual?.fecha) return [];
+      return [celdaActual.fecha, ...fechasAplicacionAdicional.filter(fecha => fecha !== celdaActual.fecha)];
+    }
+
+    async function cargarHorarioLocalParaFecha(fecha) {
+      const data = await apiGet({ accion: "HorarioLocal", local: localActivo, fecha });
+      if (data.status !== "SUCCESS") throw new Error(data.mensaje || `No se encontró horario configurado para ${fecha}.`);
+      return { origen: data.origen, ...(data.horario || {}) };
+    }
+
+    async function guardarTurnoPorColaboradorEnFechas(payloadBase, colaborador, fechas) {
+      for (const fecha of fechas) {
+        const horarioFecha = fecha === celdaActual?.fecha && horarioCeldaActual
+          ? horarioCeldaActual
+          : await cargarHorarioLocalParaFecha(fecha);
+
+        const payloadFecha = {
+          ...payloadBase,
+          fecha,
+          colaborador
+        };
+
+        const validacionFecha = validarTurnoContraHorario(payloadFecha, horarioFecha);
+        if (!validacionFecha.ok) {
+          throw new Error(`${dias[semana.findIndex(d => fechaISO(d) === fecha)] || fecha}: ${validacionFecha.mensaje}`);
+        }
+
+        const data = await apiPost(payloadFecha);
+        if (data.status !== "SUCCESS") {
+          throw new Error(data.mensaje || `No se pudo guardar el turno para ${colaborador} en ${fecha}.`);
+        }
+      }
     }
 
     function validarTramoEnHorario(inicio, fin, horario, nombreTramo) {
@@ -1087,6 +1335,8 @@
 
       $("authUser").innerText = `${session.displayName || "Administrador"} · ${session.role}`;
       $("btnLogout").addEventListener("click", async () => {
+        setPageLoading(true, "Cerrando sesión...");
+        await esperarSiguienteRender();
         await LVAuth.logout();
         LVAuth.redirectToIndex();
       });
@@ -1095,7 +1345,7 @@
       setInterval(actualizarReloj, 10000);
       $("fechaSemana").value = fechaISO(lunesDeSemana(new Date()));
       renderLocalTabs();
-      $("fechaSemana").addEventListener("change", cargarSemana);
+      $("fechaSemana").addEventListener("change", () => cargarSemana());
       $("btnSemanaAnterior").addEventListener("click", () => moverSemana(-1));
       $("btnSemanaActual").addEventListener("click", () => {
         $("fechaSemana").value = fechaISO(lunesDeSemana(new Date()));
@@ -1123,6 +1373,7 @@
 		});
       $("modalBackdrop").addEventListener("click", (e) => { if (e.target.id === "modalBackdrop") cerrarModal(); });
       $("btnCopiarSemanaAnterior").addEventListener("click", copiarSemanaAnterior);
+      $("btnCopiarSemanaSiguiente").addEventListener("click", copiarSemanaSiguiente);
 		generarSemana();
 		renderTabla();
 		cargarPlantillasTurnos()
@@ -1157,14 +1408,61 @@
 	function contarTurnosSemanaActual() {
 	  return Array.isArray(turnos) ? turnos.length : 0;
 	}
+
+    async function contarTurnosDestino(fechaInicioDestino) {
+      const fechaActualInicio = semana[0] ? fechaISO(semana[0]) : "";
+      if (fechaInicioDestino === fechaActualInicio) {
+        return contarTurnosSemanaActual();
+      }
+
+      const inicio = new Date(`${fechaInicioDestino}T00:00:00`);
+      const fin = new Date(inicio);
+      fin.setDate(fin.getDate() + 6);
+
+      const data = await apiGet({
+        accion: "TurnosSemana",
+        local: localActivo,
+        fechaInicio: fechaInicioDestino,
+        fechaFin: fechaISO(fin)
+      });
+
+      if (data.status !== "SUCCESS") {
+        throw new Error(data.mensaje || "No se pudieron revisar los turnos existentes en la semana destino.");
+      }
+
+      return Array.isArray(data.turnos) ? data.turnos.length : 0;
+    }
 	
 	async function copiarSemanaAnterior() {
-	  const turnosExistentes = contarTurnosSemanaActual();
+      return copiarSemana({
+        fechaInicioDestino: fechaISO(semana[0]),
+        mensajeCarga: "Copiando semana anterior...",
+        mensajeConfirmacionBase: `Se copiarán los turnos de la semana anterior hacia la semana actual para ${localActivo}.`,
+        mensajeError: "Error al copiar semana anterior.",
+        mensajeExito: "✅ Semana anterior copiada"
+      });
+	}
+
+    async function copiarSemanaSiguiente() {
+      const siguienteLunes = new Date(semana[0]);
+      siguienteLunes.setDate(siguienteLunes.getDate() + 7);
+
+      return copiarSemana({
+        fechaInicioDestino: fechaISO(siguienteLunes),
+        mensajeCarga: "Copiando turnos a la siguiente semana...",
+        mensajeConfirmacionBase: `Se copiarán los turnos de la semana actual hacia la semana siguiente para ${localActivo}.`,
+        mensajeError: "Error al copiar turnos para la siguiente semana.",
+        mensajeExito: "✅ Semana siguiente copiada"
+      });
+	}
+
+	async function copiarSemana({ fechaInicioDestino, mensajeCarga, mensajeConfirmacionBase, mensajeError, mensajeExito }) {
+	  const turnosExistentes = await contarTurnosDestino(fechaInicioDestino);
 	
-	  let mensajeConfirmacion = `Se copiarán los turnos de la semana anterior hacia la semana actual para ${localActivo}.`;
+	  let mensajeConfirmacion = mensajeConfirmacionBase;
 	
 	  if (turnosExistentes > 0) {
-		mensajeConfirmacion += `\n\n⚠️ Ya existen ${turnosExistentes} turnos cargados en esta semana. Si continúas, los turnos coincidentes se actualizarán.`;
+		mensajeConfirmacion += `\n\n⚠️ Ya existen ${turnosExistentes} turnos cargados en la semana destino. Si continúas, los turnos coincidentes se actualizarán.`;
 	  }
 	
 	  mensajeConfirmacion += "\n\n¿Continuar?";
@@ -1172,31 +1470,32 @@
 	  const confirmado = confirm(mensajeConfirmacion);
 	  if (!confirmado) return;
 	
+	  setPageLoading(true, mensajeCarga);
+	  await esperarSiguienteRender();
 	  setGridLoading(true);
 	
 	  try {
-		const fechaInicio = fechaISO(semana[0]);
-	
 		const data = await apiGet({
 		  accion: "CopiarSemana",
 		  local: localActivo,
-		  fechaInicio
+		  fechaInicio: fechaInicioDestino
 		});
 	
 		if (data.status !== "SUCCESS") {
 		  throw new Error(data.mensaje || "No se pudo copiar la semana anterior.");
 		}
 	
-		await cargarSemana();
+		await cargarSemana(false);
 	
 		mostrarToast(
 		  "success",
-		  `✅ Semana anterior copiada\n${data.turnosCopiados} turnos copiados\n${data.creados} creados · ${data.actualizados} actualizados`
+		  `${mensajeExito}\n${data.turnosCopiados} turnos copiados\n${data.creados} creados · ${data.actualizados} actualizados`
 		);
 	  } catch (err) {
-		mostrarToast("error", err.message || "Error al copiar semana anterior.");
+		mostrarToast("error", err.message || mensajeError);
 	  } finally {
 		setGridLoading(false);
+        setPageLoading(false);
 	  }
 	}
 	
@@ -1291,6 +1590,7 @@
 		  $("inicio2").value = "";
 		  $("fin2").value = "";
 		  $("observaciones").value = "";
+          $("applyDaysField").classList.add("hidden");
 		  $("horarioInfo").className = "horario-box";
 		  $("horarioInfo").innerText = "Cargando horario del local...";
 		
@@ -1332,6 +1632,8 @@
 	  if (!confirmado) return;
 	
 	  try {
+        setModalLoading(true);
+        await esperarSiguienteRender();
 		const data = await apiGet({
 		  accion: "EliminarTurno",
 		  fecha: celdaActual.fecha,
@@ -1344,10 +1646,12 @@
 		}
 	
 		cerrarModal();
-		await cargarSemana();
+		await cargarSemana(false);
 		mostrarToast("success", "Turno eliminado correctamente.");
 	  } catch (err) {
 		setModalStatus("error", err.message || "Error al eliminar turno.");
+      } finally {
+        setModalLoading(false);
 	  }
 	}	
 	
