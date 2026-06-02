@@ -87,6 +87,19 @@
       white-space: nowrap;
     }
 
+    .session-tools {
+      display: grid;
+      gap: 10px;
+      justify-items: end;
+    }
+
+    .session-user {
+      color: rgba(255, 245, 228, 0.82);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: right;
+    }
+
     .controls {
       display: grid;
       grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
@@ -445,7 +458,11 @@
         <h1>Programador de Turnos v2.2</h1>
         <p>Asigna turnos por colaborador, local y semana. Las pestañas de local viven junto a la grilla y la barra superior queda dedicada a navegación semanal.</p>
       </div>
-      <div class="badge" id="clock">--:--</div>
+      <div class="session-tools">
+        <div class="badge" id="clock">--:--</div>
+        <div class="session-user" id="authUser">Validando sesión...</div>
+        <button class="btn-soft" id="btnLogout" type="button">Cerrar sesión</button>
+      </div>
     </header>
 
     <section class="controls">
@@ -570,12 +587,14 @@
     </div>
   </div>
 
+  <script src="app-config.js"></script>
+  <script src="auth.js"></script>
   <script>
     // ==========================================
     // CONFIGURACIÓN
     // Reemplaza por la URL actual de tu Web App
     // ==========================================
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyqIaw4SLUy1pYl7iAv1QPrgWvHNE51H4dVk-R0qRZ8DppTZNAWRhN0W8bdmG3W23rq/exec";
+    const WEB_APP_URL = APP_CONFIG.WEB_APP_URL;
 
     const $ = (id) => document.getElementById(id);
     const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -673,15 +692,11 @@
     }
 
     async function apiGet(params) {
-      const url = `${WEB_APP_URL}?${new URLSearchParams(params).toString()}`;
-      const res = await fetch(url);
-      return await res.json();
+      return await LVAuth.apiGet(params);
     }
 
     async function apiPost(params) {
-      const url = `${WEB_APP_URL}?${new URLSearchParams(params).toString()}`;
-      const res = await fetch(url, { method: "POST" });
-      return await res.json();
+      return await LVAuth.apiPost(params);
     }
 
     async function cargarSemana() {
@@ -708,6 +723,10 @@
 
         renderTabla();
       } catch (err) {
+        if (err.code === "UNAUTHORIZED" || err.code === "FORBIDDEN") {
+          LVAuth.redirectToIndex("session");
+          return;
+        }
         setStatus("error", err.message || "Error al cargar la semana.");
       } finally {
         setGridLoading(false);
@@ -1062,7 +1081,16 @@
       return String(str).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
+      const session = await LVAuth.protectPage(["Administrador"]);
+      if (!session) return;
+
+      $("authUser").innerText = `${session.displayName || "Administrador"} · ${session.role}`;
+      $("btnLogout").addEventListener("click", async () => {
+        await LVAuth.logout();
+        LVAuth.redirectToIndex();
+      });
+
       actualizarReloj();
       setInterval(actualizarReloj, 10000);
       $("fechaSemana").value = fechaISO(lunesDeSemana(new Date()));

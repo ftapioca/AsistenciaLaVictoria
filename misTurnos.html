@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#14100d" />
+  <title>Mis Turnos · La Victoria</title>
+  <style>
+    :root {
+      --bun: #ff8a13;
+      --bun-dark: #d96700;
+      --cheese: #ffc928;
+      --ketchup: #ef3b2d;
+      --lettuce: #19a66a;
+      --charcoal: #14100d;
+      --charcoal-2: #211813;
+      --cream: #fff5e4;
+      --paper: rgba(255, 250, 241, 0.96);
+      --muted: #806957;
+      --line: rgba(47, 32, 23, 0.12);
+      --shadow: 0 30px 80px rgba(33, 24, 19, 0.28);
+      --focus: 0 0 0 4px rgba(255, 138, 19, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--charcoal);
+      background:
+        radial-gradient(circle at 12% 15%, rgba(255, 201, 40, 0.30), transparent 28%),
+        radial-gradient(circle at 88% 18%, rgba(239, 59, 45, 0.20), transparent 26%),
+        radial-gradient(circle at 50% 105%, rgba(255, 138, 19, 0.36), transparent 34%),
+        linear-gradient(135deg, #15100d 0%, #2a1710 44%, #5b2a0d 100%);
+      padding: clamp(16px, 3vw, 34px);
+      overflow-x: hidden;
+    }
+
+    .page {
+      width: min(100%, 1280px);
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .topbar,
+    .calendar-card,
+    .legend-card {
+      border-radius: 30px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 245, 228, 0.18);
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      color: var(--cream);
+      padding: 22px 24px;
+      background: linear-gradient(145deg, rgba(20, 16, 13, .94), rgba(42, 23, 16, .88));
+    }
+
+    .title-wrap h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 4vw, 54px);
+      line-height: .95;
+      letter-spacing: -.06em;
+    }
+
+    .title-wrap .name-highlight {
+      color: var(--cheese);
+    }
+
+    .title-wrap p {
+      margin: 0;
+      color: rgba(255, 245, 228, .72);
+      line-height: 1.5;
+    }
+
+    .session-tools {
+      display: grid;
+      gap: 10px;
+      justify-items: end;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button {
+      border: 0;
+      padding: 13px 16px;
+      min-height: 46px;
+      border-radius: 16px;
+      font-weight: 950;
+      cursor: pointer;
+      transition: transform .15s ease, filter .15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); filter: saturate(1.06); }
+    button:disabled { opacity: .58; cursor: wait; transform: none; }
+
+    .btn-primary { color: #351a05; background: linear-gradient(135deg, var(--cheese), var(--bun)); }
+    .btn-soft { color: #65340d; background: rgba(255, 201, 40, 0.20); border: 1px solid rgba(217,103,0,.16); }
+
+    .status {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 18px;
+      font-weight: 850;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .status.show { display: block; }
+    .status.loading { background: rgba(255, 201, 40, .18); color: #6b3a0c; border: 1px solid rgba(255,138,19,.22); }
+    .status.success { background: rgba(25, 166, 106, .14); color: #075a37; border: 1px solid rgba(25,166,106,.22); }
+    .status.error { background: rgba(239, 59, 45, .13); color: #8f1b13; border: 1px solid rgba(239,59,45,.22); }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 80;
+      display: none;
+      max-width: 360px;
+      padding: 16px 18px;
+      border-radius: 20px;
+      font-weight: 850;
+      line-height: 1.45;
+      box-shadow: 0 18px 45px rgba(20,16,13,.22);
+    }
+
+    .toast.show { display: block; }
+
+    .toast.success {
+      background: #e9f8ef;
+      color: #075a37;
+      border: 1px solid rgba(25,166,106,.22);
+    }
+
+    .toast.error {
+      background: #fdebea;
+      color: #8f1b13;
+      border: 1px solid rgba(239,59,45,.22);
+    }
+
+    .toast.warn {
+      background: #fff4c7;
+      color: #65340d;
+      border: 1px solid rgba(217,103,0,.18);
+    }
+
+    .grid-wrap {
+      position: relative;
+      border-radius: 30px;
+      overflow: hidden;
+      background: rgba(255,250,241,.98);
+      border: 1px solid rgba(255,245,228,.20);
+      box-shadow: 0 24px 70px rgba(20,16,13,.18);
+    }
+
+    .grid-content {
+      transition: filter .18s ease, opacity .18s ease;
+    }
+
+    .grid-wrap.loading .grid-content {
+      filter: blur(5px);
+      opacity: .72;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .grid-loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      z-index: 20;
+      background: rgba(255, 250, 241, .28);
+      backdrop-filter: blur(2px);
+    }
+
+    .grid-wrap.loading .grid-loading-overlay {
+      display: grid;
+    }
+
+    .grid-loading-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 999px;
+      color: #351a05;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      box-shadow: 0 18px 38px rgba(217,103,0,.24);
+      font-weight: 950;
+    }
+
+    .grid-loading-spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 3px solid rgba(53, 26, 5, .24);
+      border-top-color: #351a05;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .calendar-card {
+      padding: 18px;
+      background: transparent;
+      display: grid;
+      gap: 12px;
+    }
+
+    .month-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field { display: grid; gap: 7px; }
+
+    label {
+      font-weight: 900;
+      color: #3a2a20;
+      font-size: 13px;
+    }
+
+    input,
+    .month-trigger {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.76);
+      color: var(--charcoal);
+      font-size: 14px;
+      outline: none;
+    }
+
+    input:focus,
+    .month-trigger:focus {
+      border-color: rgba(255,138,19,.72);
+      box-shadow: var(--focus);
+      background: #fff;
+    }
+
+    .month-picker {
+      position: relative;
+    }
+
+    .month-trigger {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .month-trigger strong {
+      font-size: 15px;
+      letter-spacing: -.01em;
+    }
+
+    .month-trigger span {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .month-popover {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      z-index: 30;
+      width: min(100vw - 48px, 360px);
+      display: none;
+      padding: 16px;
+      border-radius: 24px;
+      background: rgba(255, 250, 241, 0.98);
+      border: 1px solid rgba(47,32,23,.10);
+      box-shadow: 0 28px 60px rgba(20,16,13,.22);
+      backdrop-filter: blur(12px);
+      gap: 14px;
+    }
+
+    .month-popover.show {
+      display: grid;
+    }
+
+    .month-popover-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .month-year {
+      font-size: 18px;
+      font-weight: 950;
+      color: #2d2119;
+      letter-spacing: -.02em;
+    }
+
+    .month-nav {
+      min-height: 36px;
+      min-width: 36px;
+      padding: 0;
+      border-radius: 999px;
+      color: #65340d;
+      background: rgba(255, 201, 40, 0.18);
+      border: 1px solid rgba(217,103,0,.16);
+    }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .month-option {
+      min-height: 42px;
+      border-radius: 14px;
+      color: #65340d;
+      background: rgba(255, 245, 228, 0.82);
+      border: 1px solid rgba(47,32,23,.08);
+      box-shadow: none;
+    }
+
+    .month-option.active {
+      color: #351a05;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      box-shadow: 0 12px 24px rgba(217,103,0,.18);
+    }
+
+    .month-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .month-meta h2 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -.04em;
+      color: var(--charcoal-2);
+    }
+
+    .month-meta span {
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .summary-card {
+      padding: 16px 18px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid rgba(47,32,23,.08);
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .summary-head h3 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -.02em;
+    }
+
+    .summary-head span {
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .legend-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .legend-inline span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .weekday {
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(255, 201, 40, .16);
+      color: #65340d;
+      font-size: 12px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      text-align: center;
+    }
+
+    .day-card {
+      min-height: 118px;
+      padding: 10px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(47,32,23,.08);
+      display: grid;
+      align-content: start;
+      gap: 8px;
+    }
+
+    .day-card.empty {
+      background: rgba(255, 245, 228, 0.34);
+      border-style: dashed;
+    }
+
+    .day-card.today {
+      outline: 3px solid rgba(255,138,19,.18);
+      outline-offset: -3px;
+    }
+
+    .day-number {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      font-weight: 950;
+      color: #2d2119;
+    }
+
+    .day-number small {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .day-events {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-content: flex-start;
+    }
+
+    .tooltip-wrap {
+      position: relative;
+      display: inline-flex;
+      max-width: 100%;
+    }
+
+    .tooltip {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 10px);
+      z-index: 20;
+      width: 220px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(33, 24, 19, 0.96);
+      color: var(--cream);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.45;
+      box-shadow: 0 18px 30px rgba(20,16,13,.24);
+      opacity: 0;
+      transform: translateY(6px);
+      pointer-events: none;
+      transition: opacity .14s ease, transform .14s ease;
+      white-space: normal;
+    }
+
+    .tooltip::after {
+      content: "";
+      position: absolute;
+      left: 16px;
+      top: 100%;
+      border: 7px solid transparent;
+      border-top-color: rgba(33, 24, 19, 0.96);
+    }
+
+    .tooltip-wrap:hover .tooltip,
+    .tooltip-wrap:focus-within .tooltip {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 950;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: default;
+    }
+
+    .pill.programado { color: #075a37; background: rgba(25,166,106,.15); }
+    .pill.libre { color: #6b5c00; background: rgba(255,241,0,.26); }
+    .pill.partido { color: #5f3f78; background: #dcc2ef; }
+
+    .empty-state {
+      padding: 28px;
+      color: var(--muted);
+      font-weight: 800;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid rgba(47,32,23,.08);
+    }
+
+    @media (max-width: 900px) {
+      .topbar,
+      .month-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .session-tools,
+      .actions {
+        justify-items: stretch;
+        text-align: left;
+        justify-content: flex-start;
+      }
+
+      .calendar-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .weekday {
+        display: none;
+      }
+
+      .day-card {
+        min-height: 0;
+      }
+
+      .tooltip {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="title-wrap">
+        <h1 id="heroTitle">Hola, aquí podrás ver tus turnos asignados.</h1>
+        <p>Vista personal tipo calendario. Muestra todos tus turnos del mes, incluyendo distintos locales.</p>
+      </div>
+      <div class="session-tools">
+        <div class="actions">
+          <button class="btn-primary" id="btnLogout" type="button">Cerrar sesión</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid-wrap" id="gridWrap">
+      <div class="grid-content">
+        <div class="calendar-card">
+          <div class="month-controls">
+            <div class="field">
+              <label for="monthTrigger">Mes</label>
+              <div class="month-picker" id="monthPicker">
+                <button class="month-trigger" id="monthTrigger" type="button" aria-haspopup="dialog" aria-expanded="false">
+                  <strong id="monthTriggerLabel">Selecciona un mes</strong>
+                  <span aria-hidden="true">▾</span>
+                </button>
+                <div class="month-popover" id="monthPopover" role="dialog" aria-label="Seleccionar mes">
+                  <div class="month-popover-head">
+                    <button class="month-nav" id="btnYearPrev" type="button" aria-label="Año anterior">←</button>
+                    <div class="month-year" id="monthPopoverYear">2026</div>
+                    <button class="month-nav" id="btnYearNext" type="button" aria-label="Año siguiente">→</button>
+                  </div>
+                  <div class="month-grid" id="monthGrid"></div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button class="btn-soft" id="btnMesAnterior" type="button">← Mes anterior</button>
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button class="btn-soft" id="btnMesActual" type="button">Mes actual</button>
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button class="btn-soft" id="btnMesSiguiente" type="button">Mes siguiente →</button>
+            </div>
+          </div>
+
+          <section class="summary-card">
+            <div class="summary-head">
+              <h3>Resumen mensual</h3>
+              <span id="totalTurnos">0 turnos</span>
+            </div>
+          </section>
+          <div class="month-meta">
+            <h2 id="monthTitle">Mes</h2>
+            <span id="monthSubtitle">Preparando consulta...</span>
+          </div>
+          <div class="calendar-grid" id="calendarGrid">
+            <div class="empty-state">Cargando turnos...</div>
+          </div>
+          <section class="summary-card">
+            <div class="summary-head">
+              <h3>Leyenda</h3>
+            </div>
+            <div class="legend-inline">
+              <span class="pill libre">Libre</span>
+              <span>Turno libre</span>
+              <span class="pill programado">Local</span>
+              <span>Turno simple</span>
+              <span class="pill partido">Local</span>
+              <span>Turno partido</span>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="grid-loading-overlay" aria-live="polite" aria-busy="true">
+        <div class="grid-loading-card">
+          <span class="grid-loading-spinner" aria-hidden="true"></span>
+          <span>Cargando...</span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script src="app-config.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    let calendario = [];
+    let session = null;
+    let mesSeleccionado = null;
+    let anioPopover = null;
+
+    function setStatus() {}
+
+    function clearStatus() {}
+
+    function mostrarToast(tipo, mensaje) {
+      const toast = $("toast");
+      toast.className = `toast show ${tipo}`;
+      toast.innerText = mensaje;
+
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => {
+        toast.className = "toast";
+        toast.innerText = "";
+      }, 3800);
+    }
+
+    function setGridLoading(loading) {
+      $("gridWrap").classList.toggle("loading", loading);
+    }
+
+    function fechaISO(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function primerDiaDelMes(date) {
+      const d = new Date(date);
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function ultimoDiaDelMes(date) {
+      const d = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function moverMes(delta) {
+      const base = new Date(mesSeleccionado.year, mesSeleccionado.month + delta, 1);
+      setMesSeleccionado(base.getFullYear(), base.getMonth());
+      cargarMes();
+    }
+
+    function setMesSeleccionado(year, monthIndex) {
+      mesSeleccionado = { year, month: monthIndex };
+      $("monthTriggerLabel").innerText = `${meses[monthIndex]} ${year}`;
+      anioPopover = year;
+      renderMonthPopover();
+    }
+
+    function toggleMonthPopover(show) {
+      const popover = $("monthPopover");
+      const expanded = typeof show === "boolean" ? show : !popover.classList.contains("show");
+      popover.classList.toggle("show", expanded);
+      $("monthTrigger").setAttribute("aria-expanded", expanded ? "true" : "false");
+    }
+
+    function renderMonthPopover() {
+      $("monthPopoverYear").innerText = anioPopover;
+      $("monthGrid").innerHTML = meses.map((mes, index) => `
+        <button
+          class="month-option ${mesSeleccionado && mesSeleccionado.year === anioPopover && mesSeleccionado.month === index ? "active" : ""}"
+          type="button"
+          data-month="${index}">
+          ${mes.slice(0, 3)}
+        </button>
+      `).join("");
+    }
+
+    function generarCalendarioMes() {
+      const inicio = new Date(mesSeleccionado.year, mesSeleccionado.month, 1);
+      const fin = ultimoDiaDelMes(inicio);
+      const year = inicio.getFullYear();
+      const month = inicio.getMonth();
+      const primerDiaSemana = inicio.getDay() === 0 ? 6 : inicio.getDay() - 1;
+      const totalDias = fin.getDate();
+
+      calendario = [];
+
+      for (let i = 0; i < primerDiaSemana; i++) {
+        calendario.push(null);
+      }
+
+      for (let day = 1; day <= totalDias; day++) {
+        calendario.push(new Date(year, month, day));
+      }
+
+      while (calendario.length % 7 !== 0) {
+        calendario.push(null);
+      }
+
+      $("monthTitle").innerText = `${meses[inicio.getMonth()]} ${inicio.getFullYear()}`;
+      $("monthSubtitle").innerText = session ? `Calendario mensual de ${session.displayName || "colaborador"}` : "Sin sesión.";
+
+      return { inicio, fin };
+    }
+
+    function horarioTexto(turno) {
+      if (!turno || turno.estado === "Libre" || turno.tipoTurno === "Libre") return "Libre";
+
+      if (turno.tipoTurno === "Partido" && turno.inicio2 && turno.fin2) {
+        return `${turno.inicio1} - ${turno.fin1} / ${turno.inicio2} - ${turno.fin2}`;
+      }
+
+      return `${turno.inicio1 || "--:--"} - ${turno.fin1 || "--:--"}`;
+    }
+
+    function pillClass(turno) {
+      const base = String(turno.tipoTurno || turno.estado || "Programado").toLowerCase();
+      if (base.includes("libre")) return "libre";
+      if (base.includes("partido")) return "partido";
+      return "programado";
+    }
+
+    function pillLabel(turno) {
+      if (String(turno.tipoTurno || "").toLowerCase() === "libre" || String(turno.estado || "").toLowerCase() === "libre") {
+        return "Libre";
+      }
+      return turno.local || "Turno";
+    }
+
+    function tooltipTexto(turno) {
+      return [
+        turno.local || "Local sin definir",
+        `Tipo: ${turno.tipoTurno || "Programado"}`,
+        `Horario: ${horarioTexto(turno)}`,
+        `Estado: ${turno.estado || "--"}`,
+        `Observaciones: ${turno.observaciones || "Sin observaciones"}`
+      ].join("\n");
+    }
+
+    function escapeHtml(str) {
+      return String(str || "").replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]));
+    }
+
+    function primerNombre(nombreCompleto) {
+      return String(nombreCompleto || "").trim().split(/\s+/)[0] || "colaborador";
+    }
+
+    function renderCalendario(turnos) {
+      const grid = $("calendarGrid");
+      const hoy = fechaISO(new Date());
+      const turnosPorFecha = {};
+
+      turnos.forEach((turno) => {
+        if (!turnosPorFecha[turno.fecha]) turnosPorFecha[turno.fecha] = [];
+        turnosPorFecha[turno.fecha].push(turno);
+      });
+
+      $("totalTurnos").innerText = `${turnos.length} turnos`;
+
+      if (!turnos.length) {
+        grid.innerHTML = `<div class="empty-state">No tienes turnos asignados para este mes.</div>`;
+        return;
+      }
+
+      const weekdays = dias.map((dia) => `<div class="weekday">${dia}</div>`).join("");
+      const cells = calendario.map((date) => {
+        if (!date) {
+          return `<article class="day-card empty" aria-hidden="true"></article>`;
+        }
+
+        const iso = fechaISO(date);
+        const eventos = (turnosPorFecha[iso] || []).map((turno) => `
+          <div class="tooltip-wrap" tabindex="0">
+            <span class="pill ${pillClass(turno)}" title="${escapeHtml(tooltipTexto(turno)).replace(/\n/g, " · ")}">${escapeHtml(pillLabel(turno))}</span>
+            <div class="tooltip">
+              ${escapeHtml(turno.local || "Local sin definir")}<br>
+              ${escapeHtml(turno.tipoTurno || "Programado")}<br>
+              ${escapeHtml(horarioTexto(turno))}<br>
+              ${escapeHtml(turno.estado || "--")}<br>
+              ${escapeHtml(turno.observaciones || "Sin observaciones")}
+            </div>
+          </div>
+        `).join("");
+
+        return `
+          <article class="day-card ${iso === hoy ? "today" : ""}">
+            <div class="day-number">
+              <span>${date.getDate()}</span>
+              <small>${date.toLocaleDateString("es-CL", { weekday: "short" })}</small>
+            </div>
+            <div class="day-events">
+              ${eventos}
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      grid.innerHTML = weekdays + cells;
+    }
+
+    async function cargarMes() {
+      const rango = generarCalendarioMes();
+      setGridLoading(true);
+
+      try {
+        const data = await LVAuth.apiGet({
+          accion: "TurnosSemanaColaborador",
+          fechaInicio: fechaISO(rango.inicio),
+          fechaFin: fechaISO(rango.fin)
+        });
+
+        if (data.status !== "SUCCESS") {
+          throw new Error(data.mensaje || "No se pudieron cargar tus turnos.");
+        }
+
+        renderCalendario(data.turnos || []);
+        mostrarToast("success", "Calendario cargado correctamente.");
+      } catch (error) {
+        $("calendarGrid").innerHTML = `<div class="empty-state">No se pudo cargar el calendario.</div>`;
+        if (error.code === "UNAUTHORIZED" || error.code === "FORBIDDEN") {
+          LVAuth.redirectToIndex("session");
+          return;
+        }
+        mostrarToast("error", error.message || "Error al cargar tus turnos.");
+      } finally {
+        setGridLoading(false);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      session = await LVAuth.protectPage(["Colaborador"]);
+      if (!session) return;
+
+      $("heroTitle").innerHTML = `Hola <span class="name-highlight">${escapeHtml(primerNombre(session.displayName))}</span>, aquí podrás ver tus turnos asignados.`;
+      const hoy = new Date();
+      setMesSeleccionado(hoy.getFullYear(), hoy.getMonth());
+
+      $("monthTrigger").addEventListener("click", () => toggleMonthPopover());
+      $("btnYearPrev").addEventListener("click", () => {
+        anioPopover -= 1;
+        renderMonthPopover();
+      });
+      $("btnYearNext").addEventListener("click", () => {
+        anioPopover += 1;
+        renderMonthPopover();
+      });
+      $("monthGrid").addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-month]");
+        if (!button) return;
+        setMesSeleccionado(anioPopover, Number(button.dataset.month));
+        toggleMonthPopover(false);
+        cargarMes();
+      });
+      $("btnMesAnterior").addEventListener("click", () => moverMes(-1));
+      $("btnMesActual").addEventListener("click", () => {
+        const actual = new Date();
+        setMesSeleccionado(actual.getFullYear(), actual.getMonth());
+        cargarMes();
+      });
+      $("btnMesSiguiente").addEventListener("click", () => moverMes(1));
+      $("btnLogout").addEventListener("click", async () => {
+        await LVAuth.logout();
+        LVAuth.redirectToIndex();
+      });
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest("#monthPicker")) {
+          toggleMonthPopover(false);
+        }
+      });
+
+      await cargarMes();
+    });
+  </script>
+</body>
+</html>
