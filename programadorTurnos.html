@@ -431,21 +431,28 @@
       position: fixed;
       inset: 0;
       display: none;
-      place-items: center;
+      justify-items: center;
+      align-items: start;
       z-index: 50;
       padding: 18px;
       background: rgba(20,16,13,.62);
       backdrop-filter: blur(8px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
     .modal-backdrop.show { display: grid; }
     .modal {
       width: min(100%, 560px);
+      max-height: calc(100dvh - 36px);
       border-radius: 28px;
       background: #fffaf1;
       box-shadow: var(--shadow);
       overflow: hidden;
       border: 1px solid rgba(255,245,228,.24);
       position: relative;
+      display: flex;
+      flex-direction: column;
+      margin: auto 0;
     }
     .modal-head {
       padding: 20px 22px;
@@ -454,11 +461,30 @@
     }
     .modal-head h3 { margin: 0 0 5px; font-size: 24px; letter-spacing: -.04em; }
     .modal-head p { margin: 0; color: var(--muted); font-weight: 780; }
-    .modal-body { padding: 20px 22px; display: grid; gap: 14px; }
+    .modal-body {
+      padding: 20px 22px;
+      display: grid;
+      gap: 14px;
+      overflow-y: auto;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
     .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; padding: 0 22px 22px;}
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      padding: 14px 22px 22px;
+      background: #fffaf1;
+      border-top: 1px solid rgba(47,32,23,.08);
+    }
     .hidden { display: none !important; }
     .modal-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1 1 auto;
       transition: filter .18s ease, opacity .18s ease;
     }
     .modal.loading .modal-shell {
@@ -522,6 +548,18 @@
       .week-head { grid-template-columns: 1fr; }
       .week-actions, .week-count { justify-content: flex-start; justify-self: start; }
       .table-scroll { max-height: none; }
+    }
+    @media (max-height: 820px) {
+      .modal-backdrop { padding: 12px; }
+      .modal { max-height: calc(100dvh - 24px); border-radius: 22px; }
+      .modal-head { padding: 16px 18px; }
+      .modal-body { padding: 16px 18px; gap: 12px; }
+      .modal-actions { padding: 12px 18px 18px; }
+    }
+    @media (max-height: 700px) {
+      .modal-head h3 { font-size: 21px; }
+      .modal-head p { font-size: 13px; }
+      .modal-actions > button { flex: 1 1 180px; }
     }
     .plantillas-box {
 	  display: flex;
