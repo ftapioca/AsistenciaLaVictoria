@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#14100d" />
+  <title>Importador Ventas · La Victoria</title>
+  <style>
+    :root {
+      --bun: #ff8a13;
+      --bun-dark: #d96700;
+      --cheese: #ffc928;
+      --tomato: #ef3b2d;
+      --lettuce: #188c62;
+      --charcoal: #14100d;
+      --charcoal-2: #241813;
+      --cream: #fff5e4;
+      --paper: rgba(255, 250, 241, 0.97);
+      --paper-2: rgba(255, 248, 236, 0.84);
+      --muted: #806957;
+      --line: rgba(47, 32, 23, 0.12);
+      --shadow: 0 30px 80px rgba(33, 24, 19, 0.28);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--charcoal);
+      background:
+        radial-gradient(circle at 10% 12%, rgba(255, 201, 40, 0.28), transparent 24%),
+        radial-gradient(circle at 84% 8%, rgba(239, 59, 45, 0.18), transparent 24%),
+        radial-gradient(circle at 50% 100%, rgba(255, 138, 19, 0.34), transparent 30%),
+        linear-gradient(135deg, #15100d 0%, #2a1710 44%, #5b2a0d 100%);
+      padding: clamp(16px, 3vw, 34px);
+    }
+
+    .page {
+      width: min(100%, 1180px);
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+      transition: filter .18s ease, opacity .18s ease;
+    }
+
+    body.page-loading .page {
+      filter: blur(5px);
+      opacity: .72;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .page-loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      background: rgba(20, 16, 13, .18);
+      backdrop-filter: blur(2px);
+    }
+
+    body.page-loading .page-loading-overlay { display: grid; }
+
+    .page-loading-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 999px;
+      color: #351a05;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      box-shadow: 0 18px 38px rgba(217,103,0,.24);
+      font-weight: 950;
+    }
+
+    .page-loading-spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 3px solid rgba(53, 26, 5, .24);
+      border-top-color: #351a05;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hero,
+    .panel {
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(255, 245, 228, 0.18);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 28px;
+      color: var(--cream);
+      background: linear-gradient(145deg, rgba(20, 16, 13, .94), rgba(42, 23, 16, .88));
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 9px 13px;
+      border-radius: 999px;
+      color: #fff7e8;
+      background: linear-gradient(135deg, rgba(255, 201, 40, 0.34), rgba(217, 103, 0, 0.46));
+      border: 1px solid rgba(255, 201, 40, 0.34);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 62px);
+      line-height: .96;
+      letter-spacing: -.06em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 70ch;
+      color: rgba(255, 245, 228, .72);
+      line-height: 1.65;
+    }
+
+    .hero-bar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .session-user {
+      color: #fff5e4;
+      font-weight: 900;
+      padding: 12px 16px;
+      border-radius: 18px;
+      background: rgba(255, 245, 228, 0.12);
+      border: 1px solid rgba(255, 245, 228, 0.18);
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(330px, .9fr);
+      gap: 18px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      padding: 24px;
+      background: var(--paper);
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel h2 {
+      margin: 0;
+      color: var(--bun-dark);
+      font-size: 28px;
+      letter-spacing: -.04em;
+    }
+
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-weight: 700;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field,
+    .field-full {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field-full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 13px;
+      font-weight: 900;
+      color: #4f392d;
+      letter-spacing: .02em;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255,255,255,0.84);
+      color: var(--charcoal);
+      padding: 14px 15px;
+      font: inherit;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 240px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(255, 138, 19, .58);
+      box-shadow: 0 0 0 4px rgba(255, 138, 19, .14);
+    }
+
+    .dropzone {
+      border: 1px dashed rgba(58, 34, 12, .22);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(135deg, rgba(255, 201, 40, 0.10), rgba(255, 255, 255, 0.64));
+      padding: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .dropzone small {
+      color: var(--muted);
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .status {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.5;
+    }
+
+    .status.show { display: block; }
+    .status.info { background: rgba(255, 201, 40, .18); color: #664707; border: 1px solid rgba(255, 201, 40, .34); }
+    .status.success { background: rgba(24, 140, 98, .14); color: #0f5a3d; border: 1px solid rgba(24, 140, 98, .28); }
+    .status.error { background: rgba(239, 59, 45, .12); color: #8a2118; border: 1px solid rgba(239, 59, 45, .24); }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      min-height: 48px;
+      padding: 13px 16px;
+      border-radius: 17px;
+      font-size: 14px;
+      font-weight: 950;
+      cursor: pointer;
+      transition: transform 0.18s ease, filter 0.18s ease, opacity .18s ease;
+    }
+
+    button:hover { transform: translateY(-2px); filter: saturate(1.05); }
+    button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .btn-primary {
+      color: #3a220c;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      box-shadow: 0 14px 28px rgba(217, 103, 0, 0.18);
+    }
+
+    .btn-soft {
+      color: #fff5e4;
+      background: rgba(255, 245, 228, 0.14);
+      border: 1px solid rgba(255, 245, 228, 0.22);
+    }
+
+    .btn-neutral {
+      color: #442e21;
+      background: rgba(255,255,255,.86);
+      border: 1px solid var(--line);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--paper-2);
+      border: 1px solid var(--line);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1;
+      margin-bottom: 6px;
+      color: var(--charcoal-2);
+      letter-spacing: -.04em;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .preview-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .preview-item {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid var(--line);
+      overflow: auto;
+    }
+
+    .preview-item strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #4a3428;
+      font-size: 13px;
+      letter-spacing: .02em;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #38241a;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    .note-box {
+      padding: 15px 16px;
+      border-radius: 18px;
+      background: rgba(255, 201, 40, .12);
+      border: 1px solid rgba(255, 201, 40, .24);
+      color: #624811;
+      font-size: 13px;
+      line-height: 1.6;
+      font-weight: 800;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .form-grid,
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-bar,
+      .hero-actions,
+      .actions {
+        align-items: stretch;
+      }
+
+      .hero-actions button,
+      .actions button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <span class="hero-badge">La Victoria · Ventas y Comisiones</span>
+      <h1>Importador mensual</h1>
+      <p>
+        Primera versión operativa para probar `ImportarVentas` contra `staging` o `prod`
+        usando JSON normalizado. Esta pantalla sirve como harness técnico mientras se construye
+        el parser completo de archivos POS.
+      </p>
+      <div class="hero-bar">
+        <div class="session-user" id="sessionUser">Validando sesión...</div>
+        <div class="hero-actions">
+          <button class="btn-soft" id="btnBack" type="button">Volver al panel</button>
+          <button class="btn-primary" id="btnLogout" type="button">Cerrar sesión</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="stack">
+        <article class="panel">
+          <h2>Fuente</h2>
+          <p>Carga un archivo JSON normalizado o pega el payload manualmente. Los campos de local y período pueden sobrescribir lo que venga en el JSON.</p>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="localSelect">Local</label>
+              <select id="localSelect">
+                <option value="Paseo del Lago">Paseo del Lago</option>
+                <option value="Segunda Faja">Segunda Faja</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="periodoInput">Período</label>
+              <input id="periodoInput" type="text" placeholder="2026-06" />
+            </div>
+
+            <div class="field">
+              <label for="fechaDesdeInput">Fecha desde</label>
+              <input id="fechaDesdeInput" type="date" />
+            </div>
+
+            <div class="field">
+              <label for="fechaHastaInput">Fecha hasta</label>
+              <input id="fechaHastaInput" type="date" />
+            </div>
+
+            <div class="field-full">
+              <label for="nombreArchivoInput">Nombre de archivo lógico</label>
+              <input id="nombreArchivoInput" type="text" placeholder="ventas-junio.json" />
+            </div>
+
+            <div class="field-full">
+              <label for="observacionesInput">Observaciones</label>
+              <input id="observacionesInput" type="text" placeholder="Notas opcionales de la importación" />
+            </div>
+          </div>
+
+          <div class="dropzone">
+            <label for="jsonFileInput">Archivo JSON normalizado</label>
+            <input id="jsonFileInput" type="file" accept=".json,application/json" />
+            <small>
+              Formato esperado: objeto con `metadata`, `ventas` y `propinas`. Esta versión no parsea XLS/XLSX todavía.
+            </small>
+          </div>
+
+          <div class="field-full">
+            <label for="jsonInput">Payload JSON</label>
+            <textarea id="jsonInput" spellcheck="false" placeholder='{"metadata":{},"ventas":[],"propinas":[]}'></textarea>
+          </div>
+
+          <div id="statusBox" class="status" role="status" aria-live="polite"></div>
+
+          <div class="actions">
+            <button class="btn-neutral" id="btnLoadExample" type="button">Cargar ejemplo</button>
+            <button class="btn-neutral" id="btnBuildPreview" type="button">Construir preview</button>
+            <button class="btn-primary" id="btnImport" type="button" disabled>Importar ventas</button>
+          </div>
+        </article>
+      </div>
+
+      <div class="stack">
+        <article class="panel">
+          <h2>Preview</h2>
+          <p>Resumen técnico del payload listo para enviar al backend.</p>
+
+          <div class="stats">
+            <div class="stat">
+              <strong id="statVentas">0</strong>
+              <span>Ventas</span>
+            </div>
+            <div class="stat">
+              <strong id="statPropinas">0</strong>
+              <span>Propinas</span>
+            </div>
+            <div class="stat">
+              <strong id="statVentaValida">$0</strong>
+              <span>Venta bruta válida</span>
+            </div>
+            <div class="stat">
+              <strong id="statPropinaValida">$0</strong>
+              <span>Propinas válidas</span>
+            </div>
+          </div>
+
+          <div class="preview-list">
+            <div class="preview-item">
+              <strong>Metadata final</strong>
+              <pre id="metadataPreview">Sin preview todavía.</pre>
+            </div>
+            <div class="preview-item">
+              <strong>Primera venta</strong>
+              <pre id="ventaPreview">Sin preview todavía.</pre>
+            </div>
+            <div class="preview-item">
+              <strong>Primera propina</strong>
+              <pre id="propinaPreview">Sin preview todavía.</pre>
+            </div>
+            <div class="preview-item">
+              <strong>Respuesta última importación</strong>
+              <pre id="responsePreview">Sin respuesta todavía.</pre>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Notas</h2>
+          <div class="note-box">
+            Este importador está pensado para habilitar pruebas reales del endpoint `ImportarVentas`
+            antes de construir el parser POS final. El siguiente paso seguirá siendo soportar
+            `XLS/XLSX/CSV` directamente en navegador.
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div class="page-loading-overlay" aria-live="polite" aria-busy="true">
+    <div class="page-loading-card">
+      <span class="page-loading-spinner" aria-hidden="true"></span>
+      <span id="pageLoadingText">Procesando...</span>
+    </div>
+  </div>
+
+  <script src="app-config.prod.js"></script>
+  <script src="app-config.staging.js"></script>
+  <script src="app-config.js"></script>
+  <script src="env-badge.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const currency = new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 });
+    let currentPayload = null;
+
+    function setPageLoading(loading, mensaje = "Procesando...") {
+      document.body.classList.toggle("page-loading", loading);
+      $("pageLoadingText").innerText = mensaje;
+    }
+
+    function esperarSiguienteRender() {
+      return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    }
+
+    function setStatus(tipo, mensaje) {
+      const box = $("statusBox");
+      box.className = `status show ${tipo}`;
+      box.innerText = mensaje;
+    }
+
+    function clearStatus() {
+      const box = $("statusBox");
+      box.className = "status";
+      box.innerText = "";
+    }
+
+    function formatJson(value) {
+      return JSON.stringify(value, null, 2);
+    }
+
+    function setPreviewText(id, value) {
+      $(id).innerText = value;
+    }
+
+    function getExamplePayload() {
+      return {
+        metadata: {
+          nombreArchivo: "ejemplo-ventas-junio.json",
+          observaciones: "Payload de ejemplo para staging"
+        },
+        ventas: [
+          {
+            ventaId: "EX-001",
+            fecha: "2026-06-01",
+            hora: "12:04:00",
+            fechaCierre: "2026-06-01 12:09:00",
+            local: "Paseo del Lago",
+            estado: "PAGADA",
+            origen: "POS",
+            tipoVenta: "SALON",
+            medioPago: "DEBITO",
+            totalBruto: 12500,
+            esDelivery: false,
+            esCancelada: false,
+            esValidaComision: true,
+            motivoExclusion: ""
+          },
+          {
+            ventaId: "EX-002",
+            fecha: "2026-06-01",
+            hora: "13:18:00",
+            fechaCierre: "2026-06-01 13:22:00",
+            local: "Paseo del Lago",
+            estado: "ANULADA",
+            origen: "POS",
+            tipoVenta: "DELIVERY",
+            medioPago: "EFECTIVO",
+            totalBruto: 8800,
+            esDelivery: true,
+            esCancelada: true,
+            esValidaComision: false,
+            motivoExclusion: "Venta anulada"
+          }
+        ],
+        propinas: [
+          {
+            ventaId: "EX-001",
+            fecha: "2026-06-01",
+            hora: "12:04:00",
+            local: "Paseo del Lago",
+            montoPropina: 1500,
+            cancelada: false,
+            esDelivery: false,
+            esValidaPropina: true,
+            motivoExclusion: ""
+          }
+        ]
+      };
+    }
+
+    function mergePayloadWithForm(rawPayload, fileNameFromInput) {
+      const payload = rawPayload && typeof rawPayload === "object" ? rawPayload : {};
+      const metadata = payload.metadata && typeof payload.metadata === "object" ? payload.metadata : {};
+
+      return {
+        metadata: {
+          ...metadata,
+          local: $("localSelect").value.trim(),
+          periodo: $("periodoInput").value.trim(),
+          nombreArchivo: $("nombreArchivoInput").value.trim() || metadata.nombreArchivo || fileNameFromInput || "ventas-normalizadas.json",
+          fechaDesde: $("fechaDesdeInput").value.trim(),
+          fechaHasta: $("fechaHastaInput").value.trim(),
+          observaciones: $("observacionesInput").value.trim() || metadata.observaciones || ""
+        },
+        ventas: Array.isArray(payload.ventas) ? payload.ventas : [],
+        propinas: Array.isArray(payload.propinas) ? payload.propinas : []
+      };
+    }
+
+    function normalizeAmount(value) {
+      if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+      const text = String(value || "").trim();
+      if (!text) return 0;
+      const cleaned = text.replace(/\$/g, "").replace(/\s+/g, "").replace(/\./g, "").replace(",", ".");
+      const number = Number(cleaned);
+      return Number.isFinite(number) ? number : 0;
+    }
+
+    function normalizeBoolean(value, fallback) {
+      if (value === undefined || value === null || value === "") return fallback;
+      if (typeof value === "boolean") return value;
+      if (typeof value === "number") return value !== 0;
+      const text = String(value).trim().toLowerCase();
+      return text === "true" || text === "1" || text === "si" || text === "sí" || text === "x";
+    }
+
+    async function sha256Hex(text) {
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function buildPayloadFromInputs() {
+      const rawText = $("jsonInput").value.trim();
+      if (!rawText) {
+        throw new Error("Debes cargar o pegar un payload JSON.");
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (error) {
+        throw new Error("El JSON no es válido.");
+      }
+
+      const payload = mergePayloadWithForm(parsed, $("nombreArchivoInput").value.trim());
+      const metadata = payload.metadata || {};
+
+      const requiredFields = ["local", "periodo", "nombreArchivo", "fechaDesde", "fechaHasta"];
+      requiredFields.forEach((field) => {
+        if (!String(metadata[field] || "").trim()) {
+          throw new Error(`Falta completar "${field}" antes de generar el preview.`);
+        }
+      });
+
+      const normalizedForHash = {
+        metadata: {
+          local: metadata.local,
+          periodo: metadata.periodo,
+          nombreArchivo: metadata.nombreArchivo,
+          fechaDesde: metadata.fechaDesde,
+          fechaHasta: metadata.fechaHasta
+        },
+        ventas: payload.ventas,
+        propinas: payload.propinas
+      };
+
+      payload.metadata.hashArchivo = await sha256Hex(formatJson(normalizedForHash));
+      return payload;
+    }
+
+    function renderPreview(payload) {
+      const ventas = payload.ventas || [];
+      const propinas = payload.propinas || [];
+
+      const ventaValida = ventas.reduce((sum, item) => {
+        return sum + (normalizeBoolean(item.esValidaComision, true) ? normalizeAmount(item.totalBruto ?? item.total ?? item.monto) : 0);
+      }, 0);
+
+      const propinaValida = propinas.reduce((sum, item) => {
+        return sum + (normalizeBoolean(item.esValidaPropina, true) ? normalizeAmount(item.montoPropina ?? item.monto ?? item.propina) : 0);
+      }, 0);
+
+      $("statVentas").innerText = String(ventas.length);
+      $("statPropinas").innerText = String(propinas.length);
+      $("statVentaValida").innerText = currency.format(Math.round(ventaValida));
+      $("statPropinaValida").innerText = currency.format(Math.round(propinaValida));
+
+      setPreviewText("metadataPreview", formatJson(payload.metadata));
+      setPreviewText("ventaPreview", ventas.length ? formatJson(ventas[0]) : "Sin ventas.");
+      setPreviewText("propinaPreview", propinas.length ? formatJson(propinas[0]) : "Sin propinas.");
+    }
+
+    async function sendImport(payload) {
+      const session = LVAuth.getSession();
+      if (!session || !session.sessionToken) {
+        throw new Error("No hay sesión válida.");
+      }
+
+      const form = new URLSearchParams({
+        accion: "ImportarVentas",
+        sessionToken: session.sessionToken,
+        metadata: JSON.stringify(payload.metadata),
+        ventas: JSON.stringify(payload.ventas),
+        propinas: JSON.stringify(payload.propinas)
+      });
+
+      const response = await fetch(APP_CONFIG.WEB_APP_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+        },
+        body: form
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.status !== "SUCCESS") {
+        const error = new Error(data.mensaje || "No se pudo importar ventas.");
+        error.code = data.status || "ERROR_IMPORTACION";
+        throw error;
+      }
+
+      return data;
+    }
+
+    async function handleBuildPreview() {
+      clearStatus();
+      setStatus("info", "Construyendo preview...");
+      currentPayload = await buildPayloadFromInputs();
+      renderPreview(currentPayload);
+      $("btnImport").disabled = false;
+      setStatus("success", "Preview listo. Puedes importar este payload al backend.");
+    }
+
+    async function handleImport() {
+      if (!currentPayload) {
+        throw new Error("Primero debes construir el preview.");
+      }
+
+      setPageLoading(true, "Importando ventas...");
+      await esperarSiguienteRender();
+
+      try {
+        const result = await sendImport(currentPayload);
+        setPreviewText("responsePreview", formatJson(result));
+        setStatus(
+          "success",
+          `Importación creada: ${result.importId}. Ventas: ${result.registrosVentas}. Propinas: ${result.registrosPropinas}.`
+        );
+      } finally {
+        setPageLoading(false);
+      }
+    }
+
+    function fillInputsFromExample() {
+      const example = getExamplePayload();
+      $("localSelect").value = "Paseo del Lago";
+      $("periodoInput").value = "2026-06";
+      $("fechaDesdeInput").value = "2026-06-01";
+      $("fechaHastaInput").value = "2026-06-30";
+      $("nombreArchivoInput").value = example.metadata.nombreArchivo;
+      $("observacionesInput").value = example.metadata.observaciones;
+      $("jsonInput").value = formatJson(example);
+      currentPayload = null;
+      $("btnImport").disabled = true;
+      setPreviewText("responsePreview", "Sin respuesta todavía.");
+      clearStatus();
+    }
+
+    async function handleJsonFile(file) {
+      if (!file) return;
+      const text = await file.text();
+      $("jsonInput").value = text;
+      if (!$("nombreArchivoInput").value.trim()) {
+        $("nombreArchivoInput").value = file.name;
+      }
+      currentPayload = null;
+      $("btnImport").disabled = true;
+      setStatus("info", `Archivo cargado: ${file.name}. Ahora construye el preview.`);
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const session = await LVAuth.protectPage(["Administrador"]);
+      if (!session) return;
+
+      $("sessionUser").innerText = `${session.displayName || "Administrador"} · ${session.role} · ${APP_CONFIG.ENVIRONMENT.toUpperCase()}`;
+      fillInputsFromExample();
+
+      $("btnBack").addEventListener("click", () => {
+        window.location.href = "adminPanel.html" + window.location.search;
+      });
+
+      $("btnLogout").addEventListener("click", async () => {
+        setPageLoading(true, "Cerrando sesión...");
+        await esperarSiguienteRender();
+        await LVAuth.logout();
+        LVAuth.redirectToIndex();
+      });
+
+      $("btnLoadExample").addEventListener("click", fillInputsFromExample);
+
+      $("btnBuildPreview").addEventListener("click", async () => {
+        try {
+          await handleBuildPreview();
+        } catch (error) {
+          currentPayload = null;
+          $("btnImport").disabled = true;
+          setStatus("error", error.message || "No se pudo construir el preview.");
+        }
+      });
+
+      $("btnImport").addEventListener("click", async () => {
+        try {
+          await handleImport();
+        } catch (error) {
+          setStatus("error", error.message || "No se pudo importar ventas.");
+        }
+      });
+
+      $("jsonFileInput").addEventListener("change", async (event) => {
+        try {
+          await handleJsonFile(event.target.files && event.target.files[0]);
+        } catch (error) {
+          setStatus("error", error.message || "No se pudo leer el archivo.");
+        }
+      });
+    });
+  </script>
+</body>
+</html>

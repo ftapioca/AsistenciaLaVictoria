@@ -105,8 +105,8 @@ Objetivo: permitir que admin cargue archivo POS y vea una vista previa robusta a
 
 - [x] Separar configuración frontend por entorno `staging` / `prod`.
 - [x] Mostrar badge visual del entorno activo.
-- [ ] Crear `ventasMensuales.html`.
-- [ ] Integrar protección por sesión admin.
+- [x] Crear `ventasMensuales.html`.
+- [x] Integrar protección por sesión admin.
 - [ ] Selector de:
   - [ ] local
   - [ ] período
@@ -126,7 +126,7 @@ Objetivo: permitir que admin cargue archivo POS y vea una vista previa robusta a
   - [ ] propinas válidas
   - [ ] propinas excluidas
 - [ ] Confirmar importación.
-- [ ] Llamar endpoint `ImportarVentas`.
+- [x] Llamar endpoint `ImportarVentas`.
 
 ---
 
@@ -257,12 +257,19 @@ Respuesta mínima esperada:
   - `app-config.staging.js`
   - `app-config.js`
 - Todas las vistas principales y los HTML de `Assets/` muestran badge visual del entorno activo.
+- `ventasMensuales.html` quedó creada como importador técnico basado en JSON normalizado para probar el endpoint antes del parser POS final.
 
 Pendiente importante para retomar:
 
 - validar end-to-end `ImportarVentas` contra la web app correcta de `staging`
-- alinear la URL que usa el frontend con el deployment HTTP correcto de `staging`
 - decidir si `staging` seguirá probándose contra `@HEAD` o contra un deployment web app versionado específico
+- reemplazar el harness JSON por parser POS real `XLS/XLSX/CSV`
+
+Actualización:
+
+- se creó un deployment web app versionado funcional para `staging`
+- `ImportarVentas` ya fue validado end-to-end contra ese deployment
+- el frontend debe usar esa URL versionada mientras se mantenga vigente
 
 Siguiente paso recomendado:
 

@@ -6,6 +6,7 @@ Registro de asistencia y turnos para La Victoria.
 
 - `index.html`: selector de ingreso por PIN con detección automática de rol.
 - `adminPanel.html`: panel administrativo protegido con accesos internos y caja de archivos adjuntos.
+- `ventasMensuales.html`: importador técnico de ventas para probar `ImportarVentas` con JSON normalizado.
 - `TurnosAbiertos.html`: dashboard administrativo protegido para revisar turnos abiertos por local.
 - `programadorTurnos.html`: programador semanal protegido para administradores.
 - `misTurnos.html`: vista semanal de solo lectura para colaboradores.
@@ -103,6 +104,7 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
 `adminPanel.html` concentra la navegación administrativa.
 
 - La información de sesión y las acciones de cerrar sesión y volver al ingreso están integradas en el `hero`.
+- Incluye acceso al importador técnico `ventasMensuales.html`.
 - La caja `Archivos adjuntos` lista recursos administrativos.
 - Actualmente incluye:
   - Un enlace externo a `Reporte y registro de asistencia` en Google Sheets
@@ -130,6 +132,23 @@ El `WEB_APP_URL` apunta a un proyecto de Google Apps Script que combina:
 - programación semanal
 
 La copia local de referencia está en `AppsScript/`.
+
+## Importador De Ventas
+
+`ventasMensuales.html` es la primera pantalla operativa del módulo de ventas.
+
+Estado actual:
+
+- protegida por sesión de administrador
+- usa el entorno activo (`prod` o `staging`)
+- carga JSON normalizado desde archivo o textarea
+- calcula `hashArchivo`
+- muestra preview técnico
+- llama al endpoint `ImportarVentas`
+
+Limitación actual:
+
+- todavía no parsea archivos POS `XLS/XLSX/CSV`; esa etapa sigue pendiente
 
 ## Entornos Frontend
 
