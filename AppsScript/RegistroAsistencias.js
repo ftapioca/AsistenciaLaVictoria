@@ -140,7 +140,17 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  var params = e.parameter || {};
+  var params;
+
+  try {
+    params = obtenerParametrosPost_(e);
+  } catch (error) {
+    return responderJSON({
+      status: "ERROR_JSON",
+      mensaje: error.message || "No se pudo interpretar el body JSON."
+    });
+  }
+
   var accion = params.accion;
 
   if (accion === "LoginPorSeleccion") {
@@ -187,10 +197,58 @@ function doPost(e) {
     }
   }
 
+  if (accion === "ImportarVentas") {
+    try {
+      return importarVentas(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "ERROR_IMPORTACION",
+        mensaje: error.message || "No se pudo importar ventas."
+      });
+    }
+  }
+
   return responderJSON({
     status: "ERROR_ACCION",
     mensaje: "Acción no reconocida."
   });
+}
+
+function obtenerParametrosPost_(e) {
+  var params = {};
+  var parameter = (e && e.parameter) || {};
+
+  Object.keys(parameter).forEach(function(key) {
+    params[key] = parameter[key];
+  });
+
+  var postData = e && e.postData;
+  var contents = postData && typeof postData.contents === "string"
+    ? postData.contents.trim()
+    : "";
+
+  if (!contents) {
+    return params;
+  }
+
+  var mimeType = String((postData && postData.type) || "").toLowerCase();
+  var pareceJson = mimeType.indexOf("json") !== -1 || contents[0] === "{";
+
+  if (!pareceJson) {
+    return params;
+  }
+
+  var body = JSON.parse(contents);
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new Error("El body JSON debe ser un objeto.");
+  }
+
+  Object.keys(body).forEach(function(key) {
+    params[key] = body[key];
+  });
+
+  return params;
 }
 
 

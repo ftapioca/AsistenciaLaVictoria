@@ -10,7 +10,9 @@ Registro de asistencia y turnos para La Victoria.
 - `programadorTurnos.html`: programador semanal protegido para administradores.
 - `misTurnos.html`: vista semanal de solo lectura para colaboradores.
 - `Assets/`: archivos adjuntos descargables para administradores y HTML de registro por local.
-- `app-config.js`: configuración compartida del `WEB_APP_URL` y clave de sesión.
+- `app-config.prod.js`: preset frontend de producción.
+- `app-config.staging.js`: preset frontend de staging.
+- `app-config.js`: selector de entorno frontend y configuración activa (`WEB_APP_URL`, sesión, entorno).
 - `auth.js`: autenticación, validación de sesión y control de acceso en frontend.
 - `AppsScriptAuth.gs`: base para integrar login, validación de sesión y control de roles en Google Apps Script.
 - `AppsScript/`: copia local del proyecto real de Google Apps Script usada como referencia y documentación viva.
@@ -128,6 +130,40 @@ El `WEB_APP_URL` apunta a un proyecto de Google Apps Script que combina:
 - programación semanal
 
 La copia local de referencia está en `AppsScript/`.
+
+## Entornos Frontend
+
+El frontend ahora también distingue `prod` y `staging`.
+
+Archivos:
+
+- `app-config.prod.js`
+- `app-config.staging.js`
+- `app-config.js`
+
+Resolución del entorno activo:
+
+- `?env=staging` o `?env=prod` en la URL
+- valor persistido en `localStorage` bajo `lavictoria.app.env`
+- fallback por defecto a `prod`
+
+Reglas prácticas:
+
+- `prod` usa la web app productiva actual
+- `staging` usa la web app de staging
+- cada entorno usa un `SESSION_KEY` distinto para no mezclar sesiones
+
+Ejemplos:
+
+- `index.html?env=staging`
+- `adminPanel.html?env=prod`
+
+Los HTML de `Assets/` también quedaron conectados a la misma estrategia, por lo que pueden probarse contra `staging` agregando `?env=staging`.
+
+Además, todas las pantallas muestran un badge visual fijo del entorno activo:
+
+- `STAGING` en tono cálido
+- `PROD` en tono verde
 
 ## Spreadsheets Por ID
 

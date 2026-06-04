@@ -23,23 +23,23 @@ Rama base actual: `feature/spreadsheet-by-id`
 
 Objetivo: recibir JSON normalizado desde frontend y persistir importación + ventas + propinas.
 
-- [ ] Crear endpoint `ImportarVentas`.
-- [ ] Validar sesión admin.
-- [ ] Validar `metadata` obligatorio:
-  - [ ] `local`
-  - [ ] `periodo`
-  - [ ] `nombreArchivo`
-  - [ ] `hashArchivo`
-  - [ ] `fechaDesde`
-  - [ ] `fechaHasta`
-- [ ] Validar arrays `ventas` y `propinas`.
-- [ ] Generar `ImportId`.
-- [ ] Bloquear duplicado por `HashArchivo`.
-- [ ] Detectar importación previa por `Local + Periodo`.
-- [ ] Persistir `ImportacionesVentas`.
-- [ ] Persistir `VentasPOS`.
-- [ ] Persistir `PropinasPOS`.
-- [ ] Responder resumen básico de importación.
+- [x] Crear endpoint `ImportarVentas`.
+- [x] Validar sesión admin.
+- [x] Validar `metadata` obligatorio:
+  - [x] `local`
+  - [x] `periodo`
+  - [x] `nombreArchivo`
+  - [x] `hashArchivo`
+  - [x] `fechaDesde`
+  - [x] `fechaHasta`
+- [x] Validar arrays `ventas` y `propinas`.
+- [x] Generar `ImportId`.
+- [x] Bloquear duplicado por `HashArchivo`.
+- [x] Detectar importación previa por `Local + Periodo`.
+- [x] Persistir `ImportacionesVentas`.
+- [x] Persistir `VentasPOS`.
+- [x] Persistir `PropinasPOS`.
+- [x] Responder resumen básico de importación.
 
 ---
 
@@ -89,13 +89,12 @@ Objetivo: dejar el módulo recalculable y auditable.
 - [ ] Crear endpoint `ConsultarImportacionesVentas`.
 - [ ] Crear endpoint `AnularImportacionVentas`.
 - [ ] Definir estrategia final para `Local + Periodo`:
-  - [ ] bloquear
-  - [ ] reemplazar
-  - [ ] versionar
+  - [x] reemplazar con auditoría mínima
 - [ ] Registrar estados:
   - [ ] `SUCCESS`
   - [ ] `ERROR`
   - [ ] `ANULADO`
+  - [ ] `REEMPLAZADO`
 - [ ] Registrar observaciones de importación.
 
 ---
@@ -104,6 +103,8 @@ Objetivo: dejar el módulo recalculable y auditable.
 
 Objetivo: permitir que admin cargue archivo POS y vea una vista previa robusta antes de importar.
 
+- [x] Separar configuración frontend por entorno `staging` / `prod`.
+- [x] Mostrar badge visual del entorno activo.
 - [ ] Crear `ventasMensuales.html`.
 - [ ] Integrar protección por sesión admin.
 - [ ] Selector de:
@@ -153,12 +154,11 @@ Objetivo: que el admin vea resultados y pueda recalcular o revisar historial.
 
 ## 8. Decisiones abiertas
 
-- [ ] ¿Bloquear importación si ya existe `Local + Periodo`?
-- [ ] ¿Permitir reemplazo explícito?
-- [ ] ¿Permitir múltiples versiones del mismo período?
-- [ ] ¿Bloquear cálculo si asistencia está incompleta?
+- [x] Si ya existe `Local + Periodo`, se reemplaza con auditoría mínima.
+- [x] No se implementa versionado múltiple en esta etapa.
+- [x] Asistencia incompleta no bloquea cálculo; deja observaciones.
 - [ ] ¿Recalcular automáticamente tras corrección de asistencia?
-- [ ] ¿Redondeo diario o solo mensual?
+- [x] Redondeo solo mensual.
 - [ ] ¿Exportar resumen a Excel/PDF?
 
 ---
@@ -168,6 +168,104 @@ Objetivo: que el admin vea resultados y pueda recalcular o revisar historial.
 - El archivo bruto no se envía a Apps Script.
 - El parser vive en frontend.
 - Apps Script recibe JSON normalizado.
+- Frontend y backend deben poder apuntar explícitamente a `staging` o `prod`.
+- Solo puede existir una importación activa por `Local + Periodo`.
+- Si entra una nueva importación para el mismo `Local + Periodo`, la anterior deja de ser activa.
+- La importación reemplazada debe conservarse en `ImportacionesVentas` para trazabilidad.
+- Los cálculos y consultas operativas deben usar solo importaciones activas.
+- Asistencia incompleta no bloquea cálculo; solo agrega observaciones.
+- El redondeo monetario final se realiza a nivel mensual.
 - Las pruebas de ramas deben hacerse sobre `staging`.
 - Producción se actualiza solo desde `main`.
 - Deploy productivo debe usar deployment versionado, no `@HEAD`.
+
+---
+
+## 10. Contratos operativos preliminares
+
+### `ImportarVentas`
+
+Propósito: registrar una nueva importación normalizada y, si corresponde, reemplazar la importación activa previa del mismo `Local + Periodo`.
+
+Reglas:
+
+- Requiere sesión admin válida.
+- Recibe `metadata`, `ventas` y `propinas`.
+- `metadata` debe incluir:
+  - `local`
+  - `periodo`
+  - `nombreArchivo`
+  - `hashArchivo`
+  - `fechaDesde`
+  - `fechaHasta`
+- Si ya existe una importación con el mismo `hashArchivo` y estado activo, debe rechazarse como duplicado.
+- Si ya existe una importación activa para el mismo `Local + Periodo`, la nueva importación la reemplaza.
+- La importación anterior no se elimina:
+  - pasa a estado `REEMPLAZADO`
+  - conserva sus filas históricas
+  - deja observación indicando `ImportId` reemplazante y fecha de reemplazo
+- La nueva importación se registra como activa y en estado `SUCCESS`.
+- Los registros `VentasPOS` y `PropinasPOS` de importaciones reemplazadas no se borran en esta etapa; quedan fuera de uso porque las consultas deben filtrar por importación activa.
+
+Respuesta mínima esperada:
+
+- `status`
+- `importId`
+- `local`
+- `periodo`
+- `importacionReemplazada`
+- `registrosVentas`
+- `registrosPropinas`
+- `observaciones`
+
+### `AnularImportacionVentas`
+
+Propósito: desactivar una importación previamente cargada sin borrar su historial.
+
+Reglas:
+
+- Requiere sesión admin válida.
+- Recibe al menos `importId` y `motivo`.
+- No elimina filas históricas de `ImportacionesVentas`, `VentasPOS` ni `PropinasPOS`.
+- La importación anulada cambia a estado `ANULADO`.
+- Debe registrar observación con motivo, usuario y fecha de anulación.
+- Si la importación anulada era la activa para ese `Local + Periodo`, ese par queda sin importación activa hasta una nueva carga.
+- Los cálculos y consultas posteriores no deben considerar importaciones con estado `ANULADO` ni `REEMPLAZADO`.
+
+Respuesta mínima esperada:
+
+- `status`
+- `importId`
+- `estadoFinal`
+- `local`
+- `periodo`
+- `afectaImportacionActiva`
+- `observaciones`
+
+---
+
+## 11. Estado técnico al cierre de este tramo
+
+- `ImportarVentas` quedó implementado en Apps Script y subido a `staging`.
+- La validación y persistencia del endpoint ya soportan:
+  - sesión admin
+  - `POST` con payload JSON
+  - duplicado por `hashArchivo`
+  - reemplazo automático de importación activa previa del mismo `Local + Periodo`
+- El frontend quedó separado por entorno:
+  - `app-config.prod.js`
+  - `app-config.staging.js`
+  - `app-config.js`
+- Todas las vistas principales y los HTML de `Assets/` muestran badge visual del entorno activo.
+
+Pendiente importante para retomar:
+
+- validar end-to-end `ImportarVentas` contra la web app correcta de `staging`
+- alinear la URL que usa el frontend con el deployment HTTP correcto de `staging`
+- decidir si `staging` seguirá probándose contra `@HEAD` o contra un deployment web app versionado específico
+
+Siguiente paso recomendado:
+
+- construir `ventasMensuales.html` con parser local, hash y preview
+- probar importación real contra `staging`
+- luego avanzar a `RecalcularComisiones`
