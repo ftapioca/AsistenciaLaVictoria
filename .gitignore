@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+.vite/
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Google Apps Script
+.clasp.json
+.clasp.prod.json
+.clasp.staging.json
+.clasprc.json
+.clasprc.json.*
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store

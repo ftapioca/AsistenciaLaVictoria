@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ff8a13" />
+  <title>Design System · La Victoria</title>
+  <script type="module" src="/src/scripts/main.js"></script>
+</head>
+<body>
+  <main class="container py-4xl">
+    <section class="mb-6xl">
+      <h1 class="text-6xl font-black text-neutral-charcoal mb-2xl">Design System</h1>
+      <p class="text-xl text-neutral-charcoal/72 max-w-2xl">
+        Bienvenido al Design System de La Victoria. Este es el punto de entrada del proyecto con Tailwind CSS y Vite.
+      </p>
+    </section>
+
+    <!-- Colores -->
+    <section class="mb-6xl">
+      <h2 class="text-4xl font-bold text-neutral-charcoal mb-2xl">Colores de Marca</h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-lg">
+        <div class="text-center">
+          <div class="w-full h-32 bg-brand-bun rounded-lg mb-md shadow-lg"></div>
+          <p class="text-sm font-semibold text-neutral-charcoal">bun</p>
+          <p class="text-xs text-neutral-muted">#ff8a13</p>
+        </div>
+        <div class="text-center">
+          <div class="w-full h-32 bg-brand-bun-dark rounded-lg mb-md shadow-lg"></div>
+          <p class="text-sm font-semibold text-neutral-charcoal">bun-dark</p>
+          <p class="text-xs text-neutral-muted">#d96700</p>
+        </div>
+        <div class="text-center">
+          <div class="w-full h-32 bg-brand-cheese rounded-lg mb-md shadow-lg"></div>
+          <p class="text-sm font-semibold text-neutral-charcoal">cheese</p>
+          <p class="text-xs text-neutral-muted">#ffc928</p>
+        </div>
+        <div class="text-center">
+          <div class="w-full h-32 bg-brand-ketchup rounded-lg mb-md shadow-lg"></div>
+          <p class="text-sm font-semibold text-white">ketchup</p>
+          <p class="text-xs text-neutral-muted">#ef3b2d</p>
+        </div>
+        <div class="text-center">
+          <div class="w-full h-32 bg-brand-lettuce rounded-lg mb-md shadow-lg"></div>
+          <p class="text-sm font-semibold text-white">lettuce</p>
+          <p class="text-xs text-neutral-muted">#19a66a</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tipografía -->
+    <section class="mb-6xl">
+      <h2 class="text-4xl font-bold text-neutral-charcoal mb-2xl">Escala Tipográfica</h2>
+      <div class="space-y-lg">
+        <div>
+          <p class="text-6xl font-black text-neutral-charcoal mb-md">Heading 1 (text-6xl)</p>
+          <p class="text-xs text-neutral-muted">font-black, 64px / 64px</p>
+        </div>
+        <div>
+          <p class="text-5xl font-bold text-neutral-charcoal mb-md">Heading 2 (text-5xl)</p>
+          <p class="text-xs text-neutral-muted">font-bold, 48px / 48px</p>
+        </div>
+        <div>
+          <p class="text-4xl font-bold text-neutral-charcoal mb-md">Heading 3 (text-4xl)</p>
+          <p class="text-xs text-neutral-muted">font-bold, 36px / 40px</p>
+        </div>
+        <div>
+          <p class="text-base text-neutral-charcoal mb-md">Paragraph (text-base) - Este es un párrafo de contenido estándar que utiliza la escala tipográfica base del sistema de diseño. Proporciona una altura de línea confortable para la lectura.</p>
+          <p class="text-xs text-neutral-muted">text-base, 16px / 24px</p>
+        </div>
+        <div>
+          <p class="text-sm text-neutral-charcoal mb-md">Small text (text-sm)</p>
+          <p class="text-xs text-neutral-muted">text-sm, 14px / 20px</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Botones -->
+    <section class="mb-6xl">
+      <h2 class="text-4xl font-bold text-neutral-charcoal mb-2xl">Componentes: Botones</h2>
+      <div class="flex flex-wrap gap-lg items-center">
+        <button class="px-lg py-md bg-brand-bun text-neutral-charcoal rounded-lg font-semibold hover:bg-brand-bun-dark transition-all">
+          Primario
+        </button>
+        <button class="px-lg py-md border-2 border-brand-bun text-brand-bun rounded-lg font-semibold hover:bg-brand-bun/10 transition-all">
+          Secundario
+        </button>
+        <button class="px-lg py-md bg-brand-ketchup text-white rounded-lg font-semibold hover:opacity-90 transition-all">
+          Peligro
+        </button>
+        <button class="px-lg py-md bg-brand-lettuce text-white rounded-lg font-semibold hover:opacity-90 transition-all">
+          Éxito
+        </button>
+        <button disabled class="px-lg py-md bg-neutral-muted text-white rounded-lg font-semibold opacity-50 cursor-not-allowed">
+          Deshabilitado
+        </button>
+      </div>
+    </section>
+
+    <!-- Espaciado -->
+    <section class="mb-6xl">
+      <h2 class="text-4xl font-bold text-neutral-charcoal mb-2xl">Escala de Espaciado</h2>
+      <div class="space-y-lg">
+        <div>
+          <p class="text-sm font-semibold text-neutral-charcoal mb-md">XS (4px)</p>
+          <div class="p-xs bg-brand-bun/20 rounded-lg">
+            <div class="bg-brand-bun text-neutral-charcoal p-xs rounded">padding-xs</div>
+          </div>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-neutral-charcoal mb-md">MD (12px)</p>
+          <div class="p-md bg-brand-bun/20 rounded-lg">
+            <div class="bg-brand-bun text-neutral-charcoal p-md rounded">padding-md</div>
+          </div>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-neutral-charcoal mb-md">LG (16px)</p>
+          <div class="p-lg bg-brand-bun/20 rounded-lg">
+            <div class="bg-brand-bun text-neutral-charcoal p-lg rounded">padding-lg</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cards -->
+    <section>
+      <h2 class="text-4xl font-bold text-neutral-charcoal mb-2xl">Componentes: Cards</h2>
+      <div class="grid md:grid-cols-2 gap-lg">
+        <div class="p-lg bg-neutral-cream rounded-2xl border border-neutral-charcoal/10 shadow-lg">
+          <h3 class="text-2xl font-semibold text-neutral-charcoal mb-md">Card Básica</h3>
+          <p class="text-base text-neutral-charcoal/72 mb-lg">Esta es una tarjeta básica con contenido de ejemplo usando los tokens del design system.</p>
+          <button class="px-lg py-md bg-brand-bun text-neutral-charcoal rounded-lg font-semibold hover:bg-brand-bun-dark transition-all">
+            Acción
+          </button>
+        </div>
+        <div class="p-lg bg-gradient-to-br from-brand-bun to-brand-cheese rounded-2xl border border-brand-bun/20 shadow-lg">
+          <h3 class="text-2xl font-semibold text-neutral-charcoal mb-md">Card con Gradiente</h3>
+          <p class="text-base text-neutral-charcoal/72 mb-lg">Tarjeta con fondo degradado usando colores de marca.</p>
+          <button class="px-lg py-md bg-white text-neutral-charcoal rounded-lg font-semibold hover:opacity-90 transition-all">
+            Acción
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="mt-6xl pt-2xl border-t border-neutral-charcoal/10">
+      <p class="text-sm text-neutral-muted text-center">
+        📚 <a href="Docs/DESIGN_SYSTEM.md" class="text-brand-bun hover:text-brand-bun-dark">Lee la documentación completa del Design System</a>
+      </p>
+      <p class="text-xs text-neutral-muted text-center mt-md">
+        Design System v1.0 · La Victoria · 2026
+      </p>
+    </footer>
+  </main>
+</body>
+</html>
