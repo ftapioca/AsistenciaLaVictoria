@@ -133,7 +133,7 @@ La copia local de referencia está en `AppsScript/`.
 
 El proyecto de Apps Script ya no debe depender de `SpreadsheetApp.getActiveSpreadsheet()`.
 
-Ahora el acceso a datos se resuelve por ID usando `Script Properties` y el helper `AppsScript/SpreadsheetStore.gs`.
+Ahora el acceso a datos se resuelve por ID usando `Script Properties` y el helper `AppsScript/SpreadsheetStore.js`.
 
 Propiedades esperadas:
 

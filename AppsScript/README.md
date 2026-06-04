@@ -4,12 +4,13 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 
 ## Archivos actuales
 
-- `SpreadsheetStore.gs`: helper central para abrir spreadsheets por ID y resolver hojas por dominio.
-- `AuthRoles.gs`: autenticación, sesiones y control de roles.
-- `RegistroAsistencias.gs`: router principal `doGet` y `doPost`, registro de asistencia y consultas base.
-- `CierreTurnos.gs`: lógica de turnos abiertos y cierre de turnos.
-- `programadorTurnos.gs`: programación semanal y helpers asociados.
-- `versionesSistema.gs`: versión del sistema.
+- `appsscript.json`: manifiesto del proyecto Apps Script.
+- `SpreadsheetStore.js`: helper central para abrir spreadsheets por ID y resolver hojas por dominio.
+- `AuthRoles.js`: autenticación, sesiones y control de roles.
+- `RegistroAsistencias.js`: router principal `doGet` y `doPost`, registro de asistencia y consultas base.
+- `CierreTurnos.js`: lógica de turnos abiertos y cierre de turnos.
+- `programadorTurnos.js`: programación semanal y helpers asociados.
+- `versionesSistema.js`: versión del sistema.
 
 ## Acciones y permisos
 
@@ -41,7 +42,7 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 
 ## Turnos abiertos
 
-La lógica base vive en `CierreTurnos.gs`.
+La lógica base vive en `CierreTurnos.js`.
 
 - `obtenerTurnosAbiertos(params)`: respuesta administrativa protegida.
 - `obtenerTurnosAbiertosPublico(params)`: respuesta pública para los HTML de `Assets`.
