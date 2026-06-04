@@ -20,7 +20,7 @@ function obtenerPlantillasTurnos(params) {
     });
   }
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_PLANTILLAS_TURNOS);
+  var sheet = getSheet_(HOJA_PLANTILLAS_TURNOS, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
   var plantillas = [];
 
@@ -67,7 +67,7 @@ function obtenerColaboradoresPorLocalTurnos(params) {
     });
   }
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Colaboradores");
+  var sheet = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
   var colaboradores = [];
 
@@ -165,7 +165,7 @@ function guardarTurnoProgramado(params) {
 
   var calculo = calcularTurnoProgramado(tipoTurno, estado, inicio1, fin1, inicio2, fin2);
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_TURNOS_PROGRAMADOS);
+  var sheet = getSheet_(HOJA_TURNOS_PROGRAMADOS, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
 
   var filaExistente = buscarFilaTurnoProgramado(datos, fecha, colaborador, local);
@@ -236,7 +236,7 @@ function obtenerTurnosSemana(params) {
   var fechaInicio = convertirFechaTurnos(fechaInicioTexto);
   var fechaFin = convertirFechaTurnos(fechaFinTexto);
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_TURNOS_PROGRAMADOS);
+  var sheet = getSheet_(HOJA_TURNOS_PROGRAMADOS, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
   var turnos = [];
 
@@ -291,7 +291,7 @@ function obtenerTurnosSemanaColaborador(params) {
   var fechaInicio = convertirFechaTurnos(fechaInicioTexto);
   var fechaFin = convertirFechaTurnos(fechaFinTexto);
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_TURNOS_PROGRAMADOS);
+  var sheet = getSheet_(HOJA_TURNOS_PROGRAMADOS, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
   var turnos = [];
 
@@ -378,7 +378,7 @@ function obtenerHorarioAplicableInternoTurnos(local, fecha) {
 }
 
 function buscarHorarioEspecialLocal(local, fecha) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_HORARIO_ESPECIAL_LOCALES);
+  var sheet = getSheet_(HOJA_HORARIO_ESPECIAL_LOCALES, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
   var fechaBuscada = formatearFechaBaseTurnos(fecha);
 
@@ -418,7 +418,7 @@ function buscarHorarioEspecialLocal(local, fecha) {
 }
 
 function buscarHorarioNormalLocal(local, fecha) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_HORARIO_LOCALES);
+  var sheet = getSheet_(HOJA_HORARIO_LOCALES, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
 
   var diaSemanaNumero = obtenerNumeroDiaSemanaTurnos(fecha);
@@ -579,7 +579,7 @@ function copiarSemanaAnterior(params) {
   var fechaInicioOrigen = sumarDiasTurnos(fechaInicioDestino, -7);
   var fechaFinOrigen = sumarDiasTurnos(fechaInicioDestino, -1);
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_TURNOS_PROGRAMADOS);
+  var sheet = getSheet_(HOJA_TURNOS_PROGRAMADOS, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
 
   var turnosOrigen = [];
@@ -717,7 +717,7 @@ function eliminarTurnoProgramado(params) {
   }
 
   var fecha = convertirFechaTurnos(fechaTexto);
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_TURNOS_PROGRAMADOS);
+  var sheet = getSheet_(HOJA_TURNOS_PROGRAMADOS, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
 
   var filaExistente = buscarFilaTurnoProgramado(datos, fecha, colaborador, local);

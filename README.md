@@ -129,6 +129,24 @@ El `WEB_APP_URL` apunta a un proyecto de Google Apps Script que combina:
 
 La copia local de referencia está en `AppsScript/`.
 
+## Spreadsheets Por ID
+
+El proyecto de Apps Script ya no debe depender de `SpreadsheetApp.getActiveSpreadsheet()`.
+
+Ahora el acceso a datos se resuelve por ID usando `Script Properties` y el helper `AppsScript/SpreadsheetStore.gs`.
+
+Propiedades esperadas:
+
+- `LV_SPREADSHEET_RRHH_ID`
+- `LV_SPREADSHEET_VENTAS_ID`
+- `LV_SPREADSHEET_COMISIONES_ID`
+- `LV_SPREADSHEET_CUADRATURAS_ID`
+
+Estado actual:
+
+- los módulos existentes de asistencia, turnos, sesión y cierre usan `LV_SPREADSHEET_RRHH_ID`
+- ventas, comisiones y cuadraturas quedan preparados para separarse en otros spreadsheets cuando se implementen
+
 ## Acciones Públicas
 
 - `UsuariosPorRol`

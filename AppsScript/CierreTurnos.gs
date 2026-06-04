@@ -44,9 +44,7 @@ function construirRespuestaTurnosAbiertos_(params) {
     };
   }
 
-  var sheetRegistroAsistencia = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName("RegistroAsistencia");
+  var sheetRegistroAsistencia = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
 
   var datos = sheetRegistroAsistencia.getDataRange().getValues();
   var ultimosPorColaborador = {};

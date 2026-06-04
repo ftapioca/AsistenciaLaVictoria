@@ -4,6 +4,7 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 
 ## Archivos actuales
 
+- `SpreadsheetStore.gs`: helper central para abrir spreadsheets por ID y resolver hojas por dominio.
 - `AuthRoles.gs`: autenticación, sesiones y control de roles.
 - `RegistroAsistencias.gs`: router principal `doGet` y `doPost`, registro de asistencia y consultas base.
 - `CierreTurnos.gs`: lógica de turnos abiertos y cierre de turnos.
@@ -60,3 +61,19 @@ No expone `rut`.
 ## Uso de esta carpeta
 
 Esta carpeta debe mantenerse alineada con el proyecto desplegado en Google Apps Script para poder revisar cambios con contexto completo desde este repositorio.
+
+## Configuración de Script Properties
+
+El proyecto debe configurarse con IDs explícitos de Google Sheets. Ya no debe depender de `getActiveSpreadsheet()`.
+
+Propiedades requeridas:
+
+- `LV_SPREADSHEET_RRHH_ID`
+
+Propiedades reservadas para nuevos módulos:
+
+- `LV_SPREADSHEET_VENTAS_ID`
+- `LV_SPREADSHEET_COMISIONES_ID`
+- `LV_SPREADSHEET_CUADRATURAS_ID`
+
+Actualmente asistencia, autenticación, turnos y cierre leen/escriben sobre el spreadsheet configurado en `LV_SPREADSHEET_RRHH_ID`.

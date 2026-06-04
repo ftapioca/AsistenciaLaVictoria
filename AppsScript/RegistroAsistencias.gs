@@ -186,7 +186,7 @@ function doPost(e) {
 // Obtener lista de trabajadores por local
 function obtenerColaboradoresPorLocal(params) {
   var localSolicitado = params.local;
-  var sheetColab = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Colaboradores");
+  var sheetColab = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
   var datos = sheetColab.getDataRange().getValues();
   var colaboradoresFiltrados = [];
 
@@ -207,9 +207,7 @@ function obtenerColaboradoresPorLocal(params) {
 
 // Detección anti doble-marcación
 function obtenerUltimoRegistroPorNombre(nombre) {
-  var sheetRegistroAsistencia = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName("RegistroAsistencia");
+  var sheetRegistroAsistencia = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
 
   var datos = sheetRegistroAsistencia.getDataRange().getValues();
   var nombreBuscado = normalizarTexto(nombre);
@@ -282,9 +280,7 @@ function registrarAsistencia(params) {
     });
   }
 
-  var sheetRegistroAsistencia = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName("RegistroAsistencia");
+  var sheetRegistroAsistencia = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
 
   sheetRegistroAsistencia.appendRow([
     fechaHora,
@@ -331,9 +327,7 @@ function consultarUltimoRegistro(params) {
   // Luego busca el último registro SOLO por nombre
   var nombreBuscado = normalizarTexto(nombre);
 
-  var sheetRegistroAsistencia = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName("RegistroAsistencia");
+  var sheetRegistroAsistencia = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
 
   var datos = sheetRegistroAsistencia.getDataRange().getValues();
 
@@ -369,9 +363,7 @@ function consultarUltimoRegistro(params) {
 
 // Validar trabajador con nombre + PIN
 function verificarColaborador(nombre, pin) {
-  var sheetColab = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName("Colaboradores");
+  var sheetColab = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
 
   var datos = sheetColab.getDataRange().getValues();
   var nombreNormalizado = normalizarTexto(nombre);
