@@ -6,6 +6,7 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 
 - `appsscript.json`: manifiesto del proyecto Apps Script.
 - `SpreadsheetStore.js`: helper central para abrir spreadsheets por ID y resolver hojas por dominio.
+- `VentasComisiones.js`: estructura de hojas base y helpers iniciales del módulo de ventas/comisiones.
 - `AuthRoles.js`: autenticación, sesiones y control de roles.
 - `RegistroAsistencias.js`: router principal `doGet` y `doPost`, registro de asistencia y consultas base.
 - `CierreTurnos.js`: lógica de turnos abiertos y cierre de turnos.
@@ -35,6 +36,7 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 - `CopiarSemana`
 - `CopiarSemanaAnterior`
 - `PlantillasTurnos`
+- `TestVentasSheet`
 
 ### Protegidas para colaboradores
 
@@ -93,3 +95,18 @@ Actualmente:
 
 - asistencia, autenticación, turnos y cierre leen/escriben sobre `LV_SPREADSHEET_RRHH_ID`
 - ventas y comisiones deben leer/escribir sobre `LV_SPREADSHEET_VENTAS_ID`
+
+## Estructura base de ventas
+
+El endpoint admin `TestVentasSheet` crea o valida las hojas base del spreadsheet de ventas:
+
+- `ImportacionesVentas`
+- `VentasPOS`
+- `PropinasPOS`
+- `VentasDiarias`
+- `ComisionesDiarias`
+- `ResumenMensualComisiones`
+- `PagosPOS`
+- `ProductosPOS`
+- `CuadraturaPagos`
+- `KPIVentasDiarias`
