@@ -195,6 +195,13 @@
       gap: 14px;
     }
 
+    .period-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
     .field,
     .field-full {
       display: grid;
@@ -238,6 +245,236 @@
       box-shadow: 0 0 0 4px rgba(255, 138, 19, .14);
     }
 
+    .picker-shell {
+      position: relative;
+    }
+
+    .picker-shell[hidden] {
+      display: none !important;
+    }
+
+    .picker-trigger {
+      width: 100%;
+      min-height: 54px;
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.84);
+      color: var(--charcoal);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font: inherit;
+      font-weight: 900;
+      box-shadow: none;
+      cursor: pointer;
+    }
+
+    .picker-trigger:hover {
+      transform: none;
+      filter: none;
+    }
+
+    .picker-trigger:focus,
+    .picker-trigger.open {
+      border-color: rgba(255, 138, 19, .58);
+      box-shadow: 0 0 0 4px rgba(255, 138, 19, .14);
+      background: #fff;
+    }
+
+    .picker-trigger strong {
+      font-size: 15px;
+      letter-spacing: -.01em;
+    }
+
+    .picker-trigger span {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .picker-popover {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      z-index: 25;
+      width: min(100vw - 48px, 420px);
+      display: none;
+      padding: 16px;
+      border-radius: 24px;
+      background: rgba(255, 250, 241, 0.98);
+      border: 1px solid rgba(47,32,23,.10);
+      box-shadow: 0 28px 60px rgba(20,16,13,.22);
+      backdrop-filter: blur(12px);
+      gap: 14px;
+    }
+
+    .picker-popover.show {
+      display: grid;
+    }
+
+    .picker-popover-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .picker-popover-head.weekly-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+      gap: 14px;
+    }
+
+    .picker-title {
+      font-size: 18px;
+      font-weight: 950;
+      color: #2d2119;
+      letter-spacing: -.02em;
+      text-align: center;
+      flex: 1;
+    }
+
+    .picker-nav {
+      min-height: 40px;
+      min-width: 40px;
+      padding: 0;
+      border-radius: 999px;
+      color: #65340d;
+      background: rgba(255, 201, 40, 0.18);
+      border: 1px solid rgba(217,103,0,.16);
+    }
+
+    .picker-grid.months {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .picker-grid.weeks {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      max-height: 320px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .picker-option {
+      min-height: 44px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      color: #65340d;
+      background: rgba(255, 245, 228, 0.82);
+      border: 1px solid rgba(47,32,23,.08);
+      box-shadow: none;
+      text-align: center;
+      font-weight: 900;
+    }
+
+    .picker-option:hover {
+      transform: none;
+      filter: none;
+    }
+
+    .picker-option.active {
+      color: #351a05;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      box-shadow: 0 12px 24px rgba(217,103,0,.18);
+    }
+
+    .picker-option.week-option {
+      min-height: 62px;
+      text-align: left;
+      display: grid;
+      justify-items: start;
+      gap: 3px;
+    }
+
+    .picker-option.week-option small {
+      font-size: 11px;
+      font-weight: 800;
+      opacity: .76;
+    }
+
+    .weekly-year-block,
+    .weekly-month-block {
+      display: grid;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .weekly-year-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .weekly-year-block .picker-title,
+    .weekly-month-block .picker-title {
+      text-align: left;
+      flex: none;
+    }
+
+    .weekly-month-select {
+      min-height: 48px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(47,32,23,.10);
+      background: rgba(255,255,255,.82);
+      color: #4f392d;
+      font: inherit;
+      font-weight: 900;
+      text-align: left;
+    }
+
+    .day-grid-head,
+    .day-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .day-grid-head span {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .day-cell {
+      min-height: 42px;
+      padding: 0;
+      border-radius: 14px;
+      color: #65340d;
+      background: rgba(255, 245, 228, 0.82);
+      border: 1px solid rgba(47,32,23,.08);
+      box-shadow: none;
+    }
+
+    .day-cell:hover {
+      transform: none;
+      filter: none;
+    }
+
+    .day-cell.muted {
+      opacity: .42;
+    }
+
+    .day-cell.active {
+      color: #351a05;
+      background: linear-gradient(135deg, var(--cheese), var(--bun));
+      box-shadow: 0 12px 24px rgba(217,103,0,.18);
+    }
+
+    .day-cell.today {
+      border-color: rgba(255, 138, 19, .55);
+    }
+
     .dropzone {
       border: 1px dashed rgba(58, 34, 12, .22);
       border-radius: var(--radius-lg);
@@ -253,6 +490,18 @@
       font-weight: 700;
     }
 
+    .readonly-note {
+      min-height: 54px;
+      padding: 14px 15px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: rgba(72, 53, 40, 0.06);
+      color: #4e3a2f;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+    }
+
     .status {
       display: none;
       padding: 14px 16px;
@@ -266,6 +515,7 @@
     .status.info { background: rgba(255, 201, 40, .18); color: #664707; border: 1px solid rgba(255, 201, 40, .34); }
     .status.success { background: rgba(24, 140, 98, .14); color: #0f5a3d; border: 1px solid rgba(24, 140, 98, .28); }
     .status.error { background: rgba(239, 59, 45, .12); color: #8a2118; border: 1px solid rgba(239, 59, 45, .24); }
+    .status.warning { background: rgba(179, 95, 11, .12); color: #7a4b0d; border: 1px solid rgba(179, 95, 11, .24); }
 
     .actions {
       display: flex;
@@ -383,7 +633,16 @@
 
     @media (max-width: 700px) {
       .form-grid,
-      .stats {
+      .stats,
+      .period-row {
+        grid-template-columns: 1fr;
+      }
+
+      .picker-popover {
+        width: min(100vw - 48px, 100%);
+      }
+
+      .picker-grid.weeks {
         grid-template-columns: 1fr;
       }
 
@@ -423,54 +682,131 @@
       <div class="stack">
         <article class="panel">
           <h2>Fuente</h2>
-          <p>Carga un archivo JSON normalizado o pega el payload manualmente. Los campos de local y período pueden sobrescribir lo que venga en el JSON.</p>
+          <p>Carga un archivo `JSON`, `CSV`, `XLS` o `XLSX`. Los campos de local y período pueden sobrescribir lo que venga en el archivo detectado.</p>
 
           <div class="form-grid">
             <div class="field">
               <label for="localSelect">Local</label>
               <select id="localSelect">
+                <option value="">Selecciona un local</option>
                 <option value="Paseo del Lago">Paseo del Lago</option>
                 <option value="Segunda Faja">Segunda Faja</option>
               </select>
             </div>
 
             <div class="field">
-              <label for="periodoInput">Período</label>
-              <input id="periodoInput" type="text" placeholder="2026-06" />
+              <label for="periodoTipoSelect">Alcance</label>
+              <select id="periodoTipoSelect">
+                <option value="">Selecciona un alcance</option>
+                <option value="mensual">Mensual</option>
+                <option value="semanal">Semanal</option>
+                <option value="diario">Diario</option>
+              </select>
             </div>
 
-            <div class="field">
-              <label for="fechaDesdeInput">Fecha desde</label>
-              <input id="fechaDesdeInput" type="date" />
-            </div>
+            <div class="period-row">
+              <div class="field">
+                <label for="periodoMensualTrigger">Período</label>
+                <div id="periodoMensualPicker" class="picker-shell" hidden>
+                  <button class="picker-trigger" id="periodoMensualTrigger" type="button" aria-haspopup="dialog" aria-expanded="false">
+                    <strong id="periodoMensualLabel">Selecciona un mes</strong>
+                    <span>▼</span>
+                  </button>
+                  <div class="picker-popover" id="periodoMensualPopover" role="dialog" aria-label="Seleccionar mes">
+                    <div class="picker-popover-head">
+                      <button class="picker-nav" id="periodoMensualPrev" type="button" aria-label="Año anterior">←</button>
+                      <div class="picker-title" id="periodoMensualYear">2026</div>
+                      <button class="picker-nav" id="periodoMensualNext" type="button" aria-label="Año siguiente">→</button>
+                    </div>
+                    <div class="picker-grid months" id="periodoMensualGrid"></div>
+                  </div>
+                </div>
+                <div id="periodoSemanalPicker" class="picker-shell" hidden>
+                  <button class="picker-trigger" id="periodoSemanalTrigger" type="button" aria-haspopup="dialog" aria-expanded="false">
+                    <strong id="periodoSemanalLabel">Selecciona una semana</strong>
+                    <span>▼</span>
+                  </button>
+                  <div class="picker-popover" id="periodoSemanalPopover" role="dialog" aria-label="Seleccionar semana">
+                    <div class="picker-popover-head weekly-head">
+                      <div class="weekly-year-block">
+                        <div class="picker-title">Año</div>
+                        <div class="weekly-year-row">
+                          <button class="picker-nav" id="periodoSemanalPrev" type="button" aria-label="Año anterior">←</button>
+                          <div class="picker-title" id="periodoSemanalYear">2026</div>
+                          <button class="picker-nav" id="periodoSemanalNext" type="button" aria-label="Año siguiente">→</button>
+                        </div>
+                      </div>
+                      <div class="weekly-month-block">
+                        <div class="picker-title">Mes</div>
+                        <select class="weekly-month-select" id="periodoSemanalMonthSelect" aria-label="Seleccionar mes para semanas"></select>
+                      </div>
+                    </div>
+                    <div class="picker-grid weeks" id="periodoSemanalGrid"></div>
+                  </div>
+                </div>
+                <div id="periodoDiarioPicker" class="picker-shell" hidden>
+                  <button class="picker-trigger" id="periodoDiarioTrigger" type="button" aria-haspopup="dialog" aria-expanded="false">
+                    <strong id="periodoDiarioLabel">Selecciona un día</strong>
+                    <span>▼</span>
+                  </button>
+                  <div class="picker-popover" id="periodoDiarioPopover" role="dialog" aria-label="Seleccionar día">
+                    <div class="picker-popover-head">
+                      <button class="picker-nav" id="periodoDiarioPrev" type="button" aria-label="Mes anterior">←</button>
+                      <div class="picker-title" id="periodoDiarioTitle">Junio 2026</div>
+                      <button class="picker-nav" id="periodoDiarioNext" type="button" aria-label="Mes siguiente">→</button>
+                    </div>
+                    <div class="day-grid-head" id="periodoDiarioHead"></div>
+                    <div class="day-grid" id="periodoDiarioGrid"></div>
+                  </div>
+                </div>
+                <input id="periodoInput" type="hidden" />
+              </div>
 
-            <div class="field">
-              <label for="fechaHastaInput">Fecha hasta</label>
-              <input id="fechaHastaInput" type="date" />
+              <div class="field">
+                <label for="fechaDesdeInput">Fecha desde</label>
+                <input id="fechaDesdeInput" type="text" readonly />
+              </div>
+
+              <div class="field">
+                <label for="fechaHastaInput">Fecha hasta</label>
+                <input id="fechaHastaInput" type="text" readonly />
+              </div>
             </div>
 
             <div class="field-full">
-              <label for="nombreArchivoInput">Nombre de archivo lógico</label>
-              <input id="nombreArchivoInput" type="text" placeholder="ventas-junio.json" />
+              <div id="existingImportBox" class="status" role="status" aria-live="polite"></div>
+            </div>
+
+            <div class="field-full">
+              <div class="actions">
+                <button class="btn-neutral" id="btnCheckExisting" type="button">Consultar datos anteriores</button>
+              </div>
+            </div>
+
+            <div class="field-full">
+              <div class="dropzone">
+                <label for="jsonFileInput">Archivo fuente</label>
+                <input id="jsonFileInput" type="file" accept=".json,.csv,.xls,.xlsx,application/json,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <small>
+                  Si el archivo ya viene normalizado como JSON, se usa directo. Si es `CSV/XLS/XLSX`, se detectan hojas y columnas comunes para construir el payload.
+                </small>
+              </div>
+            </div>
+
+            <div class="field-full">
+              <label>Nombre de archivo lógico</label>
+              <div id="nombreArchivoLogico" class="readonly-note">Se completará al cargar un archivo.</div>
             </div>
 
             <div class="field-full">
               <label for="observacionesInput">Observaciones</label>
               <input id="observacionesInput" type="text" placeholder="Notas opcionales de la importación" />
             </div>
-          </div>
 
-          <div class="dropzone">
-            <label for="jsonFileInput">Archivo JSON normalizado</label>
-            <input id="jsonFileInput" type="file" accept=".json,application/json" />
-            <small>
-              Formato esperado: objeto con `metadata`, `ventas` y `propinas`. Esta versión no parsea XLS/XLSX todavía.
-            </small>
-          </div>
-
-          <div class="field-full">
-            <label for="jsonInput">Payload JSON</label>
-            <textarea id="jsonInput" spellcheck="false" placeholder='{"metadata":{},"ventas":[],"propinas":[]}'></textarea>
+            <div class="field-full">
+              <label for="jsonInput">Payload JSON</label>
+              <textarea id="jsonInput" spellcheck="false" placeholder='{"metadata":{},"ventas":[],"propinas":[]}'></textarea>
+            </div>
           </div>
 
           <div id="statusBox" class="status" role="status" aria-live="polite"></div>
@@ -530,9 +866,9 @@
         <article class="panel">
           <h2>Notas</h2>
           <div class="note-box">
-            Este importador está pensado para habilitar pruebas reales del endpoint `ImportarVentas`
-            antes de construir el parser POS final. El siguiente paso seguirá siendo soportar
-            `XLS/XLSX/CSV` directamente en navegador.
+            Este importador ya puede transformar archivos `JSON`, `CSV`, `XLS` y `XLSX`
+            en un payload normalizado para `ImportarVentas`. Si el formato POS viene con nombres
+            de hojas o columnas distintos, habrá que extender las reglas de detección.
           </div>
         </article>
       </div>
@@ -551,10 +887,25 @@
   <script src="app-config.js"></script>
   <script src="env-badge.js"></script>
   <script src="auth.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const currency = new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 });
+    const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const DAY_SHORT_NAMES = ["L", "M", "M", "J", "V", "S", "D"];
     let currentPayload = null;
+    let currentSourceFileName = "";
+    let periodState = {
+      monthly: "",
+      weekly: "",
+      daily: ""
+    };
+    let pickerState = {
+      monthlyYear: new Date().getFullYear(),
+      weeklyYear: new Date().getFullYear(),
+      weeklyMonth: new Date().getMonth(),
+      dailyMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    };
 
     function setPageLoading(loading, mensaje = "Procesando...") {
       document.body.classList.toggle("page-loading", loading);
@@ -575,6 +926,18 @@
       const box = $("statusBox");
       box.className = "status";
       box.innerText = "";
+    }
+
+    function setExistingImportStatus(tipo, mensaje) {
+      const box = $("existingImportBox");
+      if (!mensaje) {
+        box.className = "status";
+        box.innerText = "";
+        return;
+      }
+
+      box.className = `status show ${tipo}`;
+      box.innerText = mensaje;
     }
 
     function formatJson(value) {
@@ -650,9 +1013,9 @@
           ...metadata,
           local: $("localSelect").value.trim(),
           periodo: $("periodoInput").value.trim(),
-          nombreArchivo: $("nombreArchivoInput").value.trim() || metadata.nombreArchivo || fileNameFromInput || "ventas-normalizadas.json",
-          fechaDesde: $("fechaDesdeInput").value.trim(),
-          fechaHasta: $("fechaHastaInput").value.trim(),
+          nombreArchivo: currentSourceFileName || metadata.nombreArchivo || fileNameFromInput || "ventas-normalizadas.json",
+          fechaDesde: getLogicalDateValue("fechaDesdeInput"),
+          fechaHasta: getLogicalDateValue("fechaHastaInput"),
           observaciones: $("observacionesInput").value.trim() || metadata.observaciones || ""
         },
         ventas: Array.isArray(payload.ventas) ? payload.ventas : [],
@@ -677,9 +1040,655 @@
       return text === "true" || text === "1" || text === "si" || text === "sí" || text === "x";
     }
 
+    function normalizeText(value) {
+      return String(value || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function normalizeHeader(value) {
+      return normalizeText(value).replace(/[^a-z0-9]+/g, "");
+    }
+
+    function detectDelimiter(text) {
+      const firstLine = String(text || "").split(/\r?\n/).find((line) => line.trim()) || "";
+      const candidates = [",", ";", "\t"];
+      let best = ",";
+      let bestScore = -1;
+
+      candidates.forEach((delimiter) => {
+        const score = firstLine.split(delimiter).length;
+        if (score > bestScore) {
+          best = delimiter;
+          bestScore = score;
+        }
+      });
+
+      return best;
+    }
+
+    function parseDelimitedLine(line, delimiter) {
+      const values = [];
+      let current = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const next = line[i + 1];
+
+        if (char === '"') {
+          if (inQuotes && next === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+          continue;
+        }
+
+        if (char === delimiter && !inQuotes) {
+          values.push(current);
+          current = "";
+          continue;
+        }
+
+        current += char;
+      }
+
+      values.push(current);
+      return values;
+    }
+
+    function parseCsvToObjects(text) {
+      const delimiter = detectDelimiter(text);
+      const lines = String(text || "")
+        .split(/\r?\n/)
+        .filter((line) => line.trim() !== "");
+
+      if (!lines.length) return [];
+
+      const headers = parseDelimitedLine(lines[0], delimiter).map((header) => String(header || "").trim());
+      return lines.slice(1).map((line) => {
+        const cells = parseDelimitedLine(line, delimiter);
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = cells[index] !== undefined ? cells[index] : "";
+        });
+        return row;
+      });
+    }
+
+    function getRowValue(row, aliases, fallback = "") {
+      if (!row || typeof row !== "object") return fallback;
+
+      const normalizedMap = {};
+      Object.keys(row).forEach((key) => {
+        normalizedMap[normalizeHeader(key)] = row[key];
+      });
+
+      for (const alias of aliases) {
+        const direct = row[alias];
+        if (direct !== undefined && direct !== null && String(direct).trim() !== "") {
+          return direct;
+        }
+
+        const normalized = normalizedMap[normalizeHeader(alias)];
+        if (normalized !== undefined && normalized !== null && String(normalized).trim() !== "") {
+          return normalized;
+        }
+      }
+
+      return fallback;
+    }
+
+    function sheetRowsToObjects(matrix, expectedAliases) {
+      const rows = Array.isArray(matrix) ? matrix : [];
+      let bestIndex = -1;
+      let bestScore = -1;
+
+      rows.slice(0, 20).forEach((row, index) => {
+        if (!Array.isArray(row)) return;
+        const normalized = row.map((cell) => normalizeHeader(cell));
+        let score = 0;
+
+        expectedAliases.forEach((aliasGroup) => {
+          const found = aliasGroup.some((alias) => normalized.includes(normalizeHeader(alias)));
+          if (found) score++;
+        });
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = index;
+        }
+      });
+
+      if (bestIndex === -1 || bestScore <= 1) {
+        return [];
+      }
+
+      const headers = (rows[bestIndex] || []).map((cell, index) => {
+        const value = String(cell || "").trim();
+        return value || `col_${index + 1}`;
+      });
+
+      return rows.slice(bestIndex + 1)
+        .filter((row) => Array.isArray(row) && row.some((cell) => String(cell || "").trim() !== ""))
+        .map((row) => {
+          const record = {};
+          headers.forEach((header, index) => {
+            record[header] = row[index] !== undefined ? row[index] : "";
+          });
+          return record;
+        });
+    }
+
+    function extractMetadataFromMatrix(matrix) {
+      const rows = Array.isArray(matrix) ? matrix : [];
+      const metadata = {};
+
+      rows.slice(0, 8).forEach((row) => {
+        if (!Array.isArray(row) || row.length < 2) return;
+        const key = normalizeText(row[0]);
+        const value = String(row[1] || "").trim();
+        if (!value) return;
+
+        if (key === "desde") metadata.fechaDesde = value.slice(0, 10).replace(/\//g, "-");
+        if (key === "hasta") metadata.fechaHasta = value.slice(0, 10).replace(/\//g, "-");
+      });
+
+      return metadata;
+    }
+
+    function detectSheetByRole(sheetEntries, role) {
+      const roleTokens = role === "propinas"
+        ? ["propina", "propinas", "tip", "tips"]
+        : ["venta", "ventas", "sales", "ticket", "tickets", "boleta", "boletas"];
+
+      const roleHeaders = role === "propinas"
+        ? ["montoPropina", "propina", "tip", "monto tip"]
+        : ["totalBruto", "total", "monto", "medioPago", "tipoVenta"];
+
+      let best = null;
+
+      sheetEntries.forEach((entry) => {
+        let score = 0;
+        const normalizedName = normalizeText(entry.name);
+        roleTokens.forEach((token) => {
+          if (normalizedName.includes(token)) score += 4;
+        });
+
+        const firstRow = entry.rows[0] || {};
+        Object.keys(firstRow).forEach((key) => {
+          const normalizedKey = normalizeHeader(key);
+          roleHeaders.forEach((header) => {
+            if (normalizedKey === normalizeHeader(header)) {
+              score += 2;
+            }
+          });
+        });
+
+        if (!best || score > best.score) {
+          best = { entry, score };
+        }
+      });
+
+      if (!best || best.score <= 0) {
+        return role === "ventas" && sheetEntries.length === 1 ? sheetEntries[0] : null;
+      }
+
+      return best.entry;
+    }
+
+    function normalizeVentaRow(row, fallbackLocal) {
+      const totalBruto = normalizeAmount(getRowValue(row, ["totalBruto", "total bruto", "total", "monto", "venta bruta"], 0));
+      const esCancelada = normalizeBoolean(getRowValue(row, ["esCancelada", "cancelada", "anulada", "nula"], false), false);
+      const esDelivery = normalizeBoolean(getRowValue(row, ["esDelivery", "delivery"], false), false);
+      const esValidaComision = normalizeBoolean(
+        getRowValue(row, ["esValidaComision", "valida comision", "valida", "comisionable"], !esCancelada),
+        !esCancelada
+      );
+
+      return {
+        ventaId: String(getRowValue(row, ["ventaId", "id", "folio", "ticket", "numero", "nro"], "")).trim(),
+        fecha: String(getRowValue(row, ["fecha", "dia"], "")).trim(),
+        hora: String(getRowValue(row, ["hora"], "")).trim(),
+        fechaCierre: String(getRowValue(row, ["fechaCierre", "fecha cierre", "cierre"], "")).trim(),
+        local: String(getRowValue(row, ["local", "sucursal"], fallbackLocal)).trim(),
+        estado: String(getRowValue(row, ["estado"], esCancelada ? "ANULADA" : "PAGADA")).trim(),
+        origen: String(getRowValue(row, ["origen", "canal"], "POS")).trim(),
+        tipoVenta: String(getRowValue(row, ["tipoVenta", "tipo venta", "tipo"], "")).trim(),
+        medioPago: String(getRowValue(row, ["medioPago", "medio pago", "pago"], "")).trim(),
+        totalBruto,
+        esDelivery,
+        esCancelada,
+        esValidaComision,
+        motivoExclusion: String(getRowValue(row, ["motivoExclusion", "motivo exclusion", "observacion", "observaciones"], "")).trim()
+      };
+    }
+
+    function normalizePropinaRow(row, fallbackLocal) {
+      const cancelada = normalizeBoolean(getRowValue(row, ["cancelada", "anulada"], false), false);
+      const esValidaPropina = normalizeBoolean(
+        getRowValue(row, ["esValidaPropina", "valida propina", "valida"], !cancelada),
+        !cancelada
+      );
+
+      return {
+        ventaId: String(getRowValue(row, ["ventaId", "id", "folio", "ticket", "numero", "nro"], "")).trim(),
+        fecha: String(getRowValue(row, ["fecha", "dia"], "")).trim(),
+        hora: String(getRowValue(row, ["hora"], "")).trim(),
+        local: String(getRowValue(row, ["local", "sucursal"], fallbackLocal)).trim(),
+        montoPropina: normalizeAmount(getRowValue(row, ["montoPropina", "monto propina", "propina", "tip", "monto"], 0)),
+        cancelada,
+        esDelivery: normalizeBoolean(getRowValue(row, ["esDelivery", "delivery"], false), false),
+        esValidaPropina,
+        motivoExclusion: String(getRowValue(row, ["motivoExclusion", "motivo exclusion", "observacion", "observaciones"], "")).trim()
+      };
+    }
+
+    function buildPayloadFromSheetEntries(sheetEntries, fileName) {
+      const ventasSheet = detectSheetByRole(sheetEntries, "ventas");
+      const propinasSheet = detectSheetByRole(sheetEntries, "propinas");
+      const fallbackLocal = $("localSelect").value.trim();
+      const metadataFromVentas = ventasSheet && ventasSheet.metadata ? ventasSheet.metadata : {};
+
+      const ventas = ventasSheet
+        ? ventasSheet.rows
+            .map((row) => normalizeVentaRow(row, fallbackLocal))
+            .filter((row) => row.ventaId || row.fecha || row.totalBruto || row.medioPago)
+        : [];
+
+      const propinas = propinasSheet
+        ? propinasSheet.rows
+            .map((row) => normalizePropinaRow(row, fallbackLocal))
+            .filter((row) => row.ventaId || row.fecha || row.montoPropina)
+        : [];
+
+      return {
+        metadata: {
+          nombreArchivo: fileName,
+          fechaDesde: metadataFromVentas.fechaDesde || "",
+          fechaHasta: metadataFromVentas.fechaHasta || "",
+          observaciones: `Archivo detectado automáticamente desde ${fileName}.`
+        },
+        ventas,
+        propinas
+      };
+    }
+
+    async function ensureXlsxLoaded() {
+      if (window.XLSX) return window.XLSX;
+      throw new Error("La librería XLSX no está disponible. Recarga la página e intenta nuevamente.");
+    }
+
+    async function parseSpreadsheetFile(file) {
+      const extension = String(file.name || "").split(".").pop().toLowerCase();
+
+      if (extension === "json") {
+        const text = await file.text();
+        return {
+          payload: JSON.parse(text),
+          mode: "json"
+        };
+      }
+
+      if (extension === "csv") {
+        const text = await file.text();
+        return {
+          payload: buildPayloadFromSheetEntries([{ name: file.name, rows: parseCsvToObjects(text) }], file.name),
+          mode: "csv"
+        };
+      }
+
+      if (extension === "xls" || extension === "xlsx") {
+        const XLSX = await ensureXlsxLoaded();
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array" });
+        const sheetEntries = workbook.SheetNames.map((sheetName) => ({
+          name: sheetName,
+          matrix: XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: "" })
+        })).map((entry) => {
+          const expectedAliases = normalizeText(entry.name).includes("propina")
+            ? [
+                ["fecha pago", "fecha", "dia"],
+                ["monto", "monto propina", "propina", "tip"],
+                ["cancelado", "cancelada"],
+                ["id venta", "id. venta", "ventaId", "folio"]
+              ]
+            : [
+                ["fecha", "dia"],
+                ["medio de pago", "medioPago", "pago"],
+                ["total", "total bruto", "monto"],
+                ["tipo de venta", "tipoVenta"],
+                ["camarero / repartidor", "origen", "estado"]
+              ];
+
+          return {
+            name: entry.name,
+            metadata: extractMetadataFromMatrix(entry.matrix),
+            rows: sheetRowsToObjects(entry.matrix, expectedAliases)
+          };
+        }).filter((entry) => entry.rows.length > 0);
+
+        return {
+          payload: buildPayloadFromSheetEntries(sheetEntries, file.name),
+          mode: "spreadsheet"
+        };
+      }
+
+      throw new Error("Formato no soportado. Usa JSON, CSV, XLS o XLSX.");
+    }
+
     async function sha256Hex(text) {
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
       return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function getPeriodType() {
+      return $("periodoTipoSelect").value;
+    }
+
+    function setVisiblePeriodControl() {
+      const type = getPeriodType();
+      $("periodoMensualPicker").hidden = type !== "mensual";
+      $("periodoSemanalPicker").hidden = type !== "semanal";
+      $("periodoDiarioPicker").hidden = type !== "diario";
+      closeAllPeriodPopovers();
+    }
+
+    function formatDateIso(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    }
+
+    function parseDateParts(isoDate) {
+      const [year, month, day] = String(isoDate || "").split("-").map(Number);
+      if (!year || !month || !day) return null;
+      return new Date(year, month - 1, day);
+    }
+
+    function formatDateDisplay(date) {
+      return `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+    }
+
+    function formatMonthLabel(periodo) {
+      const [year, month] = String(periodo || "").split("-").map(Number);
+      if (!year || !month) return "Selecciona un mes";
+      return `${MONTH_NAMES[month - 1]} ${year}`;
+    }
+
+    function formatWeekLabel(periodo) {
+      const range = getWeekStartEnd(periodo);
+      if (!range) return "Selecciona una semana";
+      return `Semana ${String(periodo).slice(-2)} · ${formatDateDisplay(parseDateParts(range.from))} al ${formatDateDisplay(parseDateParts(range.to))}`;
+    }
+
+    function formatDayLabel(periodo) {
+      const date = parseDateParts(periodo);
+      if (!date) return "Selecciona un día";
+      return formatDateDisplay(date);
+    }
+
+    function setLogicalDateValue(id, isoDate) {
+      const input = $(id);
+      input.dataset.iso = isoDate || "";
+      input.value = isoDate ? formatDateDisplay(parseDateParts(isoDate)) : "";
+    }
+
+    function getLogicalDateValue(id) {
+      const input = $(id);
+      return String(input.dataset.iso || input.value || "").trim();
+    }
+
+    function getIsoWeekValue(date) {
+      const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const day = target.getUTCDay() || 7;
+      target.setUTCDate(target.getUTCDate() + 4 - day);
+      const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((target - yearStart) / 86400000) + 1) / 7);
+      return `${target.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+    }
+
+    function getWeekStartEnd(weekValue) {
+      const [yearText, weekText] = String(weekValue || "").split("-W");
+      const year = Number(yearText);
+      const week = Number(weekText);
+      if (!year || !week) return null;
+
+      const jan4 = new Date(Date.UTC(year, 0, 4));
+      const day = jan4.getUTCDay() || 7;
+      const monday = new Date(jan4);
+      monday.setUTCDate(jan4.getUTCDate() - day + 1 + (week - 1) * 7);
+      const sunday = new Date(monday);
+      sunday.setUTCDate(monday.getUTCDate() + 6);
+
+      return {
+        from: formatDateIso(new Date(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate())),
+        to: formatDateIso(new Date(sunday.getUTCFullYear(), sunday.getUTCMonth(), sunday.getUTCDate()))
+      };
+    }
+
+    function getWeeksInYear(year) {
+      const dec28 = new Date(Date.UTC(year, 11, 28));
+      return Number(getIsoWeekValue(new Date(dec28.getUTCFullYear(), dec28.getUTCMonth(), dec28.getUTCDate())).slice(-2));
+    }
+
+    function buildWeeklyMonthOptions() {
+      $("periodoSemanalMonthSelect").innerHTML = MONTH_NAMES.map((monthName, monthIndex) => (
+        `<option value="${monthIndex}">${monthName}</option>`
+      )).join("");
+    }
+
+    function getWeeksForMonth(year, monthIndex) {
+      const totalWeeks = getWeeksInYear(year);
+      const monthStart = new Date(year, monthIndex, 1);
+      const monthEnd = new Date(year, monthIndex + 1, 0);
+
+      return Array.from({ length: totalWeeks }, (_, index) => {
+        const weekNumber = index + 1;
+        const value = `${year}-W${String(weekNumber).padStart(2, "0")}`;
+        const range = getWeekStartEnd(value);
+        const fromDate = parseDateParts(range.from);
+        const toDate = parseDateParts(range.to);
+        const overlapsMonth = fromDate <= monthEnd && toDate >= monthStart;
+        return overlapsMonth ? { value, range, weekNumber } : null;
+      }).filter(Boolean);
+    }
+
+    function openPeriodPopover(key, shouldOpen) {
+      const trigger = $(`periodo${key}Trigger`);
+      const popover = $(`periodo${key}Popover`);
+      if (!trigger || !popover) return;
+      const open = typeof shouldOpen === "boolean" ? shouldOpen : !popover.classList.contains("show");
+      ["Mensual", "Semanal", "Diario"].forEach((name) => {
+        const currentTrigger = $(`periodo${name}Trigger`);
+        const currentPopover = $(`periodo${name}Popover`);
+        if (!currentTrigger || !currentPopover) return;
+        const active = name === key && open;
+        currentPopover.classList.toggle("show", active);
+        currentTrigger.classList.toggle("open", active);
+        currentTrigger.setAttribute("aria-expanded", active ? "true" : "false");
+      });
+    }
+
+    function closeAllPeriodPopovers() {
+      openPeriodPopover("Mensual", false);
+      openPeriodPopover("Semanal", false);
+      openPeriodPopover("Diario", false);
+    }
+
+    function setMonthlyPeriod(value) {
+      periodState.monthly = value || "";
+      $("periodoMensualLabel").innerText = formatMonthLabel(periodState.monthly);
+      if (periodState.monthly) {
+        const [year, month] = periodState.monthly.split("-").map(Number);
+        pickerState.monthlyYear = year;
+        pickerState.dailyMonth = new Date(year, month - 1, 1);
+      }
+      renderMonthPopover();
+      syncDatesFromPeriod();
+    }
+
+    function setWeeklyPeriod(value) {
+      periodState.weekly = value || "";
+      $("periodoSemanalLabel").innerText = formatWeekLabel(periodState.weekly);
+      if (periodState.weekly) {
+        const range = getWeekStartEnd(periodState.weekly);
+        const date = range ? parseDateParts(range.from) : null;
+        if (date) {
+          pickerState.weeklyYear = date.getFullYear();
+          pickerState.weeklyMonth = date.getMonth();
+          pickerState.dailyMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+        }
+      }
+      renderWeekPopover();
+      syncDatesFromPeriod();
+    }
+
+    function setDailyPeriod(value) {
+      periodState.daily = value || "";
+      $("periodoDiarioLabel").innerText = formatDayLabel(periodState.daily);
+      if (periodState.daily) {
+        const date = parseDateParts(periodState.daily);
+        if (date) {
+          pickerState.dailyMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+          pickerState.monthlyYear = date.getFullYear();
+          pickerState.weeklyYear = date.getFullYear();
+        }
+      }
+      renderDayPopover();
+      syncDatesFromPeriod();
+    }
+
+    function renderMonthPopover() {
+      $("periodoMensualYear").innerText = String(pickerState.monthlyYear);
+      $("periodoMensualGrid").innerHTML = MONTH_NAMES.map((monthName, monthIndex) => {
+        const value = `${pickerState.monthlyYear}-${String(monthIndex + 1).padStart(2, "0")}`;
+        const active = value === periodState.monthly ? "active" : "";
+        return `<button class="picker-option ${active}" type="button" data-month-value="${value}">${monthName.slice(0, 3)}</button>`;
+      }).join("");
+    }
+
+    function renderWeekPopover() {
+      const year = pickerState.weeklyYear;
+      const monthIndex = pickerState.weeklyMonth;
+      const weeks = getWeeksForMonth(year, monthIndex);
+      $("periodoSemanalYear").innerText = String(year);
+      $("periodoSemanalMonthSelect").value = String(monthIndex);
+      $("periodoSemanalGrid").innerHTML = weeks.length ? weeks.map(({ value, range, weekNumber }) => {
+        const active = value === periodState.weekly ? "active" : "";
+        return `
+          <button class="picker-option week-option ${active}" type="button" data-week-value="${value}">
+            <span>Semana ${String(weekNumber).padStart(2, "0")}</span>
+            <small>${formatDateDisplay(parseDateParts(range.from))} al ${formatDateDisplay(parseDateParts(range.to))}</small>
+          </button>
+        `;
+      }).join("") : `<div class="note-box">No hay semanas disponibles para este mes.</div>`;
+    }
+
+    function renderDayHead() {
+      $("periodoDiarioHead").innerHTML = DAY_SHORT_NAMES.map((label) => `<span>${label}</span>`).join("");
+    }
+
+    function renderDayPopover() {
+      const base = new Date(pickerState.dailyMonth.getFullYear(), pickerState.dailyMonth.getMonth(), 1);
+      const year = base.getFullYear();
+      const month = base.getMonth();
+      $("periodoDiarioTitle").innerText = `${MONTH_NAMES[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1);
+      const offset = (firstDay.getDay() + 6) % 7;
+      const totalDays = new Date(year, month + 1, 0).getDate();
+      const cells = [];
+      const todayIso = formatDateIso(new Date());
+
+      for (let i = 0; i < offset; i++) {
+        cells.push(`<button class="day-cell muted" type="button" disabled aria-hidden="true"></button>`);
+      }
+
+      for (let day = 1; day <= totalDays; day++) {
+        const date = new Date(year, month, day);
+        const value = formatDateIso(date);
+        const active = value === periodState.daily ? "active" : "";
+        const today = value === todayIso ? "today" : "";
+        cells.push(`<button class="day-cell ${active} ${today}" type="button" data-day-value="${value}">${day}</button>`);
+      }
+
+      while (cells.length % 7 !== 0) {
+        cells.push(`<button class="day-cell muted" type="button" disabled aria-hidden="true"></button>`);
+      }
+
+      $("periodoDiarioGrid").innerHTML = cells.join("");
+    }
+
+    function syncDatesFromPeriod() {
+      const type = getPeriodType();
+      let periodo = "";
+      let from = "";
+      let to = "";
+
+      if (type === "mensual") {
+        periodo = periodState.monthly;
+        if (periodo) {
+          const [year, month] = periodo.split("-").map(Number);
+          const first = new Date(year, month - 1, 1);
+          const last = new Date(year, month, 0);
+          from = formatDateIso(first);
+          to = formatDateIso(last);
+        }
+      } else if (type === "semanal") {
+        periodo = periodState.weekly;
+        const range = getWeekStartEnd(periodo);
+        if (range) {
+          from = range.from;
+          to = range.to;
+        }
+      } else {
+        periodo = periodState.daily;
+        from = periodo;
+        to = periodo;
+      }
+
+      $("periodoInput").value = periodo;
+      setLogicalDateValue("fechaDesdeInput", from);
+      setLogicalDateValue("fechaHastaInput", to);
+    }
+
+    async function refreshExistingImportsWarning() {
+      const periodo = $("periodoInput").value.trim();
+      const local = $("localSelect").value.trim();
+
+      if (!periodo || !local) {
+        setExistingImportStatus("", "");
+        return;
+      }
+
+      try {
+        const data = await LVAuth.apiGet({
+          accion: "ConsultarImportacionesVentas",
+          local,
+          periodo
+        });
+
+        if (!data.importaciones || !data.importaciones.length) {
+          setExistingImportStatus("success", "No existe una carga previa para este local y período.");
+          return;
+        }
+
+        if (data.hayImportacionActiva) {
+          const activa = data.importaciones.find((item) => item.estado === "SUCCESS");
+          setExistingImportStatus(
+            "warning",
+            `Ya existe una carga activa para ${local} en ${periodo}. Si importas de nuevo, se reemplazará. Última activa: ${activa ? activa.nombreArchivo : "sin nombre"} (${activa ? activa.fechaImportacion : "sin fecha"}).`
+          );
+          return;
+        }
+
+        setExistingImportStatus("info", `Existen ${data.total} cargas históricas para este local y período, pero ninguna activa.`);
+      } catch (error) {
+        setExistingImportStatus("error", error.message || "No se pudo consultar el historial de importaciones.");
+      }
     }
 
     async function buildPayloadFromInputs() {
@@ -695,7 +1704,7 @@
         throw new Error("El JSON no es válido.");
       }
 
-      const payload = mergePayloadWithForm(parsed, $("nombreArchivoInput").value.trim());
+      const payload = mergePayloadWithForm(parsed, currentSourceFileName);
       const metadata = payload.metadata || {};
 
       const requiredFields = ["local", "periodo", "nombreArchivo", "fechaDesde", "fechaHasta"];
@@ -808,10 +1817,11 @@
     function fillInputsFromExample() {
       const example = getExamplePayload();
       $("localSelect").value = "Paseo del Lago";
-      $("periodoInput").value = "2026-06";
-      $("fechaDesdeInput").value = "2026-06-01";
-      $("fechaHastaInput").value = "2026-06-30";
-      $("nombreArchivoInput").value = example.metadata.nombreArchivo;
+      $("periodoTipoSelect").value = "mensual";
+      setVisiblePeriodControl();
+      setMonthlyPeriod("2026-06");
+      currentSourceFileName = example.metadata.nombreArchivo;
+      $("nombreArchivoLogico").innerText = currentSourceFileName;
       $("observacionesInput").value = example.metadata.observaciones;
       $("jsonInput").value = formatJson(example);
       currentPayload = null;
@@ -820,16 +1830,52 @@
       clearStatus();
     }
 
+    function resetFormDefaults() {
+      $("localSelect").value = "";
+      $("periodoTipoSelect").value = "";
+      periodState = { monthly: "", weekly: "", daily: "" };
+      pickerState = {
+        monthlyYear: new Date().getFullYear(),
+        weeklyYear: new Date().getFullYear(),
+        weeklyMonth: new Date().getMonth(),
+        dailyMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      };
+      $("periodoMensualLabel").innerText = "Selecciona un mes";
+      $("periodoSemanalLabel").innerText = "Selecciona una semana";
+      $("periodoDiarioLabel").innerText = "Selecciona un día";
+      renderMonthPopover();
+      renderWeekPopover();
+      renderDayPopover();
+      setVisiblePeriodControl();
+      syncDatesFromPeriod();
+      currentSourceFileName = "";
+      $("nombreArchivoLogico").innerText = "Se completará al cargar un archivo.";
+      $("observacionesInput").value = "";
+      $("jsonInput").value = "";
+      $("jsonFileInput").value = "";
+      $("btnImport").disabled = true;
+      currentPayload = null;
+      setPreviewText("metadataPreview", "Sin preview todavía.");
+      setPreviewText("ventaPreview", "Sin ventas.");
+      setPreviewText("propinaPreview", "Sin propinas.");
+      setPreviewText("responsePreview", "Sin respuesta todavía.");
+      $("statVentas").innerText = "0";
+      $("statPropinas").innerText = "0";
+      $("statVentaValida").innerText = "$0";
+      $("statPropinaValida").innerText = "$0";
+      clearStatus();
+      setExistingImportStatus("", "");
+    }
+
     async function handleJsonFile(file) {
       if (!file) return;
-      const text = await file.text();
-      $("jsonInput").value = text;
-      if (!$("nombreArchivoInput").value.trim()) {
-        $("nombreArchivoInput").value = file.name;
-      }
+      const result = await parseSpreadsheetFile(file);
+      $("jsonInput").value = formatJson(result.payload);
+      currentSourceFileName = file.name;
+      $("nombreArchivoLogico").innerText = file.name;
       currentPayload = null;
       $("btnImport").disabled = true;
-      setStatus("info", `Archivo cargado: ${file.name}. Ahora construye el preview.`);
+      setStatus("info", `Archivo cargado: ${file.name} (${result.mode}). Ahora construye el preview.`);
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
@@ -837,7 +1883,74 @@
       if (!session) return;
 
       $("sessionUser").innerText = `${session.displayName || "Administrador"} · ${session.role} · ${APP_CONFIG.ENVIRONMENT.toUpperCase()}`;
-      fillInputsFromExample();
+      renderDayHead();
+      buildWeeklyMonthOptions();
+      resetFormDefaults();
+
+      $("periodoTipoSelect").addEventListener("change", async () => {
+        setVisiblePeriodControl();
+        syncDatesFromPeriod();
+        setExistingImportStatus("", "");
+      });
+
+      $("localSelect").addEventListener("change", async () => {
+        setExistingImportStatus("", "");
+      });
+
+      $("periodoMensualTrigger").addEventListener("click", () => openPeriodPopover("Mensual"));
+      $("periodoMensualPrev").addEventListener("click", () => {
+        pickerState.monthlyYear -= 1;
+        renderMonthPopover();
+      });
+      $("periodoMensualNext").addEventListener("click", () => {
+        pickerState.monthlyYear += 1;
+        renderMonthPopover();
+      });
+      $("periodoMensualGrid").addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-month-value]");
+        if (!button) return;
+        setMonthlyPeriod(button.dataset.monthValue);
+        setExistingImportStatus("", "");
+        openPeriodPopover("Mensual", false);
+      });
+
+      $("periodoSemanalTrigger").addEventListener("click", () => openPeriodPopover("Semanal"));
+      $("periodoSemanalPrev").addEventListener("click", () => {
+        pickerState.weeklyYear -= 1;
+        renderWeekPopover();
+      });
+      $("periodoSemanalNext").addEventListener("click", () => {
+        pickerState.weeklyYear += 1;
+        renderWeekPopover();
+      });
+      $("periodoSemanalMonthSelect").addEventListener("change", (event) => {
+        pickerState.weeklyMonth = Number(event.target.value);
+        renderWeekPopover();
+      });
+      $("periodoSemanalGrid").addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-week-value]");
+        if (!button) return;
+        setWeeklyPeriod(button.dataset.weekValue);
+        setExistingImportStatus("", "");
+        openPeriodPopover("Semanal", false);
+      });
+
+      $("periodoDiarioTrigger").addEventListener("click", () => openPeriodPopover("Diario"));
+      $("periodoDiarioPrev").addEventListener("click", () => {
+        pickerState.dailyMonth = new Date(pickerState.dailyMonth.getFullYear(), pickerState.dailyMonth.getMonth() - 1, 1);
+        renderDayPopover();
+      });
+      $("periodoDiarioNext").addEventListener("click", () => {
+        pickerState.dailyMonth = new Date(pickerState.dailyMonth.getFullYear(), pickerState.dailyMonth.getMonth() + 1, 1);
+        renderDayPopover();
+      });
+      $("periodoDiarioGrid").addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-day-value]");
+        if (!button) return;
+        setDailyPeriod(button.dataset.dayValue);
+        setExistingImportStatus("", "");
+        openPeriodPopover("Diario", false);
+      });
 
       $("btnBack").addEventListener("click", () => {
         window.location.href = "adminPanel.html" + window.location.search;
@@ -851,6 +1964,10 @@
       });
 
       $("btnLoadExample").addEventListener("click", fillInputsFromExample);
+
+      $("btnCheckExisting").addEventListener("click", async () => {
+        await refreshExistingImportsWarning();
+      });
 
       $("btnBuildPreview").addEventListener("click", async () => {
         try {
@@ -875,6 +1992,12 @@
           await handleJsonFile(event.target.files && event.target.files[0]);
         } catch (error) {
           setStatus("error", error.message || "No se pudo leer el archivo.");
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest(".picker-shell")) {
+          closeAllPeriodPopovers();
         }
       });
     });

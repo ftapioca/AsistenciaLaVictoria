@@ -136,6 +136,17 @@ function doGet(e) {
     }
   }
 
+  if (accion === "ConsultarImportacionesVentas") {
+    try {
+      return consultarImportacionesVentas(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "Acceso no autorizado."
+      });
+    }
+  }
+
   return obtenerColaboradoresPorLocal(params);
 }
 

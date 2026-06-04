@@ -141,14 +141,17 @@ Estado actual:
 
 - protegida por sesión de administrador
 - usa el entorno activo (`prod` o `staging`)
-- carga JSON normalizado desde archivo o textarea
+- carga `JSON`, `CSV`, `XLS` y `XLSX` desde archivo o textarea
+- detecta hojas de ventas y propinas por nombre/headers comunes
+- normaliza registros al payload esperado por Apps Script
 - calcula `hashArchivo`
 - muestra preview técnico
 - llama al endpoint `ImportarVentas`
 
 Limitación actual:
 
-- todavía no parsea archivos POS `XLS/XLSX/CSV`; esa etapa sigue pendiente
+- la detección de columnas y hojas todavía es heurística; formatos POS muy distintos requerirán reglas adicionales
+- todavía faltan hojas de `pagos` y `productos`
 
 ## Entornos Frontend
 

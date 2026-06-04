@@ -289,6 +289,50 @@ function importarVentas(params) {
   return responderJSON(importarVentasInterno_(params));
 }
 
+function consultarImportacionesVentas(params) {
+  requireAdminSession(params);
+
+  var hojaImportaciones = getSheet_(HOJA_IMPORTACIONES_VENTAS, SPREADSHEET_KEY_VENTAS);
+  var importaciones = obtenerRegistrosImportacionesVentas_(hojaImportaciones);
+  var localFiltro = normalizarTexto(params.local);
+  var periodoFiltro = normalizarTexto(params.periodo);
+
+  var filtradas = importaciones.filter(function(importacion) {
+    if (localFiltro && normalizarTexto(importacion.local) !== localFiltro) {
+      return false;
+    }
+
+    if (periodoFiltro && normalizarTexto(importacion.periodo) !== periodoFiltro) {
+      return false;
+    }
+
+    return true;
+  }).sort(function(a, b) {
+    return String(b.fechaImportacion || "").localeCompare(String(a.fechaImportacion || ""));
+  });
+
+  return responderJSON({
+    status: "SUCCESS",
+    total: filtradas.length,
+    hayImportacionActiva: filtradas.some(function(importacion) {
+      return normalizarTexto(importacion.estado) === normalizarTexto(ESTADO_IMPORTACION_SUCCESS);
+    }),
+    importaciones: filtradas.map(function(importacion) {
+      return {
+        importId: String(importacion.importId || "").trim(),
+        fechaImportacion: String(importacion.fechaImportacion || "").trim(),
+        usuario: String(importacion.usuario || "").trim(),
+        local: String(importacion.local || "").trim(),
+        periodo: String(importacion.periodo || "").trim(),
+        nombreArchivo: String(importacion.nombreArchivo || "").trim(),
+        hashArchivo: String(importacion.hashArchivo || "").trim(),
+        estado: String(importacion.estado || "").trim(),
+        observaciones: String(importacion.observaciones || "").trim()
+      };
+    })
+  });
+}
+
 function importarVentasInterno_(params) {
   var sesion = requireAdminSession(params);
   var lock = LockService.getScriptLock();

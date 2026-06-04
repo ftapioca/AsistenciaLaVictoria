@@ -107,23 +107,23 @@ Objetivo: permitir que admin cargue archivo POS y vea una vista previa robusta a
 - [x] Mostrar badge visual del entorno activo.
 - [x] Crear `ventasMensuales.html`.
 - [x] Integrar protección por sesión admin.
-- [ ] Selector de:
-  - [ ] local
-  - [ ] período
-  - [ ] archivo
-- [ ] Integrar parser XLS/XLSX/CSV.
-- [ ] Detectar hojas:
-  - [ ] ventas
-  - [ ] propinas
+- [x] Selector de:
+  - [x] local
+  - [x] período
+  - [x] archivo
+- [x] Integrar parser XLS/XLSX/CSV.
+- [x] Detectar hojas base:
+  - [x] ventas
+  - [x] propinas
   - [ ] pagos
   - [ ] productos
-- [ ] Normalizar datos en navegador.
-- [ ] Calcular hash del archivo o contenido normalizado.
-- [ ] Mostrar preview:
-  - [ ] resumen
-  - [ ] ventas válidas
+- [x] Normalizar datos en navegador.
+- [x] Calcular hash del archivo o contenido normalizado.
+- [x] Mostrar preview:
+  - [x] resumen
+  - [x] ventas válidas
   - [ ] ventas excluidas
-  - [ ] propinas válidas
+  - [x] propinas válidas
   - [ ] propinas excluidas
 - [ ] Confirmar importación.
 - [x] Llamar endpoint `ImportarVentas`.
@@ -257,13 +257,13 @@ Respuesta mínima esperada:
   - `app-config.staging.js`
   - `app-config.js`
 - Todas las vistas principales y los HTML de `Assets/` muestran badge visual del entorno activo.
-- `ventasMensuales.html` quedó creada como importador técnico basado en JSON normalizado para probar el endpoint antes del parser POS final.
+- `ventasMensuales.html` ya soporta carga de `JSON`, `CSV`, `XLS` y `XLSX` con normalización inicial en navegador.
 
 Pendiente importante para retomar:
 
 - validar end-to-end `ImportarVentas` contra la web app correcta de `staging`
 - decidir si `staging` seguirá probándose contra `@HEAD` o contra un deployment web app versionado específico
-- reemplazar el harness JSON por parser POS real `XLS/XLSX/CSV`
+- ampliar reglas de parsing para formatos POS reales y detectar también hojas de `pagos` y `productos`
 
 Actualización:
 
