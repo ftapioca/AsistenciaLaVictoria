@@ -73,14 +73,79 @@ Setup local esperado:
 
 - `npm install`
 - `npm run gas:login`
-- crear `.clasp.json` con el `scriptId` del proyecto y `rootDir: "AppsScript"`
-- `npm run gas:pull` para bajar el proyecto remoto
-- `npm run gas:push` para subir cambios desde este repo
+- crear `.clasp.prod.json` y `.clasp.staging.json` a partir de las plantillas versionadas
+- `npm run gas:staging:pull` o `npm run gas:prod:pull` para bajar el proyecto remoto
+- `npm run gas:staging:push` o `npm run gas:prod:push` para subir cambios desde este repo
 
 No se deben versionar:
 
 - `.clasp.json`
+- `.clasp.prod.json`
+- `.clasp.staging.json`
 - `.clasprc.json`
+
+## Estrategia de entornos
+
+Para evitar tocar producción al probar ramas, el proyecto debe usar dos Apps Script separados:
+
+- `staging`: pruebas de ramas y cambios en curso
+- `prod`: código publicado que usa el sistema en producción
+
+Cada proyecto Apps Script debe tener sus propios:
+
+- `Script ID`
+- deployments web app
+- `Script Properties`
+- spreadsheets asociados
+
+### Archivos de configuración local
+
+- `.clasp.prod.json`
+- `.clasp.staging.json`
+
+Ambos usan `rootDir: "AppsScript"` y cambian solo el `scriptId`.
+
+### Flujo recomendado
+
+Para ramas:
+
+1. trabajar en `feature/...`
+2. `npm run gas:staging:push`
+3. `npm run gas:staging:version -- "descripcion"`
+4. `npm run gas:staging:deploy -- -V <version> -d "descripcion"`
+5. probar sobre la web app de staging
+
+Para producción:
+
+1. merge a `main`
+2. `npm run gas:prod:push`
+3. `npm run gas:prod:version -- "descripcion"`
+4. `npm run gas:prod:deploy -- -V <version> -d "descripcion"` o actualizar el deployment activo con `npm run gas:prod:update-deploy -- -i <deploymentId> -V <version> -d "descripcion"`
+5. validar la web app productiva
+
+### Comandos útiles
+
+- `npm run gas:staging:deployments`
+- `npm run gas:prod:deployments`
+
+Estos listan `deploymentId`, versiones y descripciones, necesarios para actualizar deployments existentes.
+
+### Sintaxis práctica
+
+Crear versión:
+
+- `npm run gas:staging:version -- "staging: cambios en importador"`
+- `npm run gas:prod:version -- "prod: release ventas v1"`
+
+Crear deployment versionado:
+
+- `npm run gas:staging:deploy -- -V 1 -d "staging baseline"`
+- `npm run gas:prod:deploy -- -V 7 -d "release produccion"`
+
+Actualizar deployment existente:
+
+- `npm run gas:staging:update-deploy -- -i <deploymentId> -V <version> -d "staging actualizado"`
+- `npm run gas:prod:update-deploy -- -i <deploymentId> -V <version> -d "release actualizada"`
 
 ## Configuración de Script Properties
 
