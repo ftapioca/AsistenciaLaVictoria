@@ -62,6 +62,23 @@ No expone `rut`.
 
 Esta carpeta debe mantenerse alineada con el proyecto desplegado en Google Apps Script para poder revisar cambios con contexto completo desde este repositorio.
 
+## Trabajo local con VS Code
+
+La forma recomendada para conectar este repo con el proyecto real de Google Apps Script es usar `clasp`.
+
+Setup local esperado:
+
+- `npm install`
+- `npm run gas:login`
+- crear `.clasp.json` con el `scriptId` del proyecto y `rootDir: "AppsScript"`
+- `npm run gas:pull` para bajar el proyecto remoto
+- `npm run gas:push` para subir cambios desde este repo
+
+No se deben versionar:
+
+- `.clasp.json`
+- `.clasprc.json`
+
 ## Configuración de Script Properties
 
 El proyecto debe configurarse con IDs explícitos de Google Sheets. Ya no debe depender de `getActiveSpreadsheet()`.
