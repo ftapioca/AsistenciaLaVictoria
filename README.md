@@ -139,13 +139,11 @@ Propiedades esperadas:
 
 - `LV_SPREADSHEET_RRHH_ID`
 - `LV_SPREADSHEET_VENTAS_ID`
-- `LV_SPREADSHEET_COMISIONES_ID`
-- `LV_SPREADSHEET_CUADRATURAS_ID`
 
 Estado actual:
 
 - los módulos existentes de asistencia, turnos, sesión y cierre usan `LV_SPREADSHEET_RRHH_ID`
-- ventas, comisiones y cuadraturas quedan preparados para separarse en otros spreadsheets cuando se implementen
+- ventas y comisiones deben usar `LV_SPREADSHEET_VENTAS_ID`
 
 ## Acciones Públicas
 

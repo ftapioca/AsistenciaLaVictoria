@@ -69,11 +69,9 @@ El proyecto debe configurarse con IDs explícitos de Google Sheets. Ya no debe d
 Propiedades requeridas:
 
 - `LV_SPREADSHEET_RRHH_ID`
-
-Propiedades reservadas para nuevos módulos:
-
 - `LV_SPREADSHEET_VENTAS_ID`
-- `LV_SPREADSHEET_COMISIONES_ID`
-- `LV_SPREADSHEET_CUADRATURAS_ID`
 
-Actualmente asistencia, autenticación, turnos y cierre leen/escriben sobre el spreadsheet configurado en `LV_SPREADSHEET_RRHH_ID`.
+Actualmente:
+
+- asistencia, autenticación, turnos y cierre leen/escriben sobre `LV_SPREADSHEET_RRHH_ID`
+- ventas y comisiones deben leer/escribir sobre `LV_SPREADSHEET_VENTAS_ID`
