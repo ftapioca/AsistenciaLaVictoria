@@ -2,10 +2,12 @@
   "name": "asistencialavictoria",
   "version": "1.0.0",
   "description": "Registro de asistencia y turnos para La Victoria.",
+  "type": "module",
   "main": "app-config.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "node scripts/postbuild-ui.mjs",
     "preview": "vite preview",
     "gas:login": "clasp login",
     "gas:logout": "clasp logout",
@@ -43,6 +45,7 @@
   "devDependencies": {
     "@google/clasp": "^3.3.0",
     "@tailwindcss/forms": "^0.5.11",
+    "@tailwindcss/postcss": "^4.3.0",
     "@tailwindcss/typography": "^0.5.19",
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.15",

@@ -2,19 +2,20 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   server: {
-    open: true,
+    open: '/src/index.html',
     port: 3000,
   },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-      },
-    },
     rollupOptions: {
+      input: {
+        designSystem: 'src/index.html',
+        adminPanel: 'src/adminPanel.html',
+        adminPanelPreview: 'src/adminPanel-preview.html',
+        misTurnos: 'src/misTurnos.html',
+        misTurnosPreview: 'src/misTurnos-preview.html',
+      },
       output: {
         manualChunks: undefined,
       },

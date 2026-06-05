@@ -1,12 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.js";
 
-/* ============================================
-   DESIGN SYSTEM: ESTILOS BASE GLOBALES
-   ============================================ */
-
-/* Reset y propiedades fundamentales */
 *,
 *::before,
 *::after {
@@ -21,221 +15,55 @@ html {
 
 body {
   margin: 0;
-  padding: 0;
   min-height: 100vh;
-  font-family: theme('fontFamily.sans');
-  color: theme('colors.neutral.charcoal');
-  background-color: theme('colors.neutral.paper');
   line-height: 1.6;
 }
 
-/* ============================================
-   TIPOGRAFÍA BASE
-   ============================================ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin: 0;
+}
 
 h1 {
-  @apply text-6xl font-black leading-tight tracking-tight;
   letter-spacing: -0.06em;
+  padding-bottom: 0.25em;
 }
 
 h2 {
-  @apply text-5xl font-bold leading-snug tracking-tight;
   letter-spacing: -0.04em;
 }
 
 h3 {
-  @apply text-4xl font-bold leading-snug;
   letter-spacing: -0.02em;
 }
 
-h4 {
-  @apply text-3xl font-semibold leading-snug;
-}
-
-h5 {
-  @apply text-2xl font-semibold leading-snug;
-}
-
-h6 {
-  @apply text-xl font-semibold;
-}
-
-p {
-  @apply text-base leading-relaxed;
-}
-
-small {
-  @apply text-sm;
-}
-
-/* ============================================
-   COMPONENTES BASE
-   ============================================ */
-
-/* Buttons */
-button {
-  @apply font-medium transition-all duration-fast cursor-pointer;
-  appearance: none;
-  border: none;
-  background: none;
-  padding: 0;
-
-  &:disabled {
-    @apply opacity-50 cursor-not-allowed;
-  }
-
-  &:focus-visible {
-    @apply outline-none ring-2 ring-offset-2 ring-brand-bun;
-  }
-}
-
-/* Links */
-a {
-  @apply text-brand-bun transition-colors duration-fast;
-  text-decoration: none;
-
-  &:hover {
-    @apply text-brand-bun-dark;
-  }
-
-  &:focus-visible {
-    @apply outline-none ring-2 ring-offset-2 ring-brand-bun rounded-sm;
-  }
-}
-
-/* Inputs, Textareas, Selects */
+button,
 input,
 textarea,
 select {
-  @apply font-inherit;
-
-  &:focus-visible {
-    @apply outline-none ring-2 ring-offset-0 ring-brand-bun;
-  }
+  font: inherit;
 }
 
-/* Tables */
+button {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 table {
-  @apply w-full border-collapse;
+  width: 100%;
+  border-collapse: collapse;
 }
 
-thead {
-  @apply bg-neutral-charcoal/5 border-b border-neutral-charcoal/10;
-}
-
-th {
-  @apply text-left px-4 py-3 font-semibold text-sm text-neutral-charcoal;
-}
-
-td {
-  @apply px-4 py-3 border-b border-neutral-charcoal/5;
-}
-
-/* Lists */
-ul,
-ol {
-  @apply list-inside;
-}
-
-/* ============================================
-   UTILIDADES PERSONALIZADAS
-   ============================================ */
-
-/* Contenedores */
-.container {
-  @apply max-w-container mx-auto;
-}
-
-.container-tight {
-  @apply max-w-5xl mx-auto;
-}
-
-.container-wide {
-  @apply max-w-7xl mx-auto;
-}
-
-/* Flexbox utilities */
-.flex-center {
-  @apply flex items-center justify-center;
-}
-
-.flex-between {
-  @apply flex items-center justify-between;
-}
-
-.flex-col-center {
-  @apply flex flex-col items-center justify-center;
-}
-
-/* Text utilities */
-.text-truncate {
-  @apply truncate;
-}
-
-.text-line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.text-line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Gradients */
-.gradient-primary {
-  @apply bg-gradient-to-r from-brand-bun to-brand-cheese;
-}
-
-.gradient-danger {
-  @apply bg-gradient-to-r from-brand-ketchup to-red-600;
-}
-
-.gradient-success {
-  @apply bg-gradient-to-r from-brand-lettuce to-green-600;
-}
-
-/* Shadows */
-.shadow-brand {
-  @apply shadow-brand;
-}
-
-.shadow-brand-sm {
-  @apply shadow-brand-sm;
-}
-
-/* Transitions */
-.transition-fast {
-  @apply transition-all duration-fast;
-}
-
-.transition-smooth {
-  @apply transition-all duration-base ease-in-out;
-}
-
-/* ============================================
-   ESTADOS VISUALES
-   ============================================ */
-
-/* Focus ring */
-.focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-bun;
-}
-
-/* Hover effects */
-.hover-lift {
-  @apply transition-transform duration-fast hover:-translate-y-1;
-}
-
-.hover-dim {
-  @apply transition-opacity duration-fast hover:opacity-80;
-}
-
-/* Loading state */
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -246,37 +74,8 @@ ol {
   animation: spin 0.8s linear infinite;
 }
 
-/* Disabled state */
-.disabled {
-  @apply opacity-50 cursor-not-allowed pointer-events-none;
-}
-
-/* ============================================
-   RESPONSIVE UTILITIES
-   ============================================ */
-
-@media (max-width: theme('screens.md')) {
-  .hidden-mobile {
-    @apply hidden;
-  }
-}
-
-@media (min-width: theme('screens.lg')) {
-  .hidden-desktop {
-    @apply hidden;
-  }
-}
-
-/* ============================================
-   IMPRESIÓN
-   ============================================ */
-
 @media print {
   body {
-    @apply bg-white;
-  }
-
-  .no-print {
-    @apply hidden;
+    background: #ffffff;
   }
 }

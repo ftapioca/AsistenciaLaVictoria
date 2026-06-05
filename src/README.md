@@ -4,20 +4,28 @@
 
 ```
 src/
-├── index.html          # Punto de entrada de Vite
+├── index.html          # Demo del Design System usada por Vite
+├── adminPanel.html     # Piloto Vite del panel administrativo
 ├── styles/
 │   ├── globals.css     # Estilos globales (Tailwind + base)
 │   └── ...             # Otros estilos específicos (si aplica)
 ├── scripts/
 │   ├── main.js         # Script principal (punto de entrada)
+│   ├── admin-panel.js  # Entrada del piloto migrado
 │   └── ...             # Otros scripts reutilizables
 ├── components/
-│   ├── Button.js       # Componentes reutilizables
-│   ├── Input.js
-│   ├── Card.js
+│   ├── Button.js       # Primitive reutilizable para acciones
+│   ├── Input.js        # Primitive reutilizable para formularios
+│   ├── Card.js         # Primitive reutilizable para contenedores
+│   ├── Badge.js        # Etiquetas y status pills
+│   ├── ActionCard.js   # Tarjetas con CTA integrada
+│   ├── LoadingOverlay.js # Overlay de espera reutilizable
+│   ├── PageHero.js     # Hero reusable para vistas internas
+│   ├── StatGrid.js     # Grid de highlights o métricas
+│   ├── ResourceList.js # Lista de recursos/descargas
 │   └── ...
 └── utils/
-    ├── helpers.js      # Funciones auxiliares
+    ├── cn.js           # Helper para composición de clases
     └── ...
 ```
 
@@ -44,6 +52,16 @@ Cada componente debe tener:
 - Un archivo `.js` con la lógica
 - Documentación clara
 - Ser agnóstico a la página (reutilizable en cualquier lugar)
+
+**Estado actual**:
+- `Button.js`, `Input.js` y `Card.js` ya están implementados como factories DOM.
+- `Badge.js`, `ActionCard.js` y `LoadingOverlay.js` amplían el set inicial de primitives.
+- `PageHero.js`, `StatGrid.js` y `ResourceList.js` formalizan patrones de layout del panel.
+- `main.js` renderiza una demo real usando esos primitives.
+- `adminPanel.html` en `src/` es el primer piloto migrado a este sistema.
+- `adminPanel-preview.html`, `misTurnos.html` y `misTurnos-preview.html` amplían la cobertura del sistema con rutas de revisión visual y pilotos reales.
+- `npm run build` genera `dist/design-system.html`, `dist/adminPanel.html`, `dist/adminPanel-preview.html`, `dist/misTurnos-design-system.html` y `dist/misTurnos-preview.html`.
+- el selector mensual de `misTurnos` quedó provisionalmente con `select` nativo; el popover custom sigue pendiente de rediseño y corrección.
 
 **Ejemplo**: `Button.js`
 ```javascript

@@ -194,7 +194,49 @@ Cada componente debe tener:
 4. **Variantes**: Diferentes estados visuales
 5. **Documentación**: Casos de uso
 
-### Button (Ejemplo)
+### Estado Actual Del Set Base
+
+Actualmente el sistema ya incluye:
+
+- `Button.js`
+- `Input.js`
+- `Card.js`
+- `Badge.js`
+- `ActionCard.js`
+- `LoadingOverlay.js`
+- `PageHero.js`
+- `StatGrid.js`
+- `ResourceList.js`
+
+Pilotos y previews actuales:
+
+- `src/adminPanel.html`: piloto migrado del panel administrativo con auth
+- `src/adminPanel-preview.html`: ruta visual sin auth para revisar layout del panel
+- `src/misTurnos.html`: piloto migrado de la vista personal de turnos con auth
+- `src/misTurnos-preview.html`: ruta visual sin auth para revisar calendario y densidad de información
+
+Estado del trabajo en esta rama:
+
+- la demo principal del design system ya compila como artefacto Vite autosuficiente
+- los tokens y primitives base ya sostienen hero, cards, acciones, badges, recursos y overlays
+- `adminPanel` ya quedó convertido a patrones formales reutilizables dentro de `src/components/`
+- `misTurnos` ya tiene piloto y preview visual funcional
+- el selector de mes en `misTurnos` quedó resuelto temporalmente con un `select` nativo
+
+Pendiente importante:
+
+- el popover custom para seleccionar meses no quedó con el comportamiento ni la experiencia visual esperada; hay que rediseñarlo y corregirlo antes de dar por cerrada la interacción final del calendario
+
+Siguientes pasos recomendados:
+
+1. corregir el popover custom del selector de meses en `misTurnos` y `misTurnos-preview`
+2. revisar responsividad fina de `misTurnos` en móvil, tablet y desktop
+3. migrar la siguiente pantalla real reutilizando los componentes ya formalizados
+4. conectar el build del design system al pipeline de despliegue cuando los previews queden cerrados
+
+### Button
+
+Existe una implementación base en `src/components/Button.js` para generar botones consistentes desde JavaScript.
 
 ```html
 <!-- Primario -->
@@ -218,7 +260,9 @@ Cada componente debe tener:
 </button>
 ```
 
-### Input (Ejemplo)
+### Input
+
+Existe una implementación base en `src/components/Input.js` con `label`, `hint` y estilos consistentes.
 
 ```html
 <div class="flex flex-col gap-sm">
@@ -231,7 +275,9 @@ Cada componente debe tener:
 </div>
 ```
 
-### Card (Ejemplo)
+### Card
+
+Existe una implementación base en `src/components/Card.js` para contenedores neutros, destacados y oscuros.
 
 ```html
 <div class="p-lg bg-neutral-paper rounded-2xl border border-neutral-charcoal/10 shadow-lg">
@@ -257,6 +303,16 @@ npm install
 ```bash
 npm run dev
 ```
+
+Abre la demo del sistema en `src/index.html`.
+
+### Artefactos Generados
+
+`npm run build` deja:
+
+- `dist/design-system.html`: demo del sistema
+- `dist/adminPanel.html`: piloto migrado del panel administrativo
+- recursos legacy copiados a `dist/` para navegación y pruebas locales del piloto
 
 Se abrirá un servidor en `http://localhost:3000`
 

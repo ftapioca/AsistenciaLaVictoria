@@ -1,3 +1,6 @@
+import forms from '@tailwindcss/forms';
+import typography from '@tailwindcss/typography';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -53,7 +56,7 @@ export default {
         '3xl': ['30px', { lineHeight: '36px', letterSpacing: '-0.4px' }],
         '4xl': ['36px', { lineHeight: '40px', letterSpacing: '-0.5px' }],
         '5xl': ['48px', { lineHeight: '48px', letterSpacing: '-0.6px' }],
-        '6xl': ['64px', { lineHeight: '64px', letterSpacing: '-0.6em' }],
+        '6xl': ['64px', { lineHeight: '64px', letterSpacing: '-0.6px' }],
         // Clamp sizes para responsive
         'clamp-lg': 'clamp(34px, 5vw, 64px)',
         'clamp-md': 'clamp(24px, 4vw, 48px)',
@@ -207,7 +210,7 @@ export default {
     },
   },
   plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
+    forms,
+    typography,
   ],
 };

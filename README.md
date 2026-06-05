@@ -29,6 +29,10 @@ npm run build
 ```
 Los archivos compilados estarán en `dist/`
 
+Artefactos principales:
+- `dist/design-system.html`
+- `dist/adminPanel.html`
+
 ---
 
 ## 🎨 Design System
@@ -77,6 +81,7 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
   - `components/`: Componentes reutilizables
   - `utils/`: Funciones auxiliares
   - `scripts/`: Scripts principales
+- `src/adminPanel.html`: Piloto migrado del panel administrativo
 - `tailwind.config.js`: Configuración de Tailwind con Design Tokens
 - `postcss.config.js`: Configuración de PostCSS
 - `vite.config.js`: Configuración de Vite
