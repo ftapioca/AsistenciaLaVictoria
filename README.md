@@ -2,7 +2,7 @@
 
 Registro de asistencia y turnos para La Victoria.
 
-## Estructura actual
+## 🚀 Quick Start
 
 - `index.html`: selector de ingreso por PIN con detección automática de rol.
 - `adminPanel.html`: panel administrativo protegido con accesos internos y caja de archivos adjuntos.
@@ -15,15 +15,96 @@ Registro de asistencia y turnos para La Victoria.
 - `AppsScriptAuth.gs`: base para integrar login, validación de sesión y control de roles en Google Apps Script.
 - `AppsScript/`: copia local del proyecto real de Google Apps Script usada como referencia y documentación viva.
 
-## Admin Panel
+### Desarrollo
+```bash
+npm install
+npm run dev
+```
+Se abrirá en `http://localhost:3000`
+
+### Build para Producción
+```bash
+npm run build
+```
+Los archivos compilados estarán en `dist/`
+
+Artefactos principales:
+- `dist/design-system.html`
+- `dist/adminPanel.html`
+
+---
+
+## 🎨 Design System
+
+Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS**.
+
+### Características Principales
+- ✅ **Design Tokens**: Colores, tipografías, espaciados, sombras definidos centralmente
+- ✅ **Tailwind CSS**: Framework de utilidades para construcción rápida y consistente
+- ✅ **Componentes Reutilizables**: Librería de componentes JS agnósticos
+- ✅ **Escalable**: Estructura preparada para crecer sin complejidad
+
+### Documentación
+- 📚 [**Design System Completo**](Docs/DESIGN_SYSTEM.md) - Guía definitiva
+- 📂 [**Estructura de Carpetas**](src/README.md) - Cómo organizar el código
+- 🎯 [**Página de Demostración**](src/designSystem.html) - Ejemplos visuales
+
+### Tech Stack
+- **Tailwind CSS**: Framework de utilidades para estilos
+- **Vite**: Build tool rápido y moderno
+- **PostCSS**: Procesamiento de CSS
+- **Node.js**: Runtime
+
+---
+
+## 📁 Estructura actual
+
+### Frontend Principal
+- `index.html`: Selector de ingreso por PIN con detección automática de rol.
+- `adminPanel.html`: Panel administrativo protegido con accesos internos y caja de archivos adjuntos.
+- `ventasMensuales.html`: Importador técnico de ventas para probar `ImportarVentas` con JSON normalizado.
+- `TurnosAbiertos.html`: Dashboard administrativo protegido para revisar turnos abiertos por local.
+- `programadorTurnos.html`: Programador semanal protegido para administradores.
+- `misTurnos.html`: Vista semanal de solo lectura para colaboradores.
+
+### Assets y Configuración
+- `Assets/`: Archivos adjuntos descargables para administradores y HTML de registro por local.
+- `app-config.prod.js`: Preset frontend de producción.
+- `app-config.staging.js`: Preset frontend de staging.
+- `app-config.js`: Selector de entorno frontend y configuración activa (`WEB_APP_URL`, sesión, entorno).
+- `auth.js`: Autenticación, validación de sesión y control de acceso en frontend.
+
+### Design System (Nuevo)
+- `src/`: Carpeta principal del Design System y componentes
+  - `styles/`: CSS global con Tailwind
+  - `components/`: Componentes reutilizables
+  - `utils/`: Funciones auxiliares
+  - `scripts/`: Scripts principales
+- `src/adminPanel.html`: Piloto migrado del panel administrativo
+- `tailwind.config.js`: Configuración de Tailwind con Design Tokens
+- `postcss.config.js`: Configuración de PostCSS
+- `vite.config.js`: Configuración de Vite
+- `Docs/DESIGN_SYSTEM.md`: Documentación completa del sistema
+
+### Backend
+- `AppsScript/`: Copia local del proyecto real de Google Apps Script (referencia y documentación)
+  - `AuthRoles.js`: Autenticación y validación de roles
+  - `RegistroAsistencias.js`: Lógica de registro de asistencias
+  - `CierreTurnos.js`: Cierre de turnos
+  - `VentasComisiones.js`: Cálculo de ventas y comisiones
+  - `SpreadsheetStore.js`: Interfaz de almacenamiento en Google Sheets
+
+---
+
+## 🎯 Admin Panel
 
 `adminPanel.html` concentra la navegación administrativa.
 
 - La información de sesión y las acciones de cerrar sesión y volver al ingreso están integradas en el `hero`.
 - La caja `Archivos adjuntos` lista recursos administrativos.
 - Actualmente incluye:
-  - un enlace externo a `Reporte y registro de asistencia` en Google Sheets
-  - archivos HTML descargables contenidos en `Assets/`
+  - Un enlace externo a `Reporte y registro de asistencia` en Google Sheets
+  - Archivos HTML descargables contenidos en `Assets/`
 
 Nota: este proyecto es estático, por lo que el navegador no puede enumerar carpetas automáticamente. La lista de adjuntos del panel se mantiene en el arreglo `attachedResources` dentro de `adminPanel.html`.
 
