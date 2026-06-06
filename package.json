@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "postbuild": "node scripts/postbuild-ui.mjs",
+    "deploy:pages": "node scripts/deploy-pages.mjs",
     "preview": "vite preview",
     "gas:login": "clasp login",
     "gas:logout": "clasp logout",
