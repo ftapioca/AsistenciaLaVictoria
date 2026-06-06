@@ -9,7 +9,7 @@ Registro de asistencia y turnos para La Victoria.
 - `TurnosAbiertos.html`: dashboard administrativo protegido para revisar turnos abiertos por local.
 - `programadorTurnos.html`: programador semanal protegido para administradores.
 - `misTurnos.html`: vista semanal de solo lectura para colaboradores.
-- `Assets/`: archivos adjuntos descargables para administradores y HTML de registro por local.
+- `descargablesLocales/`: archivos adjuntos descargables para administradores y HTML de registro por local.
 - `app-config.js`: configuración compartida del `WEB_APP_URL` y clave de sesión.
 - `auth.js`: autenticación, validación de sesión y control de acceso en frontend.
 - `AppsScriptAuth.gs`: base para integrar login, validación de sesión y control de roles en Google Apps Script.
@@ -68,7 +68,7 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
 - `misTurnos.html`: Vista semanal de solo lectura para colaboradores.
 
 ### Assets y Configuración
-- `Assets/`: Archivos adjuntos descargables para administradores y HTML de registro por local.
+- `descargablesLocales/`: Archivos adjuntos descargables para administradores y HTML de registro por local.
 - `app-config.prod.js`: Preset frontend de producción.
 - `app-config.staging.js`: Preset frontend de staging.
 - `app-config.js`: Selector de entorno frontend y configuración activa (`WEB_APP_URL`, sesión, entorno).
@@ -104,13 +104,13 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
 - La caja `Archivos adjuntos` lista recursos administrativos.
 - Actualmente incluye:
   - Un enlace externo a `Reporte y registro de asistencia` en Google Sheets
-  - Archivos HTML descargables contenidos en `Assets/`
+  - Archivos HTML descargables contenidos en `descargablesLocales/`
 
 Nota: este proyecto es estático, por lo que el navegador no puede enumerar carpetas automáticamente. La lista de adjuntos del panel se mantiene en el arreglo `attachedResources` dentro de `adminPanel.html`.
 
 ## Registro Por Local
 
-Los archivos de `Assets/Registro Asistencia _ Local ...` permiten:
+Los archivos de `descargablesLocales/Registro Asistencia _ Local ...` permiten:
 
 - registrar ingresos y salidas por PIN
 - consultar último registro del colaborador

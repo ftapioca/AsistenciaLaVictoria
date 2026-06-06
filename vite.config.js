@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: '/AsistenciaLaVictoria/',
   server: {
     open: '/src/index.html',
     port: 3000,

@@ -30,7 +30,7 @@ const rootFileCopies = [
 
 const directoryCopies = [
   'assets',
-  'Assets',
+  'descargablesLocales',
 ];
 
 rootFileCopies.forEach((file) => {

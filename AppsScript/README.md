@@ -43,7 +43,7 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 La lógica base vive en `CierreTurnos.gs`.
 
 - `obtenerTurnosAbiertos(params)`: respuesta administrativa protegida.
-- `obtenerTurnosAbiertosPublico(params)`: respuesta pública para los HTML de `Assets`.
+- `obtenerTurnosAbiertosPublico(params)`: respuesta pública para los HTML de `descargablesLocales`.
 - `construirRespuestaTurnosAbiertos_(params)`: función compartida para evitar duplicar lógica.
 
 La respuesta pública expone solo:

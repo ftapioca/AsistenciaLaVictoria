@@ -14,13 +14,13 @@ const attachedResources = [
   {
     type: 'file',
     label: 'Registro Asistencia · Local Paseo del Lago',
-    href: new URL('../../Assets/Registro Asistencia _ Local Paseo del Lago.html', import.meta.url).href,
+    href: new URL('../../descargablesLocales/Registro Asistencia _ Local Paseo del Lago.html', import.meta.url).href,
     fileName: 'Registro Asistencia _ Local Paseo del Lago.html',
   },
   {
     type: 'file',
     label: 'Registro Asistencia · Local Segunda Faja',
-    href: new URL('../../Assets/Registro Asistencia _ Local Segunda Faja.html', import.meta.url).href,
+    href: new URL('../../descargablesLocales/Registro Asistencia _ Local Segunda Faja.html', import.meta.url).href,
     fileName: 'Registro Asistencia _ Local Segunda Faja.html',
   },
 ];

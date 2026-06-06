@@ -6,7 +6,7 @@ const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const distDir = resolve(rootDir, 'dist');
 
 const copyTargets = [
-  'Assets',
+  'descargablesLocales',
   'TurnosAbiertos.html',
   'programadorTurnos.html',
   'ventasMensuales.html',
