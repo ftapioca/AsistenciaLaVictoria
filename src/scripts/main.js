@@ -1,8 +1,9 @@
 import '../styles/globals.css';
 import { createButton } from '../components/Button.js';
 import { createCard } from '../components/Card.js';
-import { createInputField } from '../components/Input.js';
+import { createInputField, createPinInputField, createSelectField } from '../components/Input.js';
 import { createPageHero } from '../components/PageHero.js';
+import { createPeriodPicker } from '../components/PeriodPicker.js';
 import { createStatGrid } from '../components/StatGrid.js';
 
 function scrollToSection(sectionId) {
@@ -96,9 +97,121 @@ function renderForm() {
     placeholder: '2026-06',
     hint: 'Mantén el formato YYYY-MM.',
   });
+  const role = createSelectField({
+    label: 'Rol',
+    placeholder: 'Selecciona un rol',
+    options: [
+      { value: 'Administrador', label: 'Administrador' },
+      { value: 'Colaborador', label: 'Colaborador' },
+    ],
+    hint: 'Dropdown custom con la misma estética del selector de meses.',
+  });
+  const pin = createPinInputField({
+    label: 'PIN',
+    placeholder: '••••',
+    hint: 'Primitive para accesos internos con toggle integrado.',
+  });
 
-  card.append(local.wrapper, period.wrapper);
+  card.append(local.wrapper, period.wrapper, role.wrapper, pin.wrapper);
   return card;
+}
+
+function renderPeriodPickers() {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'grid gap-lg';
+
+  const summary = createCard({
+    eyebrow: 'Estado',
+    title: 'Período resuelto',
+    body: '',
+    tone: 'highlight',
+    className: 'md:p-2xl',
+  });
+
+  const summaryGrid = document.createElement('div');
+  summaryGrid.className = 'grid gap-md md:grid-cols-4';
+  summaryGrid.innerHTML = `
+    <div class="rounded-2xl border border-neutral-charcoal/8 bg-white/72 px-lg py-md">
+      <div class="text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Alcance</div>
+      <div id="pickerScopeValue" class="mt-sm text-base font-bold text-neutral-charcoal">Mensual</div>
+    </div>
+    <div class="rounded-2xl border border-neutral-charcoal/8 bg-white/72 px-lg py-md md:col-span-1">
+      <div class="text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Período</div>
+      <div id="pickerPeriodValue" class="mt-sm text-base font-bold text-neutral-charcoal">-</div>
+    </div>
+    <div class="rounded-2xl border border-neutral-charcoal/8 bg-white/72 px-lg py-md">
+      <div class="text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Desde</div>
+      <div id="pickerFromValue" class="mt-sm text-base font-bold text-neutral-charcoal">-</div>
+    </div>
+    <div class="rounded-2xl border border-neutral-charcoal/8 bg-white/72 px-lg py-md">
+      <div class="text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Hasta</div>
+      <div id="pickerToValue" class="mt-sm text-base font-bold text-neutral-charcoal">-</div>
+    </div>
+  `;
+  summary.appendChild(summaryGrid);
+
+  const scopeValue = summaryGrid.querySelector('#pickerScopeValue');
+  const periodValue = summaryGrid.querySelector('#pickerPeriodValue');
+  const fromValue = summaryGrid.querySelector('#pickerFromValue');
+  const toValue = summaryGrid.querySelector('#pickerToValue');
+
+  const picker = createPeriodPicker({
+    initialType: 'mensual',
+    showResolvedRange: true,
+    onChange: ({ type, period, from, to }) => {
+      scopeValue.textContent = type;
+      periodValue.textContent = period || '-';
+      fromValue.textContent = from || '-';
+      toValue.textContent = to || '-';
+    },
+  });
+
+  const standaloneGrid = document.createElement('div');
+  standaloneGrid.className = 'grid gap-lg xl:grid-cols-3';
+
+  const standaloneConfigs = [
+    {
+      eyebrow: 'Mensual',
+      title: 'Selector mensual standalone',
+      body: 'Usa el mismo primitive como picker de mes puro.',
+      type: 'mensual',
+    },
+    {
+      eyebrow: 'Semanal',
+      title: 'Selector semanal standalone',
+      body: 'Semana ISO con mes contextual y rango resuelto.',
+      type: 'semanal',
+    },
+    {
+      eyebrow: 'Diario',
+      title: 'Selector diario standalone',
+      body: 'Calendario compacto para elegir una fecha exacta.',
+      type: 'diario',
+    },
+  ];
+
+  standaloneConfigs.forEach(({ eyebrow, title, body, type }) => {
+    const card = createCard({
+      eyebrow,
+      title,
+      body,
+      className: 'rounded-3xl md:p-2xl',
+    });
+
+    const pickerNode = createPeriodPicker({
+      label: type === 'mensual' ? 'Mes' : type === 'semanal' ? 'Semana' : 'Día',
+      types: [type],
+      initialType: type,
+      showResolvedRange: true,
+      className: 'mt-xl',
+    });
+
+    card.appendChild(pickerNode.element);
+    standaloneGrid.appendChild(card);
+  });
+
+  wrapper.append(picker.element, summary, standaloneGrid);
+  return wrapper;
 }
 
 function createSection(title, description, content) {
@@ -202,6 +315,7 @@ function renderApp() {
     createSection('Tipografía', 'Escala base para héroes, encabezados, lead y body copy.', renderTypeScale()),
     createSection('Botones', 'Variantes y tamaños del primitive base.', renderButtons()),
     createSection('Formulario', 'Inputs con label, hint y estados listos para componer formularios.', renderForm()),
+    createSection('Datepicker', 'Patrón reutilizable extraído del flujo legado de ventas: alcance diario, semanal y mensual con popovers específicos y rango resuelto.', renderPeriodPickers()),
     createSection('Resumen', 'Estado actual del design system sobre esta rama.', cards)
   );
 

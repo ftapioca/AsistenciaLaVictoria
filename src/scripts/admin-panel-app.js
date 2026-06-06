@@ -88,20 +88,13 @@ export function createAdminPanelApp(options = {}) {
   const actions = document.createElement('div');
   actions.className = 'flex flex-col gap-md';
 
-  const backButton = createButton('Volver al ingreso', {
-    variant: 'secondary',
-    fullWidth: true,
-    className: 'bg-white/88 text-neutral-charcoal hover:bg-white',
-    onClick: onBack,
-  });
-
   const logoutButton = createButton('Cerrar sesión', {
     variant: 'primary',
     fullWidth: true,
     onClick: onLogout,
   });
 
-  actions.append(backButton, logoutButton);
+  actions.append(logoutButton);
 
   const hero = createPageHero({
     badge: 'La Victoria · Administración',
@@ -112,6 +105,11 @@ export function createAdminPanelApp(options = {}) {
     sideStatus: sessionUser,
     sideCopy,
     sideActions: actions,
+    layoutClassName: 'lg:gap-4xl',
+    contentClassName: 'lg:basis-[68%]',
+    titleClassName: 'max-w-[11ch] text-[clamp(44px,6vw,72px)]',
+    leadClassName: 'max-w-[64ch]',
+    sideClassName: 'lg:w-[300px]',
   });
 
   const toolsSection = document.createElement('section');
@@ -129,8 +127,8 @@ export function createAdminPanelApp(options = {}) {
   });
 
   const attachmentsCard = createCard({
-    eyebrow: 'Recursos',
-    title: 'Archivos adjuntos',
+    eyebrow: 'otros',
+    title: 'Recursos',
     body: 'Documentos disponibles para descarga y revisión operativa desde esta misma vista.',
     className: 'rounded-3xl md:p-2xl',
     footer: createResourceList(attachedResources),

@@ -45,7 +45,7 @@ export function createPageHero(options = {}) {
   if (title) {
     const heading = document.createElement('h1');
     heading.className = cn(
-      'mt-lg max-w-3xl text-[clamp(52px,8vw,88px)] font-black leading-[0.98] tracking-[-0.07em] text-neutral-cream',
+      'mt-lg max-w-[12ch] text-[clamp(44px,6vw,78px)] font-black leading-[1] tracking-[-0.06em] text-neutral-cream',
       titleClassName
     );
     heading.textContent = title;

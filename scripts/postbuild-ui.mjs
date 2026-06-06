@@ -10,7 +10,6 @@ const copyTargets = [
   'TurnosAbiertos.html',
   'programadorTurnos.html',
   'ventasMensuales.html',
-  'index.html',
   'misTurnos.html',
   'app-config.js',
   'app-config.prod.js',
@@ -20,11 +19,15 @@ const copyTargets = [
 ];
 
 const builtEntryCopies = [
+  { from: 'src/index.html', to: 'index.html' },
   { from: 'src/adminPanel.html', to: 'adminPanel.html' },
   { from: 'src/adminPanel-preview.html', to: 'adminPanel-preview.html' },
   { from: 'src/misTurnos.html', to: 'misTurnos-design-system.html' },
   { from: 'src/misTurnos-preview.html', to: 'misTurnos-preview.html' },
-  { from: 'src/index.html', to: 'design-system.html' },
+  { from: 'src/programadorTurnos.html', to: 'programadorTurnos.html' },
+  { from: 'src/TurnosAbiertos.html', to: 'TurnosAbiertos.html' },
+  { from: 'src/ventasMensuales.html', to: 'ventasMensuales.html' },
+  { from: 'src/designSystem.html', to: 'design-system.html' },
 ];
 
 if (!existsSync(distDir)) {

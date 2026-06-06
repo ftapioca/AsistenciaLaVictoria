@@ -10,11 +10,15 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        designSystem: 'src/index.html',
+        index: 'src/index.html',
+        designSystem: 'src/designSystem.html',
         adminPanel: 'src/adminPanel.html',
         adminPanelPreview: 'src/adminPanel-preview.html',
         misTurnos: 'src/misTurnos.html',
         misTurnosPreview: 'src/misTurnos-preview.html',
+        programadorTurnos: 'src/programadorTurnos.html',
+        turnosAbiertos: 'src/TurnosAbiertos.html',
+        ventasMensuales: 'src/ventasMensuales.html',
       },
       output: {
         manualChunks: undefined,

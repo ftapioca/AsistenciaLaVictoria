@@ -4,7 +4,7 @@
 
 ```
 src/
-├── index.html          # Demo del Design System usada por Vite
+├── designSystem.html   # Demo del Design System usada por Vite
 ├── adminPanel.html     # Piloto Vite del panel administrativo
 ├── styles/
 │   ├── globals.css     # Estilos globales (Tailwind + base)
@@ -57,6 +57,8 @@ Cada componente debe tener:
 - `Button.js`, `Input.js` y `Card.js` ya están implementados como factories DOM.
 - `Badge.js`, `ActionCard.js` y `LoadingOverlay.js` amplían el set inicial de primitives.
 - `PageHero.js`, `StatGrid.js` y `ResourceList.js` formalizan patrones de layout del panel.
+- `PeriodPicker.js` formaliza el patrón legado de alcance diario, semanal y mensual usado en ventas.
+- `PeriodPicker.js` también puede funcionar en modo standalone para `mensual`, `semanal` o `diario`.
 - `main.js` renderiza una demo real usando esos primitives.
 - `adminPanel.html` en `src/` es el primer piloto migrado a este sistema.
 - `adminPanel-preview.html`, `misTurnos.html` y `misTurnos-preview.html` amplían la cobertura del sistema con rutas de revisión visual y pilotos reales.

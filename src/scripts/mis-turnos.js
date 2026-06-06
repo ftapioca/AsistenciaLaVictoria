@@ -9,6 +9,7 @@ import { createButton } from '../components/Button.js';
 import { createCard } from '../components/Card.js';
 import { createLoadingOverlay } from '../components/LoadingOverlay.js';
 import { createPageHero } from '../components/PageHero.js';
+import { createPeriodPicker } from '../components/PeriodPicker.js';
 import { createStatGrid } from '../components/StatGrid.js';
 import { createToast } from '../components/Toast.js';
 
@@ -20,6 +21,7 @@ let calendario = [];
 let session = null;
 let mesSeleccionado = null;
 let anioSeleccionado = null;
+let monthPicker = null;
 
 const overlay = createLoadingOverlay('Procesando...');
 document.body.appendChild(overlay.element);
@@ -103,21 +105,20 @@ function compactarTurnosDelDia(turnosDia) {
 function setMesSeleccionado(year, monthIndex) {
   mesSeleccionado = { year, month: monthIndex };
   anioSeleccionado = year;
-  const label = `${meses[monthIndex]} ${year}`;
-  if ($('monthSelect')) $('monthSelect').value = String(monthIndex);
-  if ($('monthSelectLabel')) $('monthSelectLabel').innerText = label;
-  if ($('yearDisplay')) $('yearDisplay').innerText = String(year);
+}
+
+function monthPeriodValue(year, monthIndex) {
+  return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+}
+
+function syncMonthPicker(year, monthIndex) {
+  if (!monthPicker) return;
+  monthPicker.setValue('mensual', monthPeriodValue(year, monthIndex));
 }
 
 function moverMes(delta) {
   const base = new Date(mesSeleccionado.year, mesSeleccionado.month + delta, 1);
-  setMesSeleccionado(base.getFullYear(), base.getMonth());
-  cargarMes();
-}
-
-function shiftSelectedYear(delta) {
-  setMesSeleccionado(anioSeleccionado + delta, mesSeleccionado.month);
-  cargarMes();
+  syncMonthPicker(base.getFullYear(), base.getMonth());
 }
 
 function generarCalendarioMes() {
@@ -248,21 +249,7 @@ function createMonthControls() {
 
   wrapper.innerHTML = `
     <div class="grid gap-sm">
-      <label for="monthSelect" class="text-sm font-black text-neutral-charcoal">Mes</label>
-      <div class="rounded-3xl border border-neutral-charcoal/10 bg-white/86 p-md shadow-brand-sm">
-        <div class="mb-md flex items-center justify-between gap-md">
-          <button class="flex size-10 items-center justify-center rounded-full border border-brand-bun/15 bg-brand-cheese/25 text-brand-bun-dark transition-all duration-fast hover:bg-brand-cheese/40" id="btnYearPrev" type="button" aria-label="Año anterior">←</button>
-          <div class="text-center">
-            <div id="monthSelectLabel" class="text-base font-black text-neutral-charcoal">Selecciona un mes</div>
-            <div id="yearDisplay" class="text-sm font-bold text-neutral-muted">2026</div>
-          </div>
-          <button class="flex size-10 items-center justify-center rounded-full border border-brand-bun/15 bg-brand-cheese/25 text-brand-bun-dark transition-all duration-fast hover:bg-brand-cheese/40" id="btnYearNext" type="button" aria-label="Año siguiente">→</button>
-        </div>
-        <select id="monthSelect" class="min-h-[52px] w-full rounded-2xl border border-brand-bun/20 bg-neutral-paper px-lg py-md text-base font-black text-neutral-charcoal shadow-inner-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-bun">
-          ${meses.map((mes, index) => `<option value="${index}">${mes}</option>`).join('')}
-        </select>
-        <p class="mt-sm text-sm font-bold text-neutral-muted">Selector nativo para navegar meses de forma estable en todos los navegadores.</p>
-      </div>
+      <div id="monthPickerSlot"></div>
     </div>
     <div class="grid gap-sm">
       <span class="text-sm font-black text-transparent">A</span>
@@ -279,6 +266,29 @@ function createMonthControls() {
   `;
 
   $('monthControlsSlot').appendChild(wrapper);
+  const now = new Date();
+  const initialYear = mesSeleccionado?.year ?? now.getFullYear();
+  const initialMonth = mesSeleccionado?.month ?? now.getMonth();
+
+  monthPicker = createPeriodPicker({
+    label: 'Mes',
+    types: ['mensual'],
+    initialType: 'mensual',
+    initialValues: {
+      monthly: monthPeriodValue(initialYear, initialMonth),
+      weekly: '',
+      daily: '',
+    },
+    onChange: ({ period }) => {
+      if (!period) return;
+      const [year, month] = period.split('-').map(Number);
+      setMesSeleccionado(year, month - 1);
+      if (session) {
+        cargarMes();
+      }
+    },
+  });
+  $('monthPickerSlot').appendChild(monthPicker.element);
 
   const prev = createButton('← Mes anterior', {
     variant: 'secondary',
@@ -309,15 +319,6 @@ function createMonthControls() {
   current.id = 'btnMesActual';
   $('btnMesSiguiente').replaceWith(next);
   next.id = 'btnMesSiguiente';
-}
-
-function attachMonthPickerEvents() {
-  $('btnYearPrev').addEventListener('click', () => shiftSelectedYear(-1));
-  $('btnYearNext').addEventListener('click', () => shiftSelectedYear(1));
-  $('monthSelect').addEventListener('change', (event) => {
-    setMesSeleccionado(anioSeleccionado, Number(event.target.value));
-    cargarMes();
-  });
 }
 
 function buildAppShell() {
@@ -358,13 +359,18 @@ function buildAppShell() {
     sideStatus: sessionUser,
     sideCopy: 'Esta vista esta pensada para consulta rapida desde movil, pero mantiene suficiente detalle para escritorio.',
     sideActions: actions,
+    layoutClassName: 'lg:gap-4xl',
+    contentClassName: 'lg:basis-[68%]',
+    titleClassName: 'max-w-[11ch] text-[clamp(44px,6vw,72px)]',
+    leadClassName: 'max-w-[62ch]',
+    sideClassName: 'lg:w-[300px]',
   });
 
   const controlsCard = createCard({
     eyebrow: 'Navegacion',
     title: 'Seleccion de mes',
     body: 'Cambia el periodo para revisar tus turnos cargados por mes.',
-    className: 'rounded-3xl md:p-2xl',
+    className: 'relative z-20 overflow-visible rounded-3xl md:p-2xl',
   });
   const controlsSlot = document.createElement('div');
   controlsSlot.id = 'monthControlsSlot';
@@ -374,7 +380,7 @@ function buildAppShell() {
     eyebrow: 'Calendario',
     title: 'Resumen mensual',
     body: '',
-    className: 'rounded-3xl md:p-2xl',
+    className: 'relative z-10 rounded-3xl md:p-2xl',
   });
   calendarCard.innerHTML += `
     <section class="mt-xl rounded-3xl border border-neutral-charcoal/8 bg-white/74 p-lg">
@@ -401,7 +407,6 @@ function buildAppShell() {
   app.appendChild(shell);
 
   createMonthControls();
-  attachMonthPickerEvents();
   return { sessionUser };
 }
 
@@ -442,7 +447,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   sessionUser.textContent = `${session.displayName || 'Colaborador'} · ${session.role}`;
   const actual = new Date();
-  setMesSeleccionado(actual.getFullYear(), actual.getMonth());
-
-  await cargarMes();
+  syncMonthPicker(actual.getFullYear(), actual.getMonth());
 });

@@ -205,6 +205,7 @@ Actualmente el sistema ya incluye:
 - `ActionCard.js`
 - `LoadingOverlay.js`
 - `PageHero.js`
+- `PeriodPicker.js`
 - `StatGrid.js`
 - `ResourceList.js`
 
@@ -222,6 +223,7 @@ Estado del trabajo en esta rama:
 - `adminPanel` ya quedó convertido a patrones formales reutilizables dentro de `src/components/`
 - `misTurnos` ya tiene piloto y preview visual funcional
 - el selector de mes en `misTurnos` quedó resuelto temporalmente con un `select` nativo
+- el patrón legado de datepicker de `ventasMensuales.html` ya quedó formalizado como componente reusable en `src/components/PeriodPicker.js`
 
 Pendiente importante:
 
@@ -275,6 +277,27 @@ Existe una implementación base en `src/components/Input.js` con `label`, `hint`
 </div>
 ```
 
+### PeriodPicker
+
+Existe una implementación reusable en `src/components/PeriodPicker.js` basada en el patrón legado de `ventasMensuales.html`.
+
+Cobertura del componente:
+
+- selector de alcance `mensual`, `semanal` y `diario`
+- popover mensual con grid de 12 meses y navegación por año
+- popover semanal con año, mes y semanas ISO disponibles para ese mes
+- popover diario con calendario mensual compacto y selección de un día exacto
+- resolución automática de `from` y `to` según el alcance elegido
+- soporte para modo compuesto o modo standalone usando `types: ['mensual']`, `types: ['semanal']` o `types: ['diario']`
+
+Notas de diseño:
+
+- `mensual` resuelve el rango completo del mes
+- `semanal` resuelve lunes a domingo usando semana ISO
+- `diario` resuelve un solo día como rango cerrado
+- el patrón visual replica la lógica ya validada en la pantalla legacy de ventas para evitar reinventar la interacción
+- cuando `types` contiene un solo alcance, el selector de tipo se oculta y el componente se comporta como picker dedicado de ese modo
+
 ### Card
 
 Existe una implementación base en `src/components/Card.js` para contenedores neutros, destacados y oscuros.
@@ -304,7 +327,7 @@ npm install
 npm run dev
 ```
 
-Abre la demo del sistema en `src/index.html`.
+Abre la demo del sistema en `src/designSystem.html`.
 
 ### Artefactos Generados
 

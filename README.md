@@ -21,7 +21,6 @@ npm install
 npm run dev
 ```
 Se abrirá en `http://localhost:3000`
->>>>>>> 28fa890 (docs: actualizar README con información del Design System)
 
 ### Build para Producción
 ```bash
@@ -48,7 +47,7 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
 ### Documentación
 - 📚 [**Design System Completo**](Docs/DESIGN_SYSTEM.md) - Guía definitiva
 - 📂 [**Estructura de Carpetas**](src/README.md) - Cómo organizar el código
-- 🎯 [**Página de Demostración**](src/index.html) - Ejemplos visuales
+- 🎯 [**Página de Demostración**](src/designSystem.html) - Ejemplos visuales
 
 ### Tech Stack
 - **Tailwind CSS**: Framework de utilidades para estilos

@@ -1,23 +1,15 @@
+import { createButton } from './Button.js';
 import { cn } from '../utils/cn.js';
 
 function createResourceAction(resource) {
-  const action = document.createElement('a');
-  action.className = cn(
-    'inline-flex min-h-[44px] items-center justify-center rounded-xl px-lg py-md',
-    'bg-gradient-to-r from-brand-cheese to-brand-bun text-sm font-black text-neutral-charcoal',
-    'shadow-brand-sm transition-all duration-fast hover:-translate-y-0.5'
-  );
-  action.textContent = resource.type === 'link' ? 'Abrir' : 'Descargar';
-  action.href = resource.href;
-
-  if (resource.type === 'link') {
-    action.target = '_blank';
-    action.rel = 'noopener noreferrer';
-  } else if (resource.fileName) {
-    action.download = resource.fileName;
-  }
-
-  return action;
+  return createButton(resource.type === 'link' ? 'Abrir' : 'Descargar', {
+    as: 'a',
+    href: resource.href,
+    target: resource.type === 'link' ? '_blank' : '',
+    rel: resource.type === 'link' ? 'noopener noreferrer' : '',
+    download: resource.type !== 'link' ? (resource.fileName || '') : '',
+    className: 'text-sm font-black',
+  });
 }
 
 export function createResourceList(resources = [], options = {}) {
