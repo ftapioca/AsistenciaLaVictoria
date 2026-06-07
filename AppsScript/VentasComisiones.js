@@ -9,6 +9,7 @@ const HOJA_PRODUCTOS_POS = "ProductosPOS";
 const HOJA_CUADRATURA_PAGOS = "CuadraturaPagos";
 const HOJA_KPI_VENTAS_DIARIAS = "KPIVentasDiarias";
 const ESTADO_IMPORTACION_SUCCESS = "SUCCESS";
+const ESTADO_IMPORTACION_PENDING = "PENDING";
 const ESTADO_IMPORTACION_ERROR = "ERROR";
 const ESTADO_IMPORTACION_ANULADO = "ANULADO";
 const ESTADO_IMPORTACION_REEMPLAZADO = "REEMPLAZADO";
@@ -337,6 +338,11 @@ function importarVentasInterno_(params) {
   var sesion = requireAdminSession(params);
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
+  var hojaImportaciones = null;
+  var importRowNumber = null;
+  var importId = null;
+  var fechaImportacion = null;
+  var metadata = null;
 
   try {
     var estructura = asegurarEstructuraVentasSheets_();
@@ -347,14 +353,14 @@ function importarVentasInterno_(params) {
       );
     }
 
-    var metadata = normalizarMetadataImportacion_(params.metadata);
+    metadata = normalizarMetadataImportacion_(params.metadata);
     var ventas = normalizarArrayImportacion_(params.ventas, "ventas");
     var propinas = normalizarArrayImportacion_(params.propinas, "propinas");
 
     validarMetadataImportacion_(metadata);
     validarColeccionesImportacion_(ventas, propinas);
 
-    var hojaImportaciones = getSheet_(HOJA_IMPORTACIONES_VENTAS, SPREADSHEET_KEY_VENTAS);
+    hojaImportaciones = getSheet_(HOJA_IMPORTACIONES_VENTAS, SPREADSHEET_KEY_VENTAS);
     var hojaVentas = getSheet_(HOJA_VENTAS_POS, SPREADSHEET_KEY_VENTAS);
     var hojaPropinas = getSheet_(HOJA_PROPINAS_POS, SPREADSHEET_KEY_VENTAS);
     var importaciones = obtenerRegistrosImportacionesVentas_(hojaImportaciones);
@@ -373,22 +379,15 @@ function importarVentasInterno_(params) {
       metadata.periodo
     );
 
-    var importId = Utilities.getUuid();
-    var fechaImportacion = new Date();
-    var idsReemplazados = marcarImportacionesComoReemplazadas_(
-      hojaImportaciones,
-      importacionesActivasMismoPeriodo,
-      importId,
-      fechaImportacion,
-      sesion.displayName
-    );
+    importId = Utilities.getUuid();
+    fechaImportacion = new Date();
 
     var filasVentas = construirFilasVentasPOS_(importId, metadata, ventas);
     var filasPropinas = construirFilasPropinasPOS_(importId, metadata, propinas);
     var resumen = construirResumenImportacion_(ventas, propinas);
-    var observaciones = construirObservacionImportacion_(
+    var observacionBase = construirObservacionImportacion_(
       metadata.observaciones,
-      idsReemplazados,
+      [],
       fechaImportacion,
       sesion.displayName
     );
@@ -401,13 +400,17 @@ function importarVentasInterno_(params) {
       metadata.periodo,
       metadata.nombreArchivo,
       metadata.hashArchivo,
-      ESTADO_IMPORTACION_SUCCESS,
-      filasVentas.length,
-      filasPropinas.length,
-      resumen.ventaBrutaValida,
-      resumen.propinasValidas,
-      observaciones
+      ESTADO_IMPORTACION_PENDING,
+      0,
+      0,
+      0,
+      0,
+      agregarObservacionImportacion_(
+        observacionBase,
+        "Importación en curso; aún no reemplaza la carga activa hasta completar escrituras."
+      )
     ]);
+    importRowNumber = hojaImportaciones.getLastRow();
 
     if (filasVentas.length > 0) {
       hojaVentas
@@ -421,6 +424,34 @@ function importarVentasInterno_(params) {
         .setValues(filasPropinas);
     }
 
+    var idsReemplazados = marcarImportacionesComoReemplazadas_(
+      hojaImportaciones,
+      importacionesActivasMismoPeriodo,
+      importId,
+      fechaImportacion,
+      sesion.displayName
+    );
+
+    var observaciones = construirObservacionImportacion_(
+      metadata.observaciones,
+      idsReemplazados,
+      fechaImportacion,
+      sesion.displayName
+    );
+
+    actualizarFilaImportacion_(
+      hojaImportaciones,
+      importRowNumber,
+      {
+        Estado: ESTADO_IMPORTACION_SUCCESS,
+        RegistrosVentas: filasVentas.length,
+        RegistrosPropinas: filasPropinas.length,
+        VentaBrutaValida: resumen.ventaBrutaValida,
+        PropinasValidas: resumen.propinasValidas,
+        Observaciones: observaciones
+      }
+    );
+
     return {
       status: ESTADO_IMPORTACION_SUCCESS,
       importId: importId,
@@ -431,6 +462,30 @@ function importarVentasInterno_(params) {
       registrosPropinas: filasPropinas.length,
       observaciones: observaciones
     };
+  } catch (error) {
+    if (hojaImportaciones && importRowNumber) {
+      var mensajeError = error && error.message
+        ? error.message
+        : "La importación falló antes de completarse.";
+      var observacionError = agregarObservacionImportacion_(
+        metadata && metadata.observaciones ? metadata.observaciones : "",
+        "Importación fallida el " + new Date().toISOString() + ": " + mensajeError
+      );
+
+      try {
+        actualizarFilaImportacion_(
+          hojaImportaciones,
+          importRowNumber,
+          {
+            Estado: ESTADO_IMPORTACION_ERROR,
+            Observaciones: observacionError
+          }
+        );
+      } catch (updateError) {
+        // Si incluso el registro de error falla, dejamos propagar el error original.
+      }
+    }
+    throw error;
   } finally {
     lock.releaseLock();
   }
@@ -562,6 +617,18 @@ function obtenerRegistrosImportacionesVentas_(hoja) {
       estado: fila[buscarIndiceHeader_(headers, "Estado")],
       observaciones: fila[buscarIndiceHeader_(headers, "Observaciones")]
     };
+  });
+}
+
+function actualizarFilaImportacion_(hoja, rowNumber, cambios) {
+  if (!rowNumber || !cambios) {
+    return;
+  }
+
+  var headers = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  Object.keys(cambios).forEach(function(nombreHeader) {
+    var columna = buscarIndiceHeader_(headers, nombreHeader) + 1;
+    hoja.getRange(rowNumber, columna).setValue(cambios[nombreHeader]);
   });
 }
 
