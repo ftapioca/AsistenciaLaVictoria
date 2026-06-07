@@ -14,6 +14,7 @@ import { createLoadingOverlay } from '../components/LoadingOverlay.js';
 const $ = (id) => document.getElementById(id);
 let roleSelectFieldRef = null;
 let nameSelectFieldRef = null;
+let roleShortcutButtons = [];
 
 function waitNextFrame() {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
@@ -135,6 +136,30 @@ function syncCredentialMode(role) {
   }
 }
 
+function updateRoleShortcutState(role) {
+  roleShortcutButtons.forEach((button) => {
+    const active = button.dataset.roleShortcut === role;
+    button.classList.toggle('border-brand-bun', active);
+    button.classList.toggle('bg-brand-bun', active);
+    button.classList.toggle('text-neutral-charcoal', true);
+    button.classList.toggle('border-neutral-charcoal/10', !active);
+    button.classList.toggle('bg-white/78', !active);
+    button.classList.toggle('hover:bg-brand-cheese/24', !active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+async function handleRoleSelection(role) {
+  clearStatus();
+  $('adminUserInput').value = '';
+  syncCredentialMode(role);
+  updateRoleShortcutState(role);
+
+  if (role === 'Colaborador') {
+    await cargarUsuariosPorRol(role);
+  }
+}
+
 function updateSessionCard(session) {
   const card = $('sessionCard');
   if (!session) {
@@ -201,11 +226,11 @@ function buildApp() {
   heroTitle.textContent = 'Ingreso por rol.';
 
   const heroLead = document.createElement('p');
-  heroLead.className = 'mt-xl max-w-[28ch] text-lg font-semibold leading-9 text-neutral-cream/82';
+  heroLead.className = 'mt-lg max-w-[30ch] text-base font-semibold leading-8 text-neutral-cream/82 md:mt-xl md:text-lg md:leading-9';
   heroLead.textContent = 'Accede a tu espacio interno de forma segura. El sistema valida tu identidad antes de habilitar la navegación correspondiente a tu perfil.';
 
   const featureGrid = document.createElement('div');
-  featureGrid.className = 'mt-2xl grid gap-md md:grid-cols-2';
+  featureGrid.className = 'mt-xl grid gap-md sm:grid-cols-2 md:mt-2xl';
   featureGrid.append(
     createFeatureCard('Acceso personalizado', 'Cada persona ingresa solo a las secciones que le corresponden.'),
     createFeatureCard('Consulta de turnos', 'Puedes revisar tu información asignada desde una vista simple y protegida.'),
@@ -224,17 +249,47 @@ function buildApp() {
 
   const cardTitle = card.querySelector('h3');
   if (cardTitle) {
-    cardTitle.className = 'mb-lg text-[clamp(40px,4vw,56px)] font-black leading-[0.94] tracking-[-0.06em] text-neutral-charcoal';
+    cardTitle.className = 'mb-md text-[clamp(34px,4vw,56px)] font-black leading-[0.94] tracking-[-0.06em] text-neutral-charcoal md:mb-lg';
   }
 
   const cardBody = card.querySelector('p');
   if (cardBody) {
-    cardBody.className = 'max-w-[18ch] text-lg font-bold leading-9 text-neutral-muted';
+    cardBody.className = 'max-w-[24ch] text-base font-bold leading-8 text-neutral-muted md:max-w-[18ch] md:text-lg md:leading-9';
   }
 
   const form = document.createElement('form');
   form.id = 'loginForm';
-  form.className = 'mt-2xl grid gap-xl';
+  form.className = 'mt-xl grid gap-lg md:mt-2xl md:gap-xl';
+
+  const roleShortcutBlock = document.createElement('div');
+  roleShortcutBlock.className = 'grid gap-sm rounded-3xl border border-neutral-charcoal/10 bg-white/66 p-md';
+
+  const roleShortcutLabel = document.createElement('p');
+  roleShortcutLabel.className = 'text-xs font-black uppercase tracking-[0.18em] text-neutral-muted';
+  roleShortcutLabel.textContent = 'Ruta rápida';
+
+  const roleShortcutHelp = document.createElement('p');
+  roleShortcutHelp.className = 'text-sm font-semibold leading-6 text-neutral-muted';
+  roleShortcutHelp.textContent = 'En móvil, elige primero cómo quieres ingresar para mostrar solo los campos necesarios.';
+
+  const roleShortcutRow = document.createElement('div');
+  roleShortcutRow.className = 'grid grid-cols-2 gap-sm';
+
+  const adminShortcut = createButton('Administrador', {
+    variant: 'ghost',
+    className: 'min-h-[48px] border border-neutral-charcoal/10 bg-white/78 text-neutral-charcoal hover:bg-brand-cheese/24',
+  });
+  adminShortcut.dataset.roleShortcut = 'Administrador';
+
+  const collaboratorShortcut = createButton('Colaborador', {
+    variant: 'ghost',
+    className: 'min-h-[48px] border border-neutral-charcoal/10 bg-white/78 text-neutral-charcoal hover:bg-brand-cheese/24',
+  });
+  collaboratorShortcut.dataset.roleShortcut = 'Colaborador';
+
+  roleShortcutButtons = [adminShortcut, collaboratorShortcut];
+  roleShortcutRow.append(adminShortcut, collaboratorShortcut);
+  roleShortcutBlock.append(roleShortcutLabel, roleShortcutHelp, roleShortcutRow);
 
   const roleField = createSelectField({
     label: 'Rol',
@@ -311,7 +366,12 @@ function buildApp() {
   note.className = 'text-center text-sm text-neutral-cream/70';
   note.textContent = 'Si accedes por URL directa sin sesión válida, el sistema volverá a esta pantalla.';
 
-  layout.append(hero, card);
+  form.prepend(roleShortcutBlock);
+
+  card.classList.add('xl:order-2');
+  hero.classList.add('xl:order-1');
+
+  layout.append(card, hero);
   shell.append(layout, note);
   app.appendChild(shell);
 }
@@ -324,14 +384,15 @@ async function bootstrap() {
   handleReasonMessage();
   await refreshSessionUI();
   syncCredentialMode('');
+  updateRoleShortcutState('');
 
-  roleSelectFieldRef.onChange(async (role) => {
-    clearStatus();
-    $('adminUserInput').value = '';
-    syncCredentialMode(role);
-    if (role === 'Colaborador') {
-      await cargarUsuariosPorRol(role);
-    }
+  roleSelectFieldRef.onChange(handleRoleSelection);
+  roleShortcutButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+      const role = button.dataset.roleShortcut || '';
+      roleSelectFieldRef.setValue(role, false);
+      await handleRoleSelection(role);
+    });
   });
 
   $('loginForm').addEventListener('submit', async (event) => {

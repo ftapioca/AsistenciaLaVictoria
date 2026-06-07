@@ -176,6 +176,18 @@ function doPost(e) {
     }
   }
 
+  if (accion === "RegistrarAsistenciaAdmin") {
+    try {
+      requireAdminSession(params);
+      return registrarAsistenciaAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "Acceso no autorizado."
+      });
+    }
+  }
+
   return responderJSON({
     status: "ERROR_ACCION",
     mensaje: "Acción no reconocida."
@@ -305,6 +317,79 @@ function registrarAsistencia(params) {
   });
 }
 
+function registrarAsistenciaAdmin(params) {
+  var nombre = String(params.nombre || "").trim();
+  var local = String(params.local || "").trim();
+  var accionTexto = String(params.accion || "").trim();
+  var fechaHora = new Date();
+
+  if (!nombre || !local || !accionTexto) {
+    return responderJSON({
+      status: "ERROR_DATOS",
+      mensaje: "Faltan datos para registrar asistencia."
+    });
+  }
+
+  var accionNormalizada = normalizarTexto(accionTexto);
+  if (accionNormalizada !== "ingreso" && accionNormalizada !== "salida") {
+    return responderJSON({
+      status: "ERROR_DATOS",
+      mensaje: "La acción debe ser Ingreso o Salida."
+    });
+  }
+
+  var colaborador = buscarColaboradorPorNombreYLocal_(nombre, local);
+
+  if (!colaborador) {
+    return responderJSON({
+      status: "ERROR_COLABORADOR",
+      mensaje: "No se encontró un colaborador con ese nombre en el local indicado."
+    });
+  }
+
+  var accion = accionNormalizada === "ingreso" ? "Ingreso" : "Salida";
+  var ultimoRegistro = obtenerUltimoRegistroPorNombre(colaborador.nombre);
+
+  if (!ultimoRegistro.encontrado && accion === "Salida") {
+    return responderJSON({
+      status: "ERROR_SECUENCIA",
+      mensaje: "No puedes marcar salida sin un ingreso previo."
+    });
+  }
+
+  if (ultimoRegistro.encontrado && ultimoRegistro.accion === accion) {
+    return responderJSON({
+      status: "ERROR_SECUENCIA",
+      mensaje: "Ya existe una marca de " + accion + ". Debes registrar la acción contraria antes de repetirla.",
+      ultimaAccion: ultimoRegistro.accion,
+      ultimaFechaHora: formatearFechaHora(ultimoRegistro.fechaHora),
+      ultimoLocal: ultimoRegistro.local
+    });
+  }
+
+  var sheetRegistroAsistencia = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("RegistroAsistencia");
+
+  sheetRegistroAsistencia.appendRow([
+    fechaHora,
+    colaborador.nombre,
+    colaborador.rut,
+    colaborador.local,
+    accion
+  ]);
+
+  return responderJSON({
+    status: "SUCCESS",
+    mensaje: accion + " registrado correctamente por administración.",
+    nombre: colaborador.nombre,
+    rut: colaborador.rut,
+    local: colaborador.local,
+    accion: accion,
+    fechaHora: formatearFechaHora(fechaHora)
+  });
+}
+
 
 // Consultar último registro
 function consultarUltimoRegistro(params) {
@@ -401,6 +486,34 @@ function verificarColaborador(nombre, pin) {
     valido: false,
     rut: ""
   };
+}
+
+function buscarColaboradorPorNombreYLocal_(nombre, local) {
+  var sheetColab = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("Colaboradores");
+  var datos = sheetColab.getDataRange().getValues();
+  var nombreNormalizado = normalizarTexto(nombre);
+  var localNormalizado = normalizarTexto(local);
+
+  for (var i = 1; i < datos.length; i++) {
+    var nombreColaborador = String(datos[i][0] || "").trim();
+    var rutColaborador = String(datos[i][1] || "").trim();
+    var localColaborador = String(datos[i][3] || "").trim();
+
+    if (
+      normalizarTexto(nombreColaborador) === nombreNormalizado &&
+      normalizarTexto(localColaborador) === localNormalizado
+    ) {
+      return {
+        nombre: nombreColaborador,
+        rut: rutColaborador,
+        local: localColaborador
+      };
+    }
+  }
+
+  return null;
 }
 
 

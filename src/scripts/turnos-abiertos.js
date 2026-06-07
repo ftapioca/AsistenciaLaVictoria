@@ -7,8 +7,10 @@ import '../../auth.js';
 
 import { createButton } from '../components/Button.js';
 import { createCard } from '../components/Card.js';
+import { createSelectField } from '../components/Input.js';
 import { createLoadingOverlay } from '../components/LoadingOverlay.js';
 import { createPageHero } from '../components/PageHero.js';
+import { createToast } from '../components/Toast.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,6 +25,10 @@ const MOBILE_BREAKPOINT = 980;
 const overlay = createLoadingOverlay('Procesando...');
 document.body.appendChild(overlay.element);
 overlay.setLoading(true, 'Validando sesión...');
+
+const toast = createToast();
+document.body.appendChild(toast.element);
+const colaboradoresPorLocalCache = new Map();
 
 function withCurrentEnvironment(path) {
   const target = new URL(path, window.location.href);
@@ -77,7 +83,7 @@ function createStateMessage(kind, message) {
   return block;
 }
 
-function createTurnosTable(turnos) {
+function createTurnosTable(local, turnos, onQuickAction) {
   const wrapper = document.createElement('div');
   wrapper.className = 'overflow-x-auto';
 
@@ -98,6 +104,16 @@ function createTurnosTable(turnos) {
           Pendiente de salida
         </span>
       </td>
+      <td class="px-md py-md align-middle">
+        <button
+          type="button"
+          class="inline-flex min-h-[42px] items-center justify-center rounded-xl bg-brand-bun px-md py-sm text-sm font-black text-neutral-charcoal transition hover:bg-brand-bun-dark hover:text-neutral-cream"
+          data-quick-action="salida"
+          data-local="${escapeHtml(local.nombre)}"
+          data-nombre="${escapeHtml(turno.nombre)}">
+          Marcar salida
+        </button>
+      </td>
     </tr>
   `).join('');
 
@@ -117,22 +133,41 @@ function createTurnosTable(turnos) {
           ● Pendiente
         </span>
       </div>
+      <button
+        type="button"
+        class="mt-md inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl bg-brand-bun px-lg py-md text-sm font-black text-neutral-charcoal transition hover:bg-brand-bun-dark hover:text-neutral-cream"
+        data-quick-action="salida"
+        data-local="${escapeHtml(local.nombre)}"
+        data-nombre="${escapeHtml(turno.nombre)}">
+        Marcar salida
+      </button>
     </article>
   `).join('');
 
   wrapper.innerHTML = `
     <div class="grid gap-md md:hidden">${mobileCards}</div>
-    <table class="hidden min-w-[520px] w-full border-collapse md:table">
+    <table class="hidden min-w-[640px] w-full border-collapse md:table">
       <thead>
         <tr>
           <th class="bg-brand-cheese/24 px-md py-md text-left text-xs font-black uppercase tracking-[0.12em] text-brand-bun-dark">Colaborador</th>
           <th class="bg-brand-cheese/24 px-md py-md text-left text-xs font-black uppercase tracking-[0.12em] text-brand-bun-dark">Ingreso</th>
           <th class="bg-brand-cheese/24 px-md py-md text-left text-xs font-black uppercase tracking-[0.12em] text-brand-bun-dark">Estado</th>
+          <th class="bg-brand-cheese/24 px-md py-md text-left text-xs font-black uppercase tracking-[0.12em] text-brand-bun-dark">Acción</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
   `;
+
+  wrapper.querySelectorAll('[data-quick-action="salida"]').forEach((button) => {
+    button.addEventListener('click', () => {
+      onQuickAction({
+        local: button.dataset.local || local.nombre,
+        nombre: button.dataset.nombre || '',
+        accion: 'Salida',
+      });
+    });
+  });
 
   return wrapper;
 }
@@ -235,23 +270,43 @@ function setLoadingLocal(localId) {
   $(`badge-${localId}`).textContent = '...';
 }
 
-function renderLocal(local, turnos) {
+function createLocalActions(local, total, onRegisterAction) {
+  const toolbar = document.createElement('div');
+  toolbar.className = 'mb-lg flex flex-col gap-sm rounded-2xl border border-neutral-charcoal/8 bg-white/62 p-md md:flex-row md:items-center md:justify-between';
+  toolbar.innerHTML = `
+    <div class="min-w-0">
+      <p class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Acción administrativa</p>
+      <p class="mt-xs text-sm font-semibold leading-6 text-neutral-charcoal/72">${total ? `Hay ${total} turnos abiertos en ${local.nombre}.` : `No hay turnos abiertos en ${local.nombre}, pero igual puedes registrar asistencia.`}</p>
+    </div>
+  `;
+
+  toolbar.appendChild(createButton('Registrar asistencia', {
+    className: 'min-h-[48px] md:min-w-[220px]',
+    onClick: () => onRegisterAction({ local: local.nombre }),
+  }));
+
+  return toolbar;
+}
+
+function renderLocal(local, turnos, onRegisterAction) {
   const panel = $(`contenido-${local.id}`);
   const total = Array.isArray(turnos) ? turnos.length : 0;
   $(`badge-${local.id}`).textContent = String(total);
 
   panel.innerHTML = '';
+  panel.appendChild(createLocalActions(local, total, onRegisterAction));
   if (!total) {
     panel.appendChild(createStateMessage('empty', 'No hay turnos abiertos en este local.'));
     return;
   }
 
-  panel.appendChild(createTurnosTable(turnos));
+  panel.appendChild(createTurnosTable(local, turnos, onRegisterAction));
 }
 
 function renderErrorLocal(local, message) {
   const panel = $(`contenido-${local.id}`);
   panel.innerHTML = '';
+  panel.appendChild(createLocalActions(local, 0, openRegisterModalGlobal));
   panel.appendChild(createStateMessage('error', message || 'No se pudo cargar este local.'));
   $(`badge-${local.id}`).textContent = '0';
 }
@@ -277,7 +332,7 @@ async function cargarTurnosLocal(local) {
     }
 
     const turnos = data.turnosAbiertos || [];
-    renderLocal(local, turnos);
+    renderLocal(local, turnos, openRegisterModalGlobal);
     return turnos.length;
   } catch (error) {
     if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
@@ -287,6 +342,220 @@ async function cargarTurnosLocal(local) {
     renderErrorLocal(local, 'Error de conexión. Revisa internet o el Apps Script.');
     return 0;
   }
+}
+
+async function cargarColaboradoresPorLocal(local) {
+  if (colaboradoresPorLocalCache.has(local)) {
+    return colaboradoresPorLocalCache.get(local);
+  }
+
+  const data = await window.LVAuth.apiGet({ accion: 'ColaboradoresPorLocal', local });
+  if (data.status !== 'SUCCESS') {
+    throw new Error(data.mensaje || 'No se pudo cargar la lista de colaboradores.');
+  }
+
+  const colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
+  colaboradoresPorLocalCache.set(local, colaboradores);
+  return colaboradores;
+}
+
+let openRegisterModalGlobal = () => {};
+
+function createRegisterModal(onSaved) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'fixed inset-0 z-notification hidden bg-neutral-charcoal/55 px-lg py-lg backdrop-blur-sm';
+
+  const dialog = document.createElement('section');
+  dialog.className = 'mx-auto flex min-h-full w-full max-w-[640px] items-center';
+
+  const card = createCard({
+    eyebrow: 'Asistencia administrativa',
+    title: 'Registrar ingreso o salida',
+    body: 'Selecciona local, colaborador y acción. La operación usa tu sesión de administrador y respeta las validaciones de secuencia del sistema.',
+    className: 'w-full rounded-[28px] bg-[#fff8ee] p-xl shadow-brand md:p-2xl',
+  });
+
+  const localField = createSelectField({
+    label: 'Local',
+    id: 'adminAssistLocal',
+    name: 'local',
+    placeholder: 'Selecciona un local',
+    options: LOCALES.map((local) => ({ value: local.nombre, label: local.nombre })),
+  });
+
+  const collaboratorField = createSelectField({
+    label: 'Colaborador',
+    id: 'adminAssistCollaborator',
+    name: 'nombre',
+    placeholder: 'Selecciona primero un local',
+    options: [],
+    disabled: true,
+  });
+
+  const actionField = createSelectField({
+    label: 'Acción',
+    id: 'adminAssistAction',
+    name: 'accion',
+    placeholder: 'Selecciona la acción',
+    options: [
+      { value: 'Ingreso', label: 'Ingreso' },
+      { value: 'Salida', label: 'Salida' },
+    ],
+  });
+  actionField.setValue('Ingreso', false);
+
+  const status = document.createElement('div');
+  status.hidden = true;
+
+  const actions = document.createElement('div');
+  actions.className = 'mt-xl grid gap-sm md:grid-cols-[1fr_1fr]';
+
+  const cancelButton = createButton('Cancelar', {
+    variant: 'secondary',
+    className: 'min-h-[52px] bg-white/82 text-neutral-charcoal',
+  });
+
+  const submitButton = createButton('Registrar asistencia', {
+    className: 'min-h-[52px]',
+  });
+  submitButton.type = 'button';
+
+  actions.append(cancelButton, submitButton);
+
+  const form = document.createElement('div');
+  form.className = 'mt-xl grid gap-lg';
+  form.append(localField.wrapper, collaboratorField.wrapper, actionField.wrapper, status, actions);
+  card.appendChild(form);
+  dialog.appendChild(card);
+  backdrop.appendChild(dialog);
+
+  function setStatus(type, message) {
+    const tones = {
+      loading: 'border-brand-cheese/24 bg-brand-cheese/16 text-brand-bun-dark',
+      success: 'border-brand-lettuce/24 bg-brand-lettuce/12 text-brand-lettuce',
+      error: 'border-brand-ketchup/24 bg-brand-ketchup/12 text-brand-ketchup',
+    };
+
+    status.className = `rounded-2xl border px-lg py-md text-sm font-bold leading-6 ${tones[type] || tones.error}`;
+    status.textContent = message;
+    status.hidden = false;
+  }
+
+  function clearStatus() {
+    status.hidden = true;
+    status.textContent = '';
+    status.className = '';
+  }
+
+  async function syncCollaborators(local, preferredName = '') {
+    collaboratorField.setDisabled(true);
+    collaboratorField.setOptions([]);
+    collaboratorField.setPlaceholder(local ? 'Cargando colaboradores...' : 'Selecciona primero un local');
+
+    if (!local) {
+      return;
+    }
+
+    const colaboradores = await cargarColaboradoresPorLocal(local);
+    collaboratorField.setOptions(colaboradores.map((nombre) => ({ value: nombre, label: nombre })));
+    collaboratorField.setPlaceholder(colaboradores.length ? 'Selecciona un colaborador' : 'No hay colaboradores en este local');
+    collaboratorField.setDisabled(!colaboradores.length);
+    collaboratorField.setValue(preferredName && colaboradores.includes(preferredName) ? preferredName : '', false);
+  }
+
+  function close() {
+    backdrop.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    clearStatus();
+    submitButton.disabled = false;
+  }
+
+  async function open(options = {}) {
+    const { local = '', nombre = '', accion = 'Ingreso' } = options;
+    clearStatus();
+    localField.setValue(local, false);
+    actionField.setValue(accion, false);
+    collaboratorField.setValue('', false);
+    collaboratorField.setOptions([]);
+    collaboratorField.setDisabled(true);
+    collaboratorField.setPlaceholder(local ? 'Cargando colaboradores...' : 'Selecciona primero un local');
+    backdrop.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+
+    if (local) {
+      try {
+        await syncCollaborators(local, nombre);
+      } catch (error) {
+        setStatus('error', error.message || 'No se pudo cargar la lista de colaboradores.');
+      }
+    }
+  }
+
+  localField.onChange(async (local) => {
+    clearStatus();
+    try {
+      await syncCollaborators(local);
+    } catch (error) {
+      setStatus('error', error.message || 'No se pudo cargar la lista de colaboradores.');
+    }
+  });
+
+  cancelButton.addEventListener('click', close);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) close();
+  });
+
+  submitButton.addEventListener('click', async () => {
+    clearStatus();
+
+    const local = localField.getValue().trim();
+    const nombre = collaboratorField.getValue().trim();
+    const accion = actionField.getValue().trim();
+
+    if (!local) {
+      setStatus('error', 'Debes seleccionar un local.');
+      return;
+    }
+
+    if (!nombre) {
+      setStatus('error', 'Debes seleccionar un colaborador.');
+      return;
+    }
+
+    if (!accion) {
+      setStatus('error', 'Debes seleccionar una acción.');
+      return;
+    }
+
+    submitButton.disabled = true;
+    setStatus('loading', 'Registrando asistencia...');
+    overlay.setLoading(true, 'Guardando asistencia...');
+    await waitNextFrame();
+
+    try {
+      const data = await window.LVAuth.apiPost({
+        accion: 'RegistrarAsistenciaAdmin',
+        local,
+        nombre,
+        accion,
+      });
+
+      if (data.status !== 'SUCCESS') {
+        throw new Error(data.mensaje || 'No se pudo registrar la asistencia.');
+      }
+
+      close();
+      toast.show('success', `${data.accion} registrada para ${data.nombre} en ${data.local}.`);
+      await onSaved();
+    } catch (error) {
+      setStatus('error', error.message || 'No se pudo registrar la asistencia.');
+    } finally {
+      overlay.setLoading(false);
+      submitButton.disabled = false;
+    }
+  });
+
+  return { element: backdrop, open, close };
 }
 
 function createTurnosAbiertosApp(session) {
@@ -315,6 +584,12 @@ function createTurnosAbiertosApp(session) {
     const row = document.createElement('div');
     row.className = 'flex flex-col gap-sm sm:flex-row sm:flex-wrap';
 
+    const btnRegistrar = createButton('Registrar asistencia', {
+      variant: 'success',
+      className: 'sm:flex-1',
+    });
+    btnRegistrar.dataset.role = 'register-button';
+
     const btnBack = createButton('Volver al panel', {
       variant: 'secondary',
       className: 'bg-white/88 text-neutral-charcoal sm:flex-1 hover:bg-white',
@@ -339,8 +614,8 @@ function createTurnosAbiertosApp(session) {
     });
     btnActualizar.dataset.role = 'refresh-button';
 
-    row.append(btnBack, btnLogout, btnActualizar);
-    return { row, btnActualizar };
+    row.append(btnRegistrar, btnBack, btnLogout, btnActualizar);
+    return { row, btnActualizar, btnRegistrar };
   }
 
   const desktopContextPills = document.createElement('div');
@@ -354,8 +629,12 @@ function createTurnosAbiertosApp(session) {
     className: 'rounded-3xl lg:hidden',
   });
   const mobileActions = document.createElement('div');
-  mobileActions.className = 'grid grid-cols-3 gap-sm';
+  mobileActions.className = 'grid grid-cols-2 gap-sm';
   mobileActions.append(
+    createButton('Registrar', {
+      variant: 'success',
+      className: 'min-h-[44px] px-md py-sm text-sm shadow-none',
+    }),
     createButton('Volver', {
       variant: 'secondary',
       className: 'min-h-[44px] bg-white/88 px-md py-sm text-sm text-neutral-charcoal shadow-none hover:bg-white',
@@ -377,16 +656,17 @@ function createTurnosAbiertosApp(session) {
       className: 'min-h-[44px] px-md py-sm text-sm shadow-none',
     }),
   );
-  mobileActions.querySelectorAll('button')[2].dataset.role = 'refresh-button';
+  mobileActions.querySelectorAll('button')[0].dataset.role = 'register-button';
+  mobileActions.querySelectorAll('button')[3].dataset.role = 'refresh-button';
   mobileSessionCard.appendChild(mobileActions);
 
   const hero = createPageHero({
     badge: 'La Victoria · Administración',
     title: 'Turnos abiertos',
-    lead: 'Vista simultánea de colaboradores que registraron ingreso y todavía no han marcado salida en cada local.',
+    lead: 'Revisa turnos abiertos por local y registra asistencia administrativa sin salir de esta vista cuando necesites corregir o completar una marca.',
     sideTitle: 'Sesión y refresh',
     sideStatus: desktopContextPills,
-    sideCopy: 'Vista solo lectura con refresh automático cada 30 minutos.',
+    sideCopy: 'Refresh automático cada 30 minutos y acceso inmediato para registrar ingreso o salida por administración.',
     sideActions: (() => {
       const wrapper = document.createElement('div');
       wrapper.className = 'grid gap-sm';
@@ -409,13 +689,23 @@ function createTurnosAbiertosApp(session) {
 
   const footer = document.createElement('p');
   footer.className = 'pb-lg text-center text-sm font-bold text-neutral-cream/70';
-  footer.textContent = 'Actualización automática cada 30 minutos · Dashboard solo lectura';
+  footer.textContent = 'Actualización automática cada 30 minutos · Registro administrativo disponible en cada local';
 
   shell.append(hero, localGrid, mobileSessionCard, footer);
   app.appendChild(shell);
 
   const refreshLabels = shell.querySelectorAll('[data-refresh-label]');
   const actionButtons = shell.querySelectorAll('[data-role="refresh-button"]');
+  const registerButtons = shell.querySelectorAll('[data-role="register-button"]');
+
+  const registerModal = createRegisterModal(async () => {
+    await cargarDashboard();
+  });
+  shell.appendChild(registerModal.element);
+
+  openRegisterModalGlobal = (options = {}) => {
+    registerModal.open(options);
+  };
 
   function updateDashboardTimestamp() {
     const text = getDashboardTimestamp();
@@ -440,6 +730,7 @@ function createTurnosAbiertosApp(session) {
   }
 
   actionButtons.forEach((button) => button.addEventListener('click', cargarDashboard));
+  registerButtons.forEach((button) => button.addEventListener('click', () => openRegisterModalGlobal()));
   setupAccordions();
 
   return { cargarDashboard };

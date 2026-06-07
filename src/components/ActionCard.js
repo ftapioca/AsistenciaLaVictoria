@@ -9,6 +9,7 @@ export function createActionCard(options = {}) {
     tone = 'neutral',
     actionLabel = 'Abrir',
     onAction,
+    className = '',
   } = options;
 
   const footer = document.createElement('div');
@@ -28,6 +29,6 @@ export function createActionCard(options = {}) {
     body,
     tone,
     footer,
-    className: 'h-full',
+    className: `h-full ${className}`.trim(),
   });
 }

@@ -29,20 +29,27 @@ const tools = [
   {
     eyebrow: 'Operación',
     title: 'Turnos Abiertos',
-    body: 'Vista simultánea de colaboradores que registraron ingreso y aún no marcan salida.',
+    body: 'Vista simultánea por local y acceso directo para registrar asistencia administrativa cuando haga falta.',
     href: 'TurnosAbiertos.html',
+    tone: 'highlight',
+    actionLabel: 'Ir a operación',
+    className: 'md:col-span-2 xl:col-span-1',
   },
   {
     eyebrow: 'Planificación',
     title: 'Programador',
     body: 'Programación semanal por local y colaborador, con edición y plantillas.',
     href: 'programadorTurnos.html',
+    tone: 'neutral',
+    actionLabel: 'Abrir agenda',
   },
   {
     eyebrow: 'Ventas',
     title: 'Importador Ventas',
     body: 'Harness técnico para probar ImportarVentas con JSON normalizado antes del parser POS final.',
     href: 'ventasMensuales.html',
+    tone: 'neutral',
+    actionLabel: 'Abrir importador',
   },
 ];
 
@@ -64,6 +71,21 @@ function buildHeroHighlights(environmentLabel, accessLabel) {
       detail: 'Turnos, planificación y ventas desde un solo punto.',
     },
   ], { tone: 'dark' });
+}
+
+function createQuickAccessBar(onNavigate) {
+  const bar = document.createElement('section');
+  bar.className = 'grid gap-sm md:grid-cols-3';
+
+  tools.forEach((tool) => {
+    bar.appendChild(createButton(tool.title, {
+      variant: tool.title === 'Turnos Abiertos' ? 'primary' : 'secondary',
+      className: 'min-h-[54px] w-full justify-between rounded-2xl px-lg text-left text-sm font-black',
+      onClick: () => onNavigate(tool.href),
+    }));
+  });
+
+  return bar;
 }
 
 export function createAdminPanelApp(options = {}) {
@@ -99,7 +121,7 @@ export function createAdminPanelApp(options = {}) {
   const hero = createPageHero({
     badge: 'La Victoria · Administración',
     title: 'Panel interno',
-    lead: 'Accede desde aquí a las vistas administrativas disponibles. Esta versión piloto ya usa el design system, respeta el entorno activo y deja una base visual mucho más sólida para migrar el resto de las pantallas.',
+    lead: 'Accede desde aquí a las vistas administrativas disponibles. El panel ahora prioriza accesos rápidos, lectura móvil más clara y rutas directas hacia operación diaria.',
     highlights: buildHeroHighlights(environment, accessLabel),
     sideTitle: 'Sesión y acciones',
     sideStatus: sessionUser,
@@ -112,6 +134,18 @@ export function createAdminPanelApp(options = {}) {
     sideClassName: 'lg:w-[300px]',
   });
 
+  const quickAccess = document.createElement('section');
+  quickAccess.className = 'grid gap-md';
+
+  const quickAccessCopy = document.createElement('div');
+  quickAccessCopy.className = 'flex flex-col gap-xs px-sm';
+  quickAccessCopy.innerHTML = `
+    <p class="text-xs font-black uppercase tracking-[0.18em] text-neutral-cream/60">Accesos rápidos</p>
+    <p class="text-sm font-semibold leading-7 text-neutral-cream/72">En móvil, cada acción principal queda disponible en un tap sin tener que recorrer toda la grilla.</p>
+  `;
+
+  quickAccess.append(quickAccessCopy, createQuickAccessBar(onNavigate));
+
   const toolsSection = document.createElement('section');
   toolsSection.className = 'grid gap-lg md:grid-cols-2 xl:grid-cols-3';
 
@@ -119,8 +153,9 @@ export function createAdminPanelApp(options = {}) {
     toolsSection.appendChild(
       createActionCard({
         ...tool,
-        actionLabel: `Abrir ${tool.title}`,
-        tone: tool.title === 'Importador Ventas' ? 'highlight' : 'neutral',
+        tone: tool.tone || 'neutral',
+        actionLabel: tool.actionLabel || `Abrir ${tool.title}`,
+        className: tool.className || '',
         onAction: () => onNavigate(tool.href),
       })
     );
@@ -134,7 +169,7 @@ export function createAdminPanelApp(options = {}) {
     footer: createResourceList(attachedResources),
   });
 
-  shell.append(hero, toolsSection, attachmentsCard);
+  shell.append(hero, quickAccess, toolsSection, attachmentsCard);
 
   if (mountNode) {
     mountNode.appendChild(shell);
