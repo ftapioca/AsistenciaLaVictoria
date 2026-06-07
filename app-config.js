@@ -41,6 +41,11 @@
     return availablePresets[value] ? value : "";
   }
 
+  function isLocalDevelopmentHost() {
+    var hostname = String(window.location.hostname || "").trim().toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  }
+
   function resolveEnvironment() {
     var forced = normalizeEnvironment(window.LV_FORCE_ENV);
     if (forced) return forced;
@@ -50,6 +55,11 @@
     if (fromQuery) {
       writeStoredEnvironment(fromQuery);
       return fromQuery;
+    }
+
+    if (isLocalDevelopmentHost()) {
+      writeStoredEnvironment("staging");
+      return "staging";
     }
 
     var fromStorage = normalizeEnvironment(readStoredEnvironment());

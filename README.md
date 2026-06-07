@@ -166,6 +166,7 @@ Archivos:
 Resolución del entorno activo:
 
 - `?env=staging` o `?env=prod` en la URL
+- si corres en `localhost` o `127.0.0.1`, el frontend fuerza `staging` por defecto para evitar pruebas accidentales contra producción
 - valor persistido en `localStorage` bajo `lavictoria.app.env`
 - fallback por defecto a `prod`
 
