@@ -566,13 +566,14 @@ function importarVentasInterno_(params) {
 
 function normalizarMetadataImportacion_(metadata) {
   var objeto = normalizarObjetoImportacion_(metadata, "metadata");
+  var fechaDesde = limpiarTextoImportacion_(objeto.fechaDesde);
 
   return {
     local: limpiarTextoImportacion_(objeto.local),
-    periodo: limpiarTextoImportacion_(objeto.periodo),
+    periodo: normalizarPeriodoImportacion_(objeto.periodo, fechaDesde),
     nombreArchivo: limpiarTextoImportacion_(objeto.nombreArchivo),
     hashArchivo: limpiarTextoImportacion_(objeto.hashArchivo),
-    fechaDesde: limpiarTextoImportacion_(objeto.fechaDesde),
+    fechaDesde: fechaDesde,
     fechaHasta: limpiarTextoImportacion_(objeto.fechaHasta),
     observaciones: limpiarTextoImportacion_(objeto.observaciones)
   };
@@ -596,6 +597,13 @@ function validarMetadataImportacion_(metadata) {
       );
     }
   });
+
+  if (!/^\d{4}-\d{2}$/.test(metadata.periodo)) {
+    throw crearErrorImportacion_(
+      "ERROR_DATOS",
+      'El campo "periodo" debe quedar normalizado como "YYYY-MM".'
+    );
+  }
 }
 
 function validarColeccionesImportacion_(ventas, propinas) {
@@ -684,7 +692,9 @@ function obtenerRegistrosImportacionesVentas_(hoja) {
       fechaImportacion: fila[buscarIndiceHeader_(headers, "FechaImportacion")],
       usuario: fila[buscarIndiceHeader_(headers, "Usuario")],
       local: fila[buscarIndiceHeader_(headers, "Local")],
-      periodo: fila[buscarIndiceHeader_(headers, "Periodo")],
+      periodo: normalizarPeriodoImportacion_(
+        fila[buscarIndiceHeader_(headers, "Periodo")]
+      ),
       nombreArchivo: fila[buscarIndiceHeader_(headers, "NombreArchivo")],
       hashArchivo: fila[buscarIndiceHeader_(headers, "HashArchivo")],
       estado: fila[buscarIndiceHeader_(headers, "Estado")],
@@ -836,7 +846,7 @@ function serializarImportacionVentas_(importacion) {
     fechaImportacion: String(importacion.fechaImportacion || "").trim(),
     usuario: String(importacion.usuario || "").trim(),
     local: String(importacion.local || "").trim(),
-    periodo: String(importacion.periodo || "").trim(),
+    periodo: normalizarPeriodoImportacion_(importacion.periodo),
     nombreArchivo: String(importacion.nombreArchivo || "").trim(),
     hashArchivo: String(importacion.hashArchivo || "").trim(),
     estado: String(importacion.estado || "").trim(),
@@ -1172,6 +1182,35 @@ function normalizarMontoImportacion_(valor) {
 
 function limpiarTextoImportacion_(valor) {
   return valor === null || valor === undefined ? "" : String(valor).trim();
+}
+
+function normalizarPeriodoImportacion_(valor, fechaDesdeFallback) {
+  var texto = limpiarTextoImportacion_(valor);
+
+  if (!texto && /^\d{4}-\d{2}-\d{2}$/.test(String(fechaDesdeFallback || "").trim())) {
+    return String(fechaDesdeFallback).trim().slice(0, 7);
+  }
+
+  if (!texto) {
+    return "";
+  }
+
+  if (/^\d{4}-\d{2}$/.test(texto)) {
+    return texto;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+    return texto.slice(0, 7);
+  }
+
+  var textoSinZona = texto.replace(/\s+\([^)]*\)$/, "");
+  var fecha = new Date(textoSinZona);
+
+  if (!isNaN(fecha.getTime())) {
+    return fecha.getFullYear() + "-" + String(fecha.getMonth() + 1).padStart(2, "0");
+  }
+
+  return texto;
 }
 
 function agregarObservacionImportacion_(actual, nueva) {
