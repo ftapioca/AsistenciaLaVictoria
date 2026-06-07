@@ -56,20 +56,6 @@ function isMobileView() {
   return window.innerWidth <= MOBILE_BREAKPOINT;
 }
 
-function createMetricCard(label, valueId, tone = 'neutral') {
-  const toneClass = tone === 'highlight'
-    ? 'bg-gradient-to-br from-brand-cheese/80 via-white/92 to-brand-bun/25 border-brand-bun/20'
-    : 'bg-white/88 border-neutral-charcoal/10';
-
-  const metric = document.createElement('article');
-  metric.className = `rounded-3xl border p-xl backdrop-blur ${toneClass}`;
-  metric.innerHTML = `
-    <p class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">${label}</p>
-    <strong id="${valueId}" class="mt-md block text-[42px] font-black leading-none tracking-[-0.06em] text-brand-bun-dark">0</strong>
-  `;
-  return metric;
-}
-
 function createStateMessage(kind, message) {
   const toneClasses = {
     empty: 'border-brand-lettuce/24 bg-brand-lettuce/12 text-brand-lettuce',
@@ -81,6 +67,117 @@ function createStateMessage(kind, message) {
   block.className = `rounded-2xl border px-lg py-lg text-sm font-bold leading-relaxed ${toneClasses[kind] || toneClasses.loading}`;
   block.textContent = message;
   return block;
+}
+
+function createAccordionSection({ id, title, subtitle, badgeText = '', open = false }) {
+  const card = createCard({
+    className: 'overflow-hidden rounded-3xl p-0',
+  });
+
+  const wrapper = document.createElement('section');
+  wrapper.dataset.accordionId = id;
+  wrapper.dataset.open = open ? 'true' : 'false';
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'flex w-full items-center justify-between gap-lg bg-gradient-to-b from-[#fffaf1] to-neutral-cream px-xl py-xl text-left';
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.setAttribute('aria-controls', `${id}-panel`);
+
+  const heading = document.createElement('div');
+  heading.className = 'min-w-0';
+  heading.innerHTML = `
+    <h2 class="text-[28px] font-black leading-none tracking-[-0.04em] text-neutral-charcoal">${escapeHtml(title)}</h2>
+    <p class="mt-sm text-sm font-bold text-neutral-muted">${escapeHtml(subtitle)}</p>
+  `;
+
+  const meta = document.createElement('div');
+  meta.className = 'flex items-center gap-md';
+
+  const badge = document.createElement('div');
+  badge.id = `${id}-badge`;
+  badge.className = 'grid min-h-[46px] min-w-[46px] place-items-center rounded-2xl bg-gradient-to-r from-brand-cheese to-brand-bun px-md text-xl font-black text-neutral-charcoal';
+  badge.textContent = badgeText;
+
+  const chevron = document.createElement('span');
+  chevron.className = 'grid size-8 place-items-center rounded-full border border-neutral-charcoal/10 bg-white/70 text-sm text-neutral-charcoal transition-transform';
+  chevron.textContent = '▾';
+
+  meta.append(badge, chevron);
+  toggle.append(heading, meta);
+
+  const panel = document.createElement('div');
+  panel.id = `${id}-panel`;
+  panel.className = 'p-lg';
+
+  wrapper.append(toggle, panel);
+  card.appendChild(wrapper);
+
+  let touchStartY = 0;
+  let touchStartX = 0;
+  let touchMoved = false;
+  let ignoreNextClick = false;
+
+  toggle.addEventListener('touchstart', (event) => {
+    touchStartY = event.touches[0] ? event.touches[0].clientY : 0;
+    touchStartX = event.touches[0] ? event.touches[0].clientX : 0;
+    touchMoved = false;
+  }, { passive: true });
+
+  toggle.addEventListener('touchmove', (event) => {
+    const currentY = event.touches[0] ? event.touches[0].clientY : touchStartY;
+    const currentX = event.touches[0] ? event.touches[0].clientX : touchStartX;
+    if (Math.abs(currentY - touchStartY) > 8 || Math.abs(currentX - touchStartX) > 8) {
+      touchMoved = true;
+    }
+  }, { passive: true });
+
+  toggle.addEventListener('touchend', (event) => {
+    ignoreNextClick = true;
+    window.setTimeout(() => {
+      ignoreNextClick = false;
+    }, 350);
+
+    if (touchMoved) {
+      return;
+    }
+
+    event.preventDefault();
+    if (typeof toggle.__lvOnTap === 'function') {
+      toggle.__lvOnTap();
+    }
+  }, { passive: false });
+
+  function setOpen(nextOpen) {
+    const active = Boolean(nextOpen);
+    wrapper.dataset.open = active ? 'true' : 'false';
+    toggle.setAttribute('aria-expanded', active ? 'true' : 'false');
+    panel.hidden = !active;
+    chevron.style.transform = active ? 'rotate(180deg)' : 'rotate(0deg)';
+  }
+
+  setOpen(open);
+
+  return {
+    element: card,
+    panel,
+    badge,
+    toggle,
+    setOpen,
+    bindToggle(handler) {
+      toggle.__lvOnTap = handler;
+      toggle.addEventListener('click', (event) => {
+        if (ignoreNextClick) {
+          event.preventDefault();
+          return;
+        }
+        handler();
+      });
+    },
+    isOpen() {
+      return wrapper.dataset.open === 'true';
+    },
+  };
 }
 
 function createTurnosTable(local, turnos, onQuickAction) {
@@ -172,208 +269,160 @@ function createTurnosTable(local, turnos, onQuickAction) {
   return wrapper;
 }
 
-function createLocalCard(local) {
-  const card = createCard({
-    className: 'overflow-hidden rounded-3xl p-0',
-  });
-
-  const details = document.createElement('details');
-  details.className = 'group';
-  details.dataset.localId = local.id;
-
-  const summary = document.createElement('summary');
-  summary.className = 'flex cursor-pointer list-none items-center justify-between gap-lg bg-gradient-to-b from-[#fffaf1] to-neutral-cream px-xl py-xl';
-  summary.innerHTML = `
-    <div>
-      <h2 class="text-[28px] font-black leading-none tracking-[-0.04em] text-neutral-charcoal">${local.nombre}</h2>
-      <p class="mt-sm text-sm font-bold text-neutral-muted">Colaboradores pendientes de salida</p>
-    </div>
-  `;
-
-  const meta = document.createElement('div');
-  meta.className = 'flex items-center gap-md';
-
-  const countBadge = document.createElement('div');
-  countBadge.id = `badge-${local.id}`;
-  countBadge.className = 'grid min-h-[46px] min-w-[46px] place-items-center rounded-2xl bg-gradient-to-r from-brand-cheese to-brand-bun px-md text-xl font-black text-neutral-charcoal';
-  countBadge.textContent = '0';
-
-  const chevron = document.createElement('span');
-  chevron.className = 'grid size-8 place-items-center rounded-full border border-neutral-charcoal/10 bg-white/70 text-sm text-neutral-charcoal transition-transform group-open:rotate-180 md:group-open:rotate-0';
-  chevron.textContent = '▾';
-
-  meta.append(countBadge, chevron);
-  summary.appendChild(meta);
-
-  const panel = document.createElement('div');
-  panel.id = `contenido-${local.id}`;
-  panel.className = 'p-lg';
-  panel.appendChild(createStateMessage('loading', 'Cargando turnos abiertos...'));
-
-  details.append(summary, panel);
-  card.appendChild(details);
-
-  return card;
-}
-
-function updateAccordionMode() {
-  document.querySelectorAll('details[data-local-id]').forEach((details) => {
-    const summary = details.querySelector('summary');
-    if (!summary) return;
-
-    if (isMobileView()) {
-      details.removeAttribute('open');
-      summary.classList.add('cursor-pointer');
-    } else {
-      details.setAttribute('open', '');
-      summary.classList.remove('cursor-pointer');
-    }
-  });
-}
-
-function setupAccordions() {
-  const accordions = Array.from(document.querySelectorAll('details[data-local-id]'));
-
-  accordions.forEach((details) => {
-    const summary = details.querySelector('summary');
-    if (!summary) return;
-
-    summary.addEventListener('click', (event) => {
-      if (!isMobileView()) {
-        event.preventDefault();
-      }
-    });
-
-    details.addEventListener('toggle', () => {
-      if (!isMobileView()) {
-        details.setAttribute('open', '');
-        return;
-      }
-
-      if (details.open) {
-        accordions.forEach((other) => {
-          if (other !== details) other.removeAttribute('open');
-        });
-      }
-    });
-  });
-
-  updateAccordionMode();
-  window.addEventListener('resize', updateAccordionMode);
-}
-
-function setLoadingLocal(localId) {
-  const panel = $(`contenido-${localId}`);
-  if (!panel) return;
-  panel.innerHTML = '';
-  panel.appendChild(createStateMessage('loading', 'Cargando turnos abiertos...'));
-  $(`badge-${localId}`).textContent = '...';
-}
-
-function createLocalActions(local, total, onRegisterAction) {
-  const toolbar = document.createElement('div');
-  toolbar.className = 'mb-lg flex flex-col gap-sm rounded-2xl border border-neutral-charcoal/8 bg-white/62 p-md md:flex-row md:items-center md:justify-between';
-  toolbar.innerHTML = `
-    <div class="min-w-0">
-      <p class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Acción administrativa</p>
-      <p class="mt-xs text-sm font-semibold leading-6 text-neutral-charcoal/72">${total ? `Hay ${total} turnos abiertos en ${local.nombre}.` : `No hay turnos abiertos en ${local.nombre}, pero igual puedes registrar asistencia.`}</p>
-    </div>
-  `;
-
-  toolbar.appendChild(createButton('Registrar asistencia', {
-    className: 'min-h-[48px] md:min-w-[220px]',
-    onClick: () => onRegisterAction({ local: local.nombre }),
-  }));
-
-  return toolbar;
-}
-
-function renderLocal(local, turnos, onRegisterAction) {
-  const panel = $(`contenido-${local.id}`);
-  const total = Array.isArray(turnos) ? turnos.length : 0;
-  $(`badge-${local.id}`).textContent = String(total);
-
-  panel.innerHTML = '';
-  panel.appendChild(createLocalActions(local, total, onRegisterAction));
-  if (!total) {
-    panel.appendChild(createStateMessage('empty', 'No hay turnos abiertos en este local.'));
-    return;
-  }
-
-  panel.appendChild(createTurnosTable(local, turnos, onRegisterAction));
-}
-
-function renderErrorLocal(local, message) {
-  const panel = $(`contenido-${local.id}`);
-  panel.innerHTML = '';
-  panel.appendChild(createLocalActions(local, 0, openRegisterModalGlobal));
-  panel.appendChild(createStateMessage('error', message || 'No se pudo cargar este local.'));
-  $(`badge-${local.id}`).textContent = '0';
-}
-
-function getDashboardTimestamp() {
-  const now = new Date();
-  return now.toLocaleString('es-CL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-async function cargarTurnosLocal(local) {
-  setLoadingLocal(local.id);
-  try {
-    const data = await window.LVAuth.apiGet({ accion: 'TurnosAbiertos', local: local.nombre });
-    if (data.status !== 'SUCCESS') {
-      renderErrorLocal(local, data.mensaje || 'El servidor no devolvió una respuesta válida.');
-      return 0;
-    }
-
-    const turnos = data.turnosAbiertos || [];
-    renderLocal(local, turnos, openRegisterModalGlobal);
-    return turnos.length;
-  } catch (error) {
-    if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
-      window.LVAuth.redirectToIndex('session');
-      return 0;
-    }
-    renderErrorLocal(local, 'Error de conexión. Revisa internet o el Apps Script.');
-    return 0;
-  }
-}
-
 async function cargarColaboradoresPorLocal(local) {
   if (colaboradoresPorLocalCache.has(local)) {
     return colaboradoresPorLocalCache.get(local);
   }
 
   const data = await window.LVAuth.apiGet({ accion: 'ColaboradoresPorLocal', local });
-  if (data.status !== 'SUCCESS') {
+  if (data.status && data.status !== 'SUCCESS') {
     throw new Error(data.mensaje || 'No se pudo cargar la lista de colaboradores.');
   }
 
-  const colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
+  const colaboradores = Array.isArray(data.colaboradores)
+    ? data.colaboradores
+    : Array.isArray(data.empleados)
+      ? data.empleados
+      : [];
+
   colaboradoresPorLocalCache.set(local, colaboradores);
   return colaboradores;
 }
 
-let openRegisterModalGlobal = () => {};
+async function registrarAsistenciaAdmin(payload) {
+  const data = await window.LVAuth.apiPost({
+    accion: 'RegistrarAsistenciaAdmin',
+    local: payload.local,
+    nombre: payload.nombre,
+    tipoAccion: payload.accion,
+  });
 
-function createRegisterModal(onSaved) {
+  if (data.status !== 'SUCCESS') {
+    throw new Error(data.mensaje || 'No se pudo registrar la asistencia.');
+  }
+
+  return data;
+}
+
+function createConfirmModal() {
   const backdrop = document.createElement('div');
   backdrop.className = 'fixed inset-0 z-notification hidden bg-neutral-charcoal/55 px-lg py-lg backdrop-blur-sm';
 
   const dialog = document.createElement('section');
-  dialog.className = 'mx-auto flex min-h-full w-full max-w-[640px] items-center';
+  dialog.className = 'mx-auto flex min-h-full w-full max-w-[520px] items-center';
 
   const card = createCard({
-    eyebrow: 'Asistencia administrativa',
-    title: 'Registrar ingreso o salida',
-    body: 'Selecciona local, colaborador y acción. La operación usa tu sesión de administrador y respeta las validaciones de secuencia del sistema.',
+    eyebrow: 'Confirmación',
+    title: 'Confirmar salida',
+    body: '',
     className: 'w-full rounded-[28px] bg-[#fff8ee] p-xl shadow-brand md:p-2xl',
   });
+
+  const bodyNode = card.querySelector('p');
+  bodyNode.className = 'text-base font-semibold leading-8 text-neutral-muted';
+
+  const status = document.createElement('div');
+  status.hidden = true;
+
+  const actions = document.createElement('div');
+  actions.className = 'mt-xl grid gap-sm md:grid-cols-[1fr_1fr]';
+
+  const cancelButton = createButton('Cancelar', {
+    variant: 'secondary',
+    className: 'min-h-[52px] bg-white/82 text-neutral-charcoal',
+  });
+
+  const confirmButton = createButton('Confirmar', {
+    variant: 'success',
+    className: 'min-h-[52px]',
+  });
+  confirmButton.type = 'button';
+
+  actions.append(confirmButton, cancelButton);
+  card.append(status, actions);
+  dialog.appendChild(card);
+  backdrop.appendChild(dialog);
+
+  let onConfirm = null;
+  let onCancel = null;
+
+  function setStatus(message) {
+    status.hidden = false;
+    status.className = 'rounded-2xl border border-brand-ketchup/24 bg-brand-ketchup/12 px-lg py-md text-sm font-bold leading-6 text-brand-ketchup';
+    status.textContent = message;
+  }
+
+  function clearStatus() {
+    status.hidden = true;
+    status.textContent = '';
+    status.className = '';
+  }
+
+  function close() {
+    backdrop.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    clearStatus();
+    confirmButton.disabled = false;
+    onConfirm = null;
+    onCancel = null;
+  }
+
+  function open(options = {}) {
+    const {
+      title = 'Confirmar acción',
+      message = '',
+      confirmLabel = 'Confirmar',
+      onConfirm: confirmHandler,
+      onCancel: cancelHandler,
+    } = options;
+
+    card.querySelector('h3').textContent = title;
+    bodyNode.textContent = message;
+    confirmButton.textContent = confirmLabel;
+    onConfirm = confirmHandler;
+    onCancel = cancelHandler;
+    clearStatus();
+    backdrop.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+  }
+
+  cancelButton.addEventListener('click', () => {
+    if (typeof onCancel === 'function') onCancel();
+    close();
+  });
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) {
+      if (typeof onCancel === 'function') onCancel();
+      close();
+    }
+  });
+
+  confirmButton.addEventListener('click', async () => {
+    if (typeof onConfirm !== 'function') {
+      close();
+      return;
+    }
+
+    clearStatus();
+    confirmButton.disabled = true;
+
+    try {
+      await onConfirm();
+      close();
+    } catch (error) {
+      confirmButton.disabled = false;
+      setStatus(error.message || 'No se pudo completar la acción.');
+    }
+  });
+
+  return { element: backdrop, open, close };
+}
+
+function createAttendanceForm(options = {}) {
+  const { onSaved, requestConfirmation } = options;
+
+  const container = document.createElement('div');
+  container.className = 'grid gap-lg';
 
   const localField = createSelectField({
     label: 'Local',
@@ -395,7 +444,7 @@ function createRegisterModal(onSaved) {
   const actionField = createSelectField({
     label: 'Acción',
     id: 'adminAssistAction',
-    name: 'accion',
+    name: 'tipoAccion',
     placeholder: 'Selecciona la acción',
     options: [
       { value: 'Ingreso', label: 'Ingreso' },
@@ -408,26 +457,20 @@ function createRegisterModal(onSaved) {
   status.hidden = true;
 
   const actions = document.createElement('div');
-  actions.className = 'mt-xl grid gap-sm md:grid-cols-[1fr_1fr]';
+  actions.className = 'grid gap-sm md:grid-cols-[1fr_1fr]';
 
-  const cancelButton = createButton('Cancelar', {
-    variant: 'secondary',
-    className: 'min-h-[52px] bg-white/82 text-neutral-charcoal',
-  });
-
-  const submitButton = createButton('Registrar asistencia', {
+  const submitButton = createButton('Registrar accion', {
     className: 'min-h-[52px]',
   });
   submitButton.type = 'button';
 
-  actions.append(cancelButton, submitButton);
+  const resetButton = createButton('Limpiar', {
+    variant: 'secondary',
+    className: 'min-h-[52px] bg-white/82 text-neutral-charcoal',
+  });
 
-  const form = document.createElement('div');
-  form.className = 'mt-xl grid gap-lg';
-  form.append(localField.wrapper, collaboratorField.wrapper, actionField.wrapper, status, actions);
-  card.appendChild(form);
-  dialog.appendChild(card);
-  backdrop.appendChild(dialog);
+  actions.append(submitButton, resetButton);
+  container.append(localField.wrapper, collaboratorField.wrapper, actionField.wrapper, status, actions);
 
   function setStatus(type, message) {
     const tones = {
@@ -463,32 +506,15 @@ function createRegisterModal(onSaved) {
     collaboratorField.setValue(preferredName && colaboradores.includes(preferredName) ? preferredName : '', false);
   }
 
-  function close() {
-    backdrop.classList.add('hidden');
-    document.body.classList.remove('overflow-hidden');
+  function resetForm() {
     clearStatus();
-    submitButton.disabled = false;
-  }
-
-  async function open(options = {}) {
-    const { local = '', nombre = '', accion = 'Ingreso' } = options;
-    clearStatus();
-    localField.setValue(local, false);
-    actionField.setValue(accion, false);
+    localField.setValue('', false);
     collaboratorField.setValue('', false);
     collaboratorField.setOptions([]);
     collaboratorField.setDisabled(true);
-    collaboratorField.setPlaceholder(local ? 'Cargando colaboradores...' : 'Selecciona primero un local');
-    backdrop.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-
-    if (local) {
-      try {
-        await syncCollaborators(local, nombre);
-      } catch (error) {
-        setStatus('error', error.message || 'No se pudo cargar la lista de colaboradores.');
-      }
-    }
+    collaboratorField.setPlaceholder('Selecciona primero un local');
+    actionField.setValue('Ingreso', false);
+    submitButton.disabled = false;
   }
 
   localField.onChange(async (local) => {
@@ -500,54 +526,49 @@ function createRegisterModal(onSaved) {
     }
   });
 
-  cancelButton.addEventListener('click', close);
-  backdrop.addEventListener('click', (event) => {
-    if (event.target === backdrop) close();
-  });
+  resetButton.addEventListener('click', resetForm);
 
   submitButton.addEventListener('click', async () => {
     clearStatus();
 
-    const local = localField.getValue().trim();
-    const nombre = collaboratorField.getValue().trim();
-    const accion = actionField.getValue().trim();
+    const payload = {
+      local: localField.getValue().trim(),
+      nombre: collaboratorField.getValue().trim(),
+      accion: actionField.getValue().trim(),
+    };
 
-    if (!local) {
+    if (!payload.local) {
       setStatus('error', 'Debes seleccionar un local.');
       return;
     }
 
-    if (!nombre) {
+    if (!payload.nombre) {
       setStatus('error', 'Debes seleccionar un colaborador.');
       return;
     }
 
-    if (!accion) {
+    if (!payload.accion) {
       setStatus('error', 'Debes seleccionar una acción.');
       return;
     }
 
-    submitButton.disabled = true;
-    setStatus('loading', 'Registrando asistencia...');
-    overlay.setLoading(true, 'Guardando asistencia...');
-    await waitNextFrame();
-
     try {
-      const data = await window.LVAuth.apiPost({
-        accion: 'RegistrarAsistenciaAdmin',
-        local,
-        nombre,
-        accion,
-      });
-
-      if (data.status !== 'SUCCESS') {
-        throw new Error(data.mensaje || 'No se pudo registrar la asistencia.');
-      }
-
-      close();
+      await requestConfirmation(payload);
+      submitButton.disabled = true;
+      setStatus('loading', 'Registrando accion...');
+      overlay.setLoading(true, 'Guardando accion...');
+      await waitNextFrame();
+      const data = await registrarAsistenciaAdmin(payload);
+      resetForm();
+      setStatus('success', `${data.accion} registrada para ${data.nombre}.`);
       toast.show('success', `${data.accion} registrada para ${data.nombre} en ${data.local}.`);
       await onSaved();
     } catch (error) {
+      if (error && error.message === 'CONFIRM_CANCELLED') {
+        clearStatus();
+        submitButton.disabled = false;
+        return;
+      }
       setStatus('error', error.message || 'No se pudo registrar la asistencia.');
     } finally {
       overlay.setLoading(false);
@@ -555,7 +576,59 @@ function createRegisterModal(onSaved) {
     }
   });
 
-  return { element: backdrop, open, close };
+  return { element: container };
+}
+
+function setLoadingLocal(section) {
+  section.panel.innerHTML = '';
+  section.panel.appendChild(createStateMessage('loading', 'Cargando turnos abiertos...'));
+  section.badge.textContent = '...';
+}
+
+function renderLocal(section, local, turnos, onQuickAction) {
+  const total = Array.isArray(turnos) ? turnos.length : 0;
+  section.badge.textContent = String(total);
+  section.panel.innerHTML = '';
+
+  if (!total) {
+    section.panel.appendChild(createStateMessage('empty', 'No hay turnos abiertos en este local.'));
+    return;
+  }
+
+  section.panel.appendChild(createTurnosTable(local, turnos, onQuickAction));
+}
+
+function renderErrorLocal(section, message) {
+  section.panel.innerHTML = '';
+  section.panel.appendChild(createStateMessage('error', message || 'No se pudo cargar este local.'));
+  section.badge.textContent = '0';
+}
+
+function getDashboardTimestamp() {
+  const now = new Date();
+  return now.toLocaleString('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+async function bootstrap() {
+  try {
+    overlay.setLoading(true, 'Validando sesión...');
+    const session = await window.LVAuth.protectPage(['Administrador']);
+    if (!session) return;
+
+    overlay.setLoading(true, 'Cargando dashboard...');
+    await waitNextFrame();
+    const app = createTurnosAbiertosApp(session);
+    await app.cargarDashboard();
+    window.setInterval(app.cargarDashboard, REFRESCO_AUTOMATICO_MS);
+  } finally {
+    overlay.setLoading(false);
+  }
 }
 
 function createTurnosAbiertosApp(session) {
@@ -584,12 +657,6 @@ function createTurnosAbiertosApp(session) {
     const row = document.createElement('div');
     row.className = 'flex flex-col gap-sm sm:flex-row sm:flex-wrap';
 
-    const btnRegistrar = createButton('Registrar asistencia', {
-      variant: 'success',
-      className: 'sm:flex-1',
-    });
-    btnRegistrar.dataset.role = 'register-button';
-
     const btnBack = createButton('Volver al panel', {
       variant: 'secondary',
       className: 'bg-white/88 text-neutral-charcoal sm:flex-1 hover:bg-white',
@@ -614,8 +681,8 @@ function createTurnosAbiertosApp(session) {
     });
     btnActualizar.dataset.role = 'refresh-button';
 
-    row.append(btnRegistrar, btnBack, btnLogout, btnActualizar);
-    return { row, btnActualizar, btnRegistrar };
+    row.append(btnBack, btnLogout, btnActualizar);
+    return { row };
   }
 
   const desktopContextPills = document.createElement('div');
@@ -629,12 +696,8 @@ function createTurnosAbiertosApp(session) {
     className: 'rounded-3xl lg:hidden',
   });
   const mobileActions = document.createElement('div');
-  mobileActions.className = 'grid grid-cols-2 gap-sm';
+  mobileActions.className = 'grid grid-cols-3 gap-sm';
   mobileActions.append(
-    createButton('Registrar', {
-      variant: 'success',
-      className: 'min-h-[44px] px-md py-sm text-sm shadow-none',
-    }),
     createButton('Volver', {
       variant: 'secondary',
       className: 'min-h-[44px] bg-white/88 px-md py-sm text-sm text-neutral-charcoal shadow-none hover:bg-white',
@@ -656,17 +719,16 @@ function createTurnosAbiertosApp(session) {
       className: 'min-h-[44px] px-md py-sm text-sm shadow-none',
     }),
   );
-  mobileActions.querySelectorAll('button')[0].dataset.role = 'register-button';
-  mobileActions.querySelectorAll('button')[3].dataset.role = 'refresh-button';
+  mobileActions.querySelector('button:last-child').dataset.role = 'refresh-button';
   mobileSessionCard.appendChild(mobileActions);
 
   const hero = createPageHero({
     badge: 'La Victoria · Administración',
     title: 'Turnos abiertos',
-    lead: 'Revisa turnos abiertos por local y registra asistencia administrativa sin salir de esta vista cuando necesites corregir o completar una marca.',
+    lead: 'Revisa turnos abiertos por local y registra asistencia administrativa desde una sección dedicada al final del tablero.',
     sideTitle: 'Sesión y refresh',
     sideStatus: desktopContextPills,
-    sideCopy: 'Refresh automático cada 30 minutos y acceso inmediato para registrar ingreso o salida por administración.',
+    sideCopy: 'Para revisión funcional usa siempre la ruta con ?env=staging, así mantienes todo el circuito de navegación en el entorno correcto.',
     sideActions: (() => {
       const wrapper = document.createElement('div');
       wrapper.className = 'grid gap-sm';
@@ -683,34 +745,112 @@ function createTurnosAbiertosApp(session) {
 
   const localGrid = document.createElement('section');
   localGrid.className = 'grid gap-lg xl:grid-cols-2';
-  LOCALES.forEach((local) => {
-    localGrid.appendChild(createLocalCard(local));
+
+  const localSections = LOCALES.map((local) => {
+    const section = createAccordionSection({
+      id: local.id,
+      title: local.nombre,
+      subtitle: 'Colaboradores pendientes de salida',
+      badgeText: '0',
+      open: !isMobileView(),
+    });
+
+    localGrid.appendChild(section.element);
+    return { local, section };
   });
+
+  const adminSection = createAccordionSection({
+    id: 'AsistenciaAdministrativa',
+    title: 'Asistencia Administrativa',
+    subtitle: 'Registra ingreso o salida de colaboradores',
+    badgeText: 'A',
+    open: !isMobileView(),
+  });
+
+  const confirmModal = createConfirmModal();
+  shell.appendChild(confirmModal.element);
+
+  const attendanceForm = createAttendanceForm({
+    onSaved: async () => {
+      await cargarDashboard();
+    },
+    requestConfirmation: async (payload) => new Promise((resolve, reject) => {
+      confirmModal.open({
+        title: 'Confirmar accion',
+        message: `Vas a registrar ${payload.accion.toLowerCase()} para ${payload.nombre} en ${payload.local}.`,
+        confirmLabel: payload.accion === 'Salida' ? 'Registrar salida' : 'Registrar ingreso',
+        onConfirm: async () => { resolve(); },
+        onCancel: () => { reject(new Error('CONFIRM_CANCELLED')); },
+      });
+    }),
+  });
+  adminSection.panel.appendChild(attendanceForm.element);
 
   const footer = document.createElement('p');
   footer.className = 'pb-lg text-center text-sm font-bold text-neutral-cream/70';
-  footer.textContent = 'Actualización automática cada 30 minutos · Registro administrativo disponible en cada local';
+  footer.textContent = 'Actualización automática cada 30 minutos · Revisión recomendada en ?env=staging';
 
-  shell.append(hero, localGrid, mobileSessionCard, footer);
+  shell.append(hero, localGrid, adminSection.element, mobileSessionCard, footer);
   app.appendChild(shell);
 
   const refreshLabels = shell.querySelectorAll('[data-refresh-label]');
   const actionButtons = shell.querySelectorAll('[data-role="refresh-button"]');
-  const registerButtons = shell.querySelectorAll('[data-role="register-button"]');
+  const accordionSections = [...localSections.map((item) => item.section), adminSection];
 
-  const registerModal = createRegisterModal(async () => {
-    await cargarDashboard();
+  function setExclusiveOpen(sectionToToggle) {
+    const shouldOpen = !sectionToToggle.isOpen();
+    accordionSections.forEach((section) => {
+      section.setOpen(section === sectionToToggle ? shouldOpen : false);
+    });
+  }
+
+  function attachAccordionToggle(section) {
+    section.bindToggle(() => {
+      setExclusiveOpen(section);
+    });
+  }
+
+  localSections.forEach(({ section }) => {
+    attachAccordionToggle(section);
   });
-  shell.appendChild(registerModal.element);
 
-  openRegisterModalGlobal = (options = {}) => {
-    registerModal.open(options);
-  };
+  attachAccordionToggle(adminSection);
+
+  function syncAccordionMode() {
+    if (isMobileView()) {
+      accordionSections.forEach((section) => section.setOpen(false));
+      return;
+    }
+
+    accordionSections.forEach((section, index) => {
+      section.setOpen(index === 0);
+    });
+  }
 
   function updateDashboardTimestamp() {
     const text = getDashboardTimestamp();
     refreshLabels.forEach((label) => {
       label.textContent = text;
+    });
+  }
+
+  async function handleQuickAction(payload) {
+    confirmModal.open({
+      title: 'Confirmar salida',
+      message: `Vas a registrar la salida de ${payload.nombre} en ${payload.local}.`,
+      confirmLabel: 'Registrar salida',
+      onConfirm: async () => {
+        overlay.setLoading(true, 'Guardando salida...');
+        await waitNextFrame();
+
+        try {
+          const data = await registrarAsistenciaAdmin(payload);
+          toast.show('success', `${data.accion} registrada para ${data.nombre} en ${data.local}.`);
+          await cargarDashboard();
+        } finally {
+          overlay.setLoading(false);
+        }
+      },
     });
   }
 
@@ -720,7 +860,25 @@ function createTurnosAbiertosApp(session) {
       button.textContent = 'Actualizando...';
     });
 
-    await Promise.all(LOCALES.map((local) => cargarTurnosLocal(local)));
+    await Promise.all(localSections.map(async ({ local, section }) => {
+      setLoadingLocal(section);
+      try {
+        const data = await window.LVAuth.apiGet({ accion: 'TurnosAbiertos', local: local.nombre });
+        if (data.status !== 'SUCCESS') {
+          renderErrorLocal(section, data.mensaje || 'El servidor no devolvió una respuesta válida.');
+          return;
+        }
+
+        renderLocal(section, local, data.turnosAbiertos || [], handleQuickAction);
+      } catch (error) {
+        if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
+          window.LVAuth.redirectToIndex('session');
+          return;
+        }
+        renderErrorLocal(section, 'Error de conexión. Revisa internet o el Apps Script.');
+      }
+    }));
+
     updateDashboardTimestamp();
 
     actionButtons.forEach((button) => {
@@ -730,26 +888,10 @@ function createTurnosAbiertosApp(session) {
   }
 
   actionButtons.forEach((button) => button.addEventListener('click', cargarDashboard));
-  registerButtons.forEach((button) => button.addEventListener('click', () => openRegisterModalGlobal()));
-  setupAccordions();
+  window.addEventListener('resize', syncAccordionMode);
+  syncAccordionMode();
 
   return { cargarDashboard };
-}
-
-async function bootstrap() {
-  try {
-    overlay.setLoading(true, 'Validando sesión...');
-    const session = await window.LVAuth.protectPage(['Administrador']);
-    if (!session) return;
-
-    overlay.setLoading(true, 'Cargando dashboard...');
-    await waitNextFrame();
-    const app = createTurnosAbiertosApp(session);
-    await app.cargarDashboard();
-    window.setInterval(app.cargarDashboard, REFRESCO_AUTOMATICO_MS);
-  } finally {
-    overlay.setLoading(false);
-  }
 }
 
 bootstrap();

@@ -320,7 +320,7 @@ function registrarAsistencia(params) {
 function registrarAsistenciaAdmin(params) {
   var nombre = String(params.nombre || "").trim();
   var local = String(params.local || "").trim();
-  var accionTexto = String(params.accion || "").trim();
+  var accionTexto = String(params.tipoAccion || params.accionRegistro || params.accion || "").trim();
   var fechaHora = new Date();
 
   if (!nombre || !local || !accionTexto) {

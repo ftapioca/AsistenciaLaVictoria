@@ -169,7 +169,7 @@ export function createAdminPanelApp(options = {}) {
     footer: createResourceList(attachedResources),
   });
 
-  shell.append(hero, quickAccess, toolsSection, attachmentsCard);
+  shell.append(quickAccess, hero, toolsSection, attachmentsCard);
 
   if (mountNode) {
     mountNode.appendChild(shell);

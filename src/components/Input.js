@@ -28,7 +28,7 @@ export function createInputField(options = {}) {
     disabled = false,
   } = options;
 
-  const wrapper = document.createElement('label');
+  const wrapper = document.createElement('div');
   wrapper.className = 'flex flex-col gap-sm';
 
   if (label) {
@@ -74,7 +74,7 @@ export function createPinInputField(options = {}) {
     maxLength = 12,
   } = options;
 
-  const wrapper = document.createElement('label');
+  const wrapper = document.createElement('div');
   wrapper.className = 'flex flex-col gap-sm';
 
   if (label) {
@@ -292,6 +292,15 @@ export function createSelectField(options = {}) {
     setValue(button.dataset.optionValue);
     setMenuOpen(false);
   });
+
+  optionsBox.addEventListener('touchend', (event) => {
+    const button = event.target.closest('button[data-option-value]');
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setValue(button.dataset.optionValue);
+    setMenuOpen(false);
+  }, { passive: false });
 
   document.addEventListener('click', onDocumentClick);
   setDisabled(currentDisabled);
