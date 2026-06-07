@@ -16,6 +16,8 @@ Rama base actual: `feature/spreadsheet-by-id`
 - [x] Estrategia de entornos `staging` / `prod`.
 - [x] Bootstrap de hojas base en spreadsheet de ventas.
 - [x] Endpoint `TestVentasSheet` validado sobre staging.
+- [x] Fix de normalización de `periodo` a formato `YYYY-MM` en importaciones de ventas.
+- [x] Compatibilidad legacy para lecturas de importaciones con `periodo` persistido como fecha larga.
 
 ---
 
@@ -40,6 +42,7 @@ Objetivo: recibir JSON normalizado desde frontend y persistir importación + ven
 - [x] Persistir `VentasPOS`.
 - [x] Persistir `PropinasPOS`.
 - [x] Responder resumen básico de importación.
+- [x] Validado en staging que una nueva importación para `Local + Periodo` reemplaza las activas previas una vez normalizado `periodo`.
 
 ---
 
@@ -109,6 +112,13 @@ Objetivo: dejar el módulo recalculable y auditable.
   - [ ] `ANULADO`
   - [ ] `REEMPLAZADO`
 - [ ] Registrar observaciones de importación.
+
+### Nota operativa de staging
+
+- Las importaciones creadas antes del fix de `periodo` podían quedar con `Periodo` persistido como string de fecha larga.
+- Las consultas actuales ya normalizan esos registros legacy a `YYYY-MM` al leerlos.
+- Las nuevas importaciones deben persistir `Periodo` siempre en formato `YYYY-MM`.
+- La validación funcional de `POST` hacia Apps Script conviene hacerse desde UI o `fetch` del navegador; `curl` puede fallar por la redirección `302 -> script.googleusercontent.com` y devolver `405` aunque el backend esté correcto.
 
 ---
 

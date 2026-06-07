@@ -147,11 +147,14 @@ Estado actual:
 - calcula `hashArchivo`
 - muestra preview técnico
 - llama al endpoint `ImportarVentas`
+- persiste `periodo` normalizado como `YYYY-MM`
+- ya valida correctamente en staging el reemplazo de importaciones activas previas por `Local + Periodo`
 
 Limitación actual:
 
 - la detección de columnas y hojas todavía es heurística; formatos POS muy distintos requerirán reglas adicionales
 - todavía faltan hojas de `pagos` y `productos`
+- la validación manual de `POST` contra la web app no es confiable con `curl -L`; para staging conviene probar desde UI o desde `fetch` en navegador
 
 ## Entornos Frontend
 

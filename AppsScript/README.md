@@ -161,6 +161,21 @@ Actualmente:
 - asistencia, autenticación, turnos y cierre leen/escriben sobre `LV_SPREADSHEET_RRHH_ID`
 - ventas y comisiones deben leer/escribir sobre `LV_SPREADSHEET_VENTAS_ID`
 
+### Nota sobre `periodo` en importaciones de ventas
+
+- El campo `metadata.periodo` de `ImportarVentas` debe persistirse en formato canónico `YYYY-MM`.
+- Se corrigió un bug donde algunas importaciones quedaban guardadas con `Periodo` como string de fecha larga.
+- Las lecturas actuales de `ConsultarImportacionesVentas` y `ConsultarImportacionActivaVentas` normalizan también esos registros legacy al responder.
+- Resultado validado en staging: una nueva importación para el mismo `Local + Periodo` vuelve a detectar y reemplazar correctamente importaciones activas previas.
+
+### Nota sobre pruebas `POST` a Web App
+
+- Las acciones `POST` contra Apps Script pueden no validarse bien con `curl -L` por la redirección inicial de Google Web Apps.
+- Si una prueba por `curl` termina en `302` seguido de `405` sobre `script.googleusercontent.com`, no implica necesariamente un fallo del backend.
+- Para validación funcional de `POST`, preferir:
+  - UI de staging
+  - `fetch(...)` desde DevTools del navegador
+
 ## Estructura base de ventas
 
 El endpoint admin `TestVentasSheet` crea o valida las hojas base del spreadsheet de ventas:
