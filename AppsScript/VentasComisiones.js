@@ -334,6 +334,79 @@ function consultarImportacionesVentas(params) {
   });
 }
 
+function consultarImportacionActivaVentas(params) {
+  requireAdminSession(params);
+
+  var local = limpiarTextoImportacion_(params.local);
+  var periodo = limpiarTextoImportacion_(params.periodo);
+
+  if (!local || !periodo) {
+    throw crearErrorImportacion_(
+      "ERROR_DATOS",
+      'Debes indicar "local" y "periodo" para consultar la importación activa.'
+    );
+  }
+
+  var importacion = obtenerImportacionActivaVentasPorLocalPeriodo_(local, periodo);
+
+  if (!importacion) {
+    return responderJSON({
+      status: "SUCCESS",
+      encontrado: false,
+      local: local,
+      periodo: periodo,
+      importacionActiva: null
+    });
+  }
+
+  var ventasValidas = obtenerVentasValidasPorImportId_(importacion.importId);
+  var propinasValidas = obtenerPropinasValidasPorImportId_(importacion.importId);
+
+  return responderJSON({
+    status: "SUCCESS",
+    encontrado: true,
+    local: local,
+    periodo: periodo,
+    importacionActiva: serializarImportacionVentas_(importacion),
+    resumen: {
+      registrosVentasValidos: ventasValidas.length,
+      registrosPropinasValidas: propinasValidas.length,
+      ventaBrutaValida: sumarMontosPorCampo_(ventasValidas, "TotalBruto"),
+      propinasValidas: sumarMontosPorCampo_(propinasValidas, "MontoPropina")
+    }
+  });
+}
+
+function recalcularComisiones(params) {
+  requireAdminSession(params);
+
+  var contexto = resolverImportacionParaCalculo_(params);
+  var importacion = contexto.importacion;
+  var importId = importacion.importId;
+  var ventasValidas = obtenerVentasValidasPorImportId_(importId);
+  var propinasValidas = obtenerPropinasValidasPorImportId_(importId);
+  var filasVentasDiarias = construirFilasVentasDiarias_(importacion, ventasValidas, propinasValidas);
+
+  limpiarResultadosCalculoPorImportId_(importId);
+
+  if (filasVentasDiarias.length > 0) {
+    var hojaVentasDiarias = getSheet_(HOJA_VENTAS_DIARIAS, SPREADSHEET_KEY_VENTAS);
+    hojaVentasDiarias
+      .getRange(hojaVentasDiarias.getLastRow() + 1, 1, filasVentasDiarias.length, filasVentasDiarias[0].length)
+      .setValues(filasVentasDiarias);
+  }
+
+  return responderJSON({
+    status: "SUCCESS",
+    importId: String(importId || "").trim(),
+    local: String(importacion.local || "").trim(),
+    periodo: String(importacion.periodo || "").trim(),
+    importacionResueltaPor: contexto.resueltoPor,
+    diasProcesados: filasVentasDiarias.length,
+    resumen: construirResumenRecalculo_(filasVentasDiarias)
+  });
+}
+
 function importarVentasInterno_(params) {
   var sesion = requireAdminSession(params);
   var lock = LockService.getScriptLock();
@@ -620,6 +693,72 @@ function obtenerRegistrosImportacionesVentas_(hoja) {
   });
 }
 
+function resolverImportacionParaCalculo_(params) {
+  var importId = limpiarTextoImportacion_(params.importId);
+  var local = limpiarTextoImportacion_(params.local);
+  var periodo = limpiarTextoImportacion_(params.periodo);
+  var hojaImportaciones = getSheet_(HOJA_IMPORTACIONES_VENTAS, SPREADSHEET_KEY_VENTAS);
+  var importaciones = obtenerRegistrosImportacionesVentas_(hojaImportaciones);
+  var importacion = null;
+  var resueltoPor = "";
+
+  if (importId) {
+    importacion = buscarImportacionPorId_(importaciones, importId);
+    resueltoPor = "importId";
+  } else if (local && periodo) {
+    importacion = buscarImportacionActivaPorLocalPeriodo_(importaciones, local, periodo);
+    resueltoPor = "localPeriodoActivo";
+  } else {
+    throw crearErrorImportacion_(
+      "ERROR_DATOS",
+      'Debes indicar "importId" o bien "local" + "periodo" para recalcular.'
+    );
+  }
+
+  if (!importacion) {
+    throw crearErrorImportacion_(
+      "ERROR_DATOS",
+      "No se encontró una importación válida para recalcular."
+    );
+  }
+
+  if (normalizarTexto(importacion.estado) !== normalizarTexto(ESTADO_IMPORTACION_SUCCESS)) {
+    throw crearErrorImportacion_(
+      "ERROR_DATOS",
+      "Solo se puede recalcular una importación activa en estado SUCCESS."
+    );
+  }
+
+  return {
+    importacion: importacion,
+    resueltoPor: resueltoPor
+  };
+}
+
+function leerHojaComoObjetos_(hoja) {
+  var ultimaFila = hoja.getLastRow();
+  var ultimaColumna = hoja.getLastColumn();
+
+  if (ultimaFila < 2 || ultimaColumna < 1) {
+    return [];
+  }
+
+  var headers = hoja.getRange(1, 1, 1, ultimaColumna).getValues()[0];
+  var valores = hoja.getRange(2, 1, ultimaFila - 1, ultimaColumna).getValues();
+
+  return valores.map(function(fila, indice) {
+    var objeto = {
+      rowNumber: indice + 2
+    };
+
+    headers.forEach(function(header, headerIndex) {
+      objeto[String(header || "").trim()] = fila[headerIndex];
+    });
+
+    return objeto;
+  });
+}
+
 function actualizarFilaImportacion_(hoja, rowNumber, cambios) {
   if (!rowNumber || !cambios) {
     return;
@@ -660,6 +799,51 @@ function buscarImportacionesActivasPorLocalPeriodo_(importaciones, local, period
   });
 }
 
+function buscarImportacionActivaPorLocalPeriodo_(importaciones, local, periodo) {
+  var activas = buscarImportacionesActivasPorLocalPeriodo_(importaciones, local, periodo)
+    .sort(function(a, b) {
+      return String(b.fechaImportacion || "").localeCompare(String(a.fechaImportacion || ""));
+    });
+
+  return activas.length ? activas[0] : null;
+}
+
+function buscarImportacionPorId_(importaciones, importId) {
+  var importIdBuscado = limpiarTextoImportacion_(importId);
+
+  for (var i = 0; i < importaciones.length; i++) {
+    if (limpiarTextoImportacion_(importaciones[i].importId) === importIdBuscado) {
+      return importaciones[i];
+    }
+  }
+
+  return null;
+}
+
+function obtenerImportacionActivaVentasPorLocalPeriodo_(local, periodo) {
+  var hojaImportaciones = getSheet_(HOJA_IMPORTACIONES_VENTAS, SPREADSHEET_KEY_VENTAS);
+  var importaciones = obtenerRegistrosImportacionesVentas_(hojaImportaciones);
+  return buscarImportacionActivaPorLocalPeriodo_(importaciones, local, periodo);
+}
+
+function serializarImportacionVentas_(importacion) {
+  if (!importacion) {
+    return null;
+  }
+
+  return {
+    importId: String(importacion.importId || "").trim(),
+    fechaImportacion: String(importacion.fechaImportacion || "").trim(),
+    usuario: String(importacion.usuario || "").trim(),
+    local: String(importacion.local || "").trim(),
+    periodo: String(importacion.periodo || "").trim(),
+    nombreArchivo: String(importacion.nombreArchivo || "").trim(),
+    hashArchivo: String(importacion.hashArchivo || "").trim(),
+    estado: String(importacion.estado || "").trim(),
+    observaciones: String(importacion.observaciones || "").trim()
+  };
+}
+
 function marcarImportacionesComoReemplazadas_(hoja, importaciones, nuevoImportId, fecha, usuario) {
   if (!importaciones.length) {
     return [];
@@ -685,6 +869,165 @@ function marcarImportacionesComoReemplazadas_(hoja, importaciones, nuevoImportId
     return String(importacion.importId || "").trim();
   }).filter(function(importId) {
     return importId !== "";
+  });
+}
+
+function obtenerRegistrosPorImportId_(sheetName, importId) {
+  var hoja = getSheet_(sheetName, SPREADSHEET_KEY_VENTAS);
+  var registros = leerHojaComoObjetos_(hoja);
+  var importIdBuscado = limpiarTextoImportacion_(importId);
+
+  return registros.filter(function(registro) {
+    return limpiarTextoImportacion_(registro.ImportId) === importIdBuscado;
+  });
+}
+
+function obtenerVentasPorImportId_(importId) {
+  return obtenerRegistrosPorImportId_(HOJA_VENTAS_POS, importId);
+}
+
+function obtenerPropinasPorImportId_(importId) {
+  return obtenerRegistrosPorImportId_(HOJA_PROPINAS_POS, importId);
+}
+
+function obtenerVentasValidasPorImportId_(importId) {
+  return obtenerVentasPorImportId_(importId).filter(function(venta) {
+    return normalizarBooleanImportacion_(venta.EsValidaComision);
+  });
+}
+
+function obtenerPropinasValidasPorImportId_(importId) {
+  return obtenerPropinasPorImportId_(importId).filter(function(propina) {
+    return normalizarBooleanImportacion_(propina.EsValidaPropina);
+  });
+}
+
+function sumarMontosPorCampo_(registros, nombreCampo) {
+  return (registros || []).reduce(function(total, registro) {
+    return total + normalizarMontoImportacion_(registro[nombreCampo]);
+  }, 0);
+}
+
+function limpiarResultadosCalculoPorImportId_(importId) {
+  eliminarFilasPorImportIdEnHoja_(HOJA_VENTAS_DIARIAS, importId);
+}
+
+function eliminarFilasPorImportIdEnHoja_(sheetName, importId) {
+  var hoja = getSheet_(sheetName, SPREADSHEET_KEY_VENTAS);
+  var registros = leerHojaComoObjetos_(hoja);
+  var filas = registros
+    .filter(function(registro) {
+      return limpiarTextoImportacion_(registro.ImportId) === limpiarTextoImportacion_(importId);
+    })
+    .map(function(registro) {
+      return registro.rowNumber;
+    })
+    .sort(function(a, b) {
+      return b - a;
+    });
+
+  filas.forEach(function(rowNumber) {
+    hoja.deleteRow(rowNumber);
+  });
+}
+
+function construirFilasVentasDiarias_(importacion, ventasValidas, propinasValidas) {
+  var grupos = {};
+  var localDefault = limpiarTextoImportacion_(importacion.local);
+
+  ventasValidas.forEach(function(venta) {
+    var fecha = limpiarTextoImportacion_(venta.Fecha);
+    var local = limpiarTextoImportacion_(venta.Local) || localDefault;
+    if (!fecha || !local) {
+      return;
+    }
+
+    var key = fecha + "|" + local;
+    if (!grupos[key]) {
+      grupos[key] = crearGrupoVentaDiaria_(fecha, local);
+    }
+
+    grupos[key].ventaBrutaValida += normalizarMontoImportacion_(venta.TotalBruto);
+  });
+
+  propinasValidas.forEach(function(propina) {
+    var fecha = limpiarTextoImportacion_(propina.Fecha);
+    var local = limpiarTextoImportacion_(propina.Local) || localDefault;
+    if (!fecha || !local) {
+      return;
+    }
+
+    var key = fecha + "|" + local;
+    if (!grupos[key]) {
+      grupos[key] = crearGrupoVentaDiaria_(fecha, local);
+    }
+
+    grupos[key].propinasValidas += normalizarMontoImportacion_(propina.MontoPropina);
+  });
+
+  return Object.keys(grupos)
+    .sort()
+    .map(function(key) {
+      var grupo = grupos[key];
+      var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida);
+
+      return [
+        importacion.importId,
+        grupo.fecha,
+        grupo.local,
+        grupo.ventaBrutaValida,
+        calculo.ventaNetaValida,
+        calculo.tramoComision,
+        calculo.porcentajeComision,
+        calculo.comisionTotalDia,
+        grupo.propinasValidas,
+        0,
+        0,
+        "Calculo operativo agregado. Distribucion individual pendiente en modulo pagosColaboradores."
+      ];
+    });
+}
+
+function crearGrupoVentaDiaria_(fecha, local) {
+  return {
+    fecha: fecha,
+    local: local,
+    ventaBrutaValida: 0,
+    propinasValidas: 0
+  };
+}
+
+function calcularMetricasDiarias_(ventaBrutaValida) {
+  var ventaBruta = normalizarMontoImportacion_(ventaBrutaValida);
+  var ventaNeta = redondearMonto_(ventaBruta / 1.19);
+  var tramo = ventaNeta < 500000 ? "BAJO" : "ALTO";
+  var porcentaje = tramo === "ALTO" ? 0.013 : 0.01;
+  var comisionTotalDia = redondearMonto_(ventaNeta * porcentaje);
+
+  return {
+    ventaNetaValida: ventaNeta,
+    tramoComision: tramo,
+    porcentajeComision: porcentaje,
+    comisionTotalDia: comisionTotalDia
+  };
+}
+
+function redondearMonto_(valor) {
+  return Math.round((Number(valor) + Number.EPSILON) * 100) / 100;
+}
+
+function construirResumenRecalculo_(filasVentasDiarias) {
+  return filasVentasDiarias.reduce(function(acumulado, fila) {
+    acumulado.ventaBrutaValida += normalizarMontoImportacion_(fila[3]);
+    acumulado.ventaNetaValida += normalizarMontoImportacion_(fila[4]);
+    acumulado.comisionTotal += normalizarMontoImportacion_(fila[7]);
+    acumulado.propinasValidas += normalizarMontoImportacion_(fila[8]);
+    return acumulado;
+  }, {
+    ventaBrutaValida: 0,
+    ventaNetaValida: 0,
+    comisionTotal: 0,
+    propinasValidas: 0
   });
 }
 

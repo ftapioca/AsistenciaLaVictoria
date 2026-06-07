@@ -45,40 +45,52 @@ Objetivo: recibir JSON normalizado desde frontend y persistir importación + ven
 
 ## 2. Backend V1.1 - Cálculo diario
 
-Objetivo: transformar ventas/propinas importadas en resultados diarios utilizables.
+Objetivo: transformar ventas/propinas importadas en resultados diarios utilizables a nivel agregado por `Fecha + Local + ImportId`.
 
-- [ ] Crear endpoint `RecalcularComisiones`.
-- [ ] Limpiar resultados previos por `ImportId`:
-  - [ ] `VentasDiarias`
-  - [ ] `ComisionesDiarias`
-  - [ ] `ResumenMensualComisiones`
-- [ ] Obtener ventas válidas por `ImportId`.
-- [ ] Obtener propinas válidas por `ImportId`.
-- [ ] Agrupar por `Fecha + Local`.
-- [ ] Calcular `VentaBrutaValida`.
-- [ ] Calcular `VentaNetaValida`.
-- [ ] Determinar tramo:
-  - [ ] `BAJO` si neta < 500000
-  - [ ] `ALTO` si neta >= 500000
-- [ ] Calcular comisión individual diaria.
-- [ ] Buscar colaboradores presentes desde RRHH.
-- [ ] Calcular propina individual diaria.
-- [ ] Persistir `VentasDiarias`.
-- [ ] Persistir `ComisionesDiarias`.
+- [x] Crear endpoint `RecalcularComisiones`.
+- [x] Limpiar resultados previos por `ImportId`:
+  - [x] `VentasDiarias`
+- [x] Obtener ventas válidas por `ImportId`.
+- [x] Obtener propinas válidas por `ImportId`.
+- [x] Agrupar por `Fecha + Local`.
+- [x] Calcular `VentaBrutaValida`.
+- [x] Definir `VentaNetaValida = VentaBrutaValida - IVA`.
+- [x] Definir `IVA = 19%`.
+- [x] Calcular `VentaNetaValida`.
+- [x] Determinar tramo:
+  - [x] `BAJO` si neta < 500000
+  - [x] `ALTO` si neta >= 500000
+- [x] Definir porcentaje de comisión por tramo:
+  - [x] `BAJO = 1%`
+  - [x] `ALTO = 1,3%`
+- [x] Calcular `ComisionTotalDia`.
+- [x] Persistir `VentasDiarias`.
 
 ---
 
 ## 3. Backend V1.2 - Resumen mensual
 
-Objetivo: generar resumen pagable por colaborador.
+Objetivo: generar resumen mensual operativo por `Local + ImportId`.
 
-- [ ] Crear lógica de `ResumenMensualComisiones`.
-- [ ] Calcular `DiasTrabajados`.
+- [ ] Crear lógica de `ResumenMensualComisiones` a nivel agregado.
 - [ ] Calcular `ComisionTotal`.
 - [ ] Calcular `PropinaTotal`.
-- [ ] Calcular `TotalPagar`.
+- [ ] Calcular `TotalComisionable`.
 - [ ] Redondeo final a peso chileno.
 - [ ] Crear endpoint `ConsultarResumenComisiones`.
+
+---
+
+## 3.1 Módulo futuro - pagosColaboradores
+
+Objetivo: distribuir comisiones y propinas a personas una vez que exista contrato explícito de reparto.
+
+- [ ] Crear módulo `pagosColaboradores`.
+- [ ] Definir regla de presencia o elegibilidad por colaborador.
+- [ ] Definir regla de reparto de comisión por colaborador.
+- [ ] Definir regla de reparto de propina por colaborador.
+- [ ] Generar resumen mensual pagable por colaborador.
+- [ ] Integrar con asistencia y/o otras fuentes operativas si corresponde.
 
 ---
 
@@ -86,7 +98,8 @@ Objetivo: generar resumen pagable por colaborador.
 
 Objetivo: dejar el módulo recalculable y auditable.
 
-- [ ] Crear endpoint `ConsultarImportacionesVentas`.
+- [x] Crear endpoint `ConsultarImportacionesVentas`.
+- [x] Crear endpoint `ConsultarImportacionActivaVentas`.
 - [ ] Crear endpoint `AnularImportacionVentas`.
 - [ ] Definir estrategia final para `Local + Periodo`:
   - [x] reemplazar con auditoría mínima
@@ -183,7 +196,7 @@ Objetivo: permitir que admin cargue archivo POS y vea una vista previa robusta a
 Objetivo: que el admin vea resultados y pueda recalcular o revisar historial.
 
 - [ ] Vista de importaciones por período/local.
-- [ ] Vista de resumen mensual por colaborador.
+- [ ] Vista de resumen mensual operativo.
 - [ ] Acción de recalcular.
 - [ ] Acción de anular importación.
 
@@ -197,6 +210,7 @@ Objetivo: que el admin vea resultados y pueda recalcular o revisar historial.
 - [ ] KPIs operacionales diarios.
 - [ ] Exportación de resumen.
 - [ ] Reglas avanzadas de comisión por local/cargo/categoría.
+- [ ] Módulo `pagosColaboradores` para distribución individual.
 
 ---
 
@@ -206,7 +220,8 @@ Objetivo: que el admin vea resultados y pueda recalcular o revisar historial.
 - [x] No se implementa versionado múltiple en esta etapa.
 - [x] Asistencia incompleta no bloquea cálculo; deja observaciones.
 - [x] El parsing objetivo para producción será determinístico por formato conocido, no heurístico genérico.
-- [ ] ¿Recalcular automáticamente tras corrección de asistencia?
+- [x] La comisión operativa inicial se calculará a nivel agregado por día/local, no por colaborador.
+- [x] La distribución individual se posterga al módulo futuro `pagosColaboradores`.
 - [x] Redondeo solo mensual.
 - [ ] ¿Exportar resumen a Excel/PDF?
 
@@ -230,13 +245,20 @@ Objetivo: que el admin vea resultados y pueda recalcular o revisar historial.
   - `Pagos` no entra todavía al payload persistente principal
   - el `local` proviene del selector y no del archivo
   - el período mensual se deriva desde `Desde` y `Hasta` de la hoja `Ventas`
+- `VentaNetaValida` se calcula como `VentaBrutaValida - IVA`, usando `IVA = 19%`.
+  - para este módulo se asume IVA incluido en la venta bruta, por lo que la base neta se obtiene como `VentaBrutaValida / 1.19`
+- El cálculo de comisión operativa usa tramos:
+  - `BAJO`: neta < 500000 => `1%`
+  - `ALTO`: neta >= 500000 => `1,3%`
+- La distribución por colaborador no forma parte de este módulo en la etapa actual.
 - Si un archivo no calza con un formato soportado, debe rechazarse o quedar en modo diagnóstico; no debe inferirse silenciosamente en producción.
 - Frontend y backend deben poder apuntar explícitamente a `staging` o `prod`.
 - Solo puede existir una importación activa por `Local + Periodo`.
 - Si entra una nueva importación para el mismo `Local + Periodo`, la anterior deja de ser activa.
 - La importación reemplazada debe conservarse en `ImportacionesVentas` para trazabilidad.
 - Los cálculos y consultas operativas deben usar solo importaciones activas.
-- Asistencia incompleta no bloquea cálculo; solo agrega observaciones.
+- En esta etapa, las lecturas operativas de ventas/propinas deben resolverse por `ImportId` activo.
+- La asistencia no participa todavía en el cálculo de comisiones, porque el reparto individual se posterga al módulo `pagosColaboradores`.
 - El redondeo monetario final se realiza a nivel mensual.
 - Las pruebas de ramas deben hacerse sobre `staging`.
 - Producción se actualiza solo desde `main`.

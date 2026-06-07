@@ -147,6 +147,17 @@ function doGet(e) {
     }
   }
 
+  if (accion === "ConsultarImportacionActivaVentas") {
+    try {
+      return consultarImportacionActivaVentas(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "Acceso no autorizado."
+      });
+    }
+  }
+
   return obtenerColaboradoresPorLocal(params);
 }
 
@@ -215,6 +226,17 @@ function doPost(e) {
       return responderJSON({
         status: error.code || "ERROR_IMPORTACION",
         mensaje: error.message || "No se pudo importar ventas."
+      });
+    }
+  }
+
+  if (accion === "RecalcularComisiones") {
+    try {
+      return recalcularComisiones(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "ERROR_RECALCULO",
+        mensaje: error.message || "No se pudo recalcular comisiones."
       });
     }
   }
