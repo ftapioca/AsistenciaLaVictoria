@@ -7,6 +7,37 @@ Rama base actual: `feature/spreadsheet-by-id`
 
 ---
 
+## Siguientes pasos inmediatos
+
+Orden propuesto para continuar el desarrollo desde el estado ya validado en staging:
+
+1. Cerrar la auditoría operativa mínima del flujo actual.
+   - [ ] Verificar en hoja `VentasDiarias` que `RecalcularComisiones` deje una fila por `Fecha + Local + ImportId`.
+   - [ ] Confirmar que `ColaboradoresPresentes` y `PropinaIndividualDiaria` siguen en `0` mientras `pagosColaboradores` no exista.
+   - [ ] Validar una corrida repetida de `RecalcularComisiones` sobre el mismo `ImportId` para asegurar idempotencia en `VentasDiarias`.
+
+2. Exponer operación básica en frontend admin.
+   - [ ] Agregar vista de importaciones por `Local + Periodo`.
+   - [ ] Agregar acción UI para `RecalcularComisiones`.
+   - [ ] Mostrar resumen del recálculo ejecutado desde frontend.
+
+3. Cerrar mantenimiento y trazabilidad del ciclo de importación.
+   - [ ] Implementar `AnularImportacionVentas`.
+   - [ ] Completar registro y uso explícito de estados `SUCCESS`, `ERROR`, `ANULADO`, `REEMPLAZADO`.
+   - [ ] Definir si se requiere saneamiento manual o asistido para importaciones legacy previas al fix de `periodo`.
+
+4. Construir resumen mensual operativo.
+   - [ ] Persistir o calcular `ResumenMensualComisiones` por `Local + ImportId`.
+   - [ ] Exponer `ConsultarResumenComisiones`.
+   - [ ] Definir criterio de redondeo final mensual a peso chileno.
+
+5. Preparar etapa siguiente de parser y cobertura de datos.
+   - [ ] Formalizar el contrato determinístico del formato POS V1 como base estable.
+   - [ ] Evaluar incorporación de `PagosPOS` y `ProductosPOS` en etapas separadas.
+   - [ ] Mantener la heurística actual solo como apoyo transitorio mientras se cierran formatos soportados.
+
+---
+
 ## 0. Base ya completada
 
 - [x] Migración de Apps Script a acceso por Google Sheets ID.
