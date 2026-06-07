@@ -112,7 +112,7 @@ Objetivo: permitir que admin cargue archivo POS y vea una vista previa robusta a
   - [x] período
   - [x] archivo
 - [x] Integrar parser XLS/XLSX/CSV.
-- [x] Detectar hojas base:
+- [x] Detectar hojas base en implementación heurística transitoria:
   - [x] ventas
   - [x] propinas
   - [ ] pagos
@@ -127,6 +127,54 @@ Objetivo: permitir que admin cargue archivo POS y vea una vista previa robusta a
   - [ ] propinas excluidas
 - [ ] Confirmar importación.
 - [x] Llamar endpoint `ImportarVentas`.
+
+### Criterio de parser para producción
+
+- [x] El parser definitivo no dependerá de heurística genérica como contrato principal.
+- [x] El parser objetivo debe operar por formato conocido:
+  - [x] hoja esperada
+  - [x] fila de encabezado esperada
+  - [x] columnas/celdas esperadas
+  - [x] reglas explícitas de extracción y normalización
+- [ ] Levantar inventario de formatos POS reales que usa operación.
+- [ ] Definir contrato por formato:
+  - [ ] nombre interno del formato
+  - [ ] hojas obligatorias
+  - [ ] rango o fila de inicio
+  - [ ] mapeo exacto de columnas
+  - [ ] validaciones mínimas antes de importar
+- [ ] Implementar parser determinístico para el primer formato POS real.
+- [ ] Dejar la heurística actual solo como fallback temporal o herramienta de diagnóstico.
+- [ ] Definir criterio de retiro del fallback heurístico una vez estabilizados los formatos soportados.
+
+### Contrato inicial confirmado para formato POS V1
+
+- [x] Primer formato soportado identificado a partir de export real de mayo 2026 para:
+  - [x] Paseo del Lago
+  - [x] Segunda Faja
+- [x] La persistencia principal V1 se construye solo desde:
+  - [x] hoja `Ventas`
+  - [x] hoja `Propinas`
+- [x] La hoja `Pagos` no participa todavía en la persistencia principal.
+- [x] `Pagos` se revisará más adelante cuando estén confirmados todos los tipos y reglas de medios de pago.
+- [x] El `local` no se infiere desde el archivo; lo define el selector del frontend.
+- [x] El `periodo` se deriva desde el bloque superior de la hoja `Ventas`:
+  - [x] `Desde 01/05/2026`
+  - [x] `Hasta 01/06/2026`
+  - [x] se traduce a `periodo = 2026-05`
+  - [x] `fechaDesde = 2026-05-01`
+  - [x] `fechaHasta = 2026-05-31`
+- [x] Filtro de filas para `ventas[]`:
+  - [x] usar solo filas con `Estado = Cerrada`
+- [x] Filtro de filas para `propinas[]`:
+  - [x] usar solo filas con `Cancelada != Si`
+- [x] Los valores de propina se redondean de inmediato a peso entero durante la normalización.
+- [x] En este tramo se ignoran completamente:
+  - [x] `Productos`
+  - [x] `Adiciones`
+  - [x] `Adiciones de Modificadores`
+  - [x] `Descuentos`
+  - [x] `Costos de Envío`
 
 ---
 
@@ -157,6 +205,7 @@ Objetivo: que el admin vea resultados y pueda recalcular o revisar historial.
 - [x] Si ya existe `Local + Periodo`, se reemplaza con auditoría mínima.
 - [x] No se implementa versionado múltiple en esta etapa.
 - [x] Asistencia incompleta no bloquea cálculo; deja observaciones.
+- [x] El parsing objetivo para producción será determinístico por formato conocido, no heurístico genérico.
 - [ ] ¿Recalcular automáticamente tras corrección de asistencia?
 - [x] Redondeo solo mensual.
 - [ ] ¿Exportar resumen a Excel/PDF?
@@ -168,6 +217,20 @@ Objetivo: que el admin vea resultados y pueda recalcular o revisar historial.
 - El archivo bruto no se envía a Apps Script.
 - El parser vive en frontend.
 - Apps Script recibe JSON normalizado.
+- La heurística actual de hojas/columnas comunes no define el contrato final del módulo; solo cubre una etapa transitoria.
+- El contrato objetivo de parsing debe definirse por formato POS conocido y validado.
+- Cada formato soportado debe declarar explícitamente:
+  - hoja(s) esperada(s)
+  - fila de encabezado
+  - columnas o celdas fuente
+  - reglas de validación previas a la importación
+- Para el primer formato POS soportado:
+  - `ventas[]` se construye exclusivamente desde hoja `Ventas`
+  - `propinas[]` se construye exclusivamente desde hoja `Propinas`
+  - `Pagos` no entra todavía al payload persistente principal
+  - el `local` proviene del selector y no del archivo
+  - el período mensual se deriva desde `Desde` y `Hasta` de la hoja `Ventas`
+- Si un archivo no calza con un formato soportado, debe rechazarse o quedar en modo diagnóstico; no debe inferirse silenciosamente en producción.
 - Frontend y backend deben poder apuntar explícitamente a `staging` o `prod`.
 - Solo puede existir una importación activa por `Local + Periodo`.
 - Si entra una nueva importación para el mismo `Local + Periodo`, la anterior deja de ser activa.
@@ -261,9 +324,13 @@ Respuesta mínima esperada:
 
 Pendiente importante para retomar:
 
-- validar end-to-end `ImportarVentas` contra la web app correcta de `staging`
-- decidir si `staging` seguirá probándose contra `@HEAD` o contra un deployment web app versionado específico
-- ampliar reglas de parsing para formatos POS reales y detectar también hojas de `pagos` y `productos`
+- implementar parser determinístico para el formato POS V1 ya confirmado
+- fijar encabezados exactos y mapeo de columnas para:
+  - hoja `Ventas`
+  - hoja `Propinas`
+- validar conversión de fechas Excel y normalización final de propinas a entero
+- mantener `Pagos` fuera de persistencia principal hasta cerrar catálogo y reglas de medios de pago
+- luego detectar también hojas de `pagos` y `productos` dentro del mismo esquema explícito
 
 Actualización:
 
@@ -273,6 +340,6 @@ Actualización:
 
 Siguiente paso recomendado:
 
-- construir `ventasMensuales.html` con parser local, hash y preview
-- probar importación real contra `staging`
+- implementar el parser determinístico del formato POS V1 ya validado
+- probar importación real contra `staging` usando ese contrato explícito
 - luego avanzar a `RecalcularComisiones`

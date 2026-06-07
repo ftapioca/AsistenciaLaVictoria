@@ -208,6 +208,39 @@ function normalizeHeader(value) {
   return normalizeText(value).replace(/[^a-z0-9]+/g, '');
 }
 
+const POS_V1_SHEETS = {
+  ventas: 'Ventas',
+  propinas: 'Propinas',
+};
+
+const POS_V1_VENTAS_HEADERS = [
+  'Id',
+  'Fecha',
+  'Creación',
+  'Cerrada',
+  'Caja',
+  'Estado',
+  'Cliente',
+  'Mesa',
+  'Sala',
+  'Personas',
+  'Camarero / Repartidor',
+  'Medio de Pago',
+  'Total',
+  'Fiscal',
+  'Tipo de Venta',
+  'Comentario',
+  'Origen',
+  'Id. Origen',
+];
+
+const POS_V1_PROPINAS_HEADERS = [
+  'Id. Venta',
+  'Valor',
+  'Cancelada',
+  'Creado por',
+];
+
 function detectDelimiter(text) {
   const firstLine = String(text || '').split(/\r?\n/).find((line) => line.trim()) || '';
   const candidates = [',', ';', '\t'];
@@ -274,6 +307,223 @@ function parseCsvToObjects(text) {
     });
     return row;
   });
+}
+
+function formatUtcDate(date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function formatUtcTime(date) {
+  return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}:${String(date.getUTCSeconds()).padStart(2, '0')}`;
+}
+
+function excelSerialToDate(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const millis = Math.round((value - 25569) * 86400 * 1000);
+  const date = new Date(millis);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function parsePosDateOnly(value) {
+  if (typeof value === 'number') {
+    const date = excelSerialToDate(value);
+    return date ? formatUtcDate(date) : '';
+  }
+
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+
+  const datePart = text.split(' ')[0];
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(datePart);
+  if (!match) return '';
+  const [, day, month, year] = match;
+  return `${year}-${month}-${day}`;
+}
+
+function parsePosDateTime(value, fallbackDate = '') {
+  if (typeof value === 'number') {
+    const date = excelSerialToDate(value);
+    return date ? `${formatUtcDate(date)} ${formatUtcTime(date)}` : '';
+  }
+
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(text)) {
+    return text.length === 16 ? `${text}:00` : text;
+  }
+
+  const [datePart, timePart = '00:00'] = text.split(/\s+/);
+  const isoDate = parsePosDateOnly(datePart);
+  if (!isoDate) return fallbackDate ? `${fallbackDate} ${timePart}` : '';
+  const normalizedTime = /^\d{2}:\d{2}:\d{2}$/.test(timePart) ? timePart : `${timePart}:00`;
+  return `${isoDate} ${normalizedTime}`;
+}
+
+function parsePosTime(value, fallbackDate = '') {
+  const fullDateTime = parsePosDateTime(value, fallbackDate);
+  if (!fullDateTime) return '';
+  return fullDateTime.split(' ')[1] || '';
+}
+
+function subtractOneUtcDay(isoDate) {
+  const [year, month, day] = String(isoDate || '').split('-').map(Number);
+  if (!year || !month || !day) return '';
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() - 1);
+  return formatUtcDate(date);
+}
+
+function derivePosPeriodMetadataFromVentasMatrix(matrix) {
+  const rows = Array.isArray(matrix) ? matrix : [];
+  const desdeLabel = normalizeText(rows[0] && rows[0][0]);
+  const hastaLabel = normalizeText(rows[1] && rows[1][0]);
+  if (desdeLabel !== 'desde' || hastaLabel !== 'hasta') {
+    throw new Error('La hoja Ventas no trae el bloque esperado de Desde/Hasta en las filas 1 y 2.');
+  }
+
+  const desdeRaw = rows[0][1];
+  const hastaRaw = rows[1][1];
+  const fechaDesde = parsePosDateOnly(desdeRaw);
+  const hastaExclusive = parsePosDateOnly(hastaRaw);
+
+  if (!fechaDesde || !hastaExclusive) {
+    throw new Error('No se pudo interpretar el rango Desde/Hasta de la hoja Ventas.');
+  }
+
+  const fechaHasta = subtractOneUtcDay(hastaExclusive);
+  if (!fechaHasta) {
+    throw new Error('No se pudo derivar la fechaHasta desde la hoja Ventas.');
+  }
+
+  return {
+    fechaDesde,
+    fechaHasta,
+    periodo: fechaDesde.slice(0, 7),
+  };
+}
+
+function assertExactHeaders(actualRow, expectedHeaders, sheetName, rowNumber) {
+  const actual = expectedHeaders.map((_, index) => String(actualRow[index] || '').trim());
+  const expectedNormalized = expectedHeaders.map(normalizeHeader);
+  const actualNormalized = actual.map(normalizeHeader);
+
+  const mismatch = expectedNormalized.findIndex((header, index) => header !== actualNormalized[index]);
+  if (mismatch !== -1) {
+    throw new Error(
+      `La hoja ${sheetName} no coincide con el formato POS V1 esperado en la fila ${rowNumber}. ` +
+      `Se esperaba "${expectedHeaders[mismatch]}" en la columna ${mismatch + 1}, pero llegó "${actual[mismatch] || '(vacío)'}".`
+    );
+  }
+}
+
+function rowsToObjectsWithFixedHeaders(matrix, headerRowIndex, expectedHeaders, sheetName) {
+  const rows = Array.isArray(matrix) ? matrix : [];
+  const headerRow = rows[headerRowIndex];
+  if (!Array.isArray(headerRow)) {
+    throw new Error(`No se encontró la fila de encabezados esperada en la hoja.`);
+  }
+
+  assertExactHeaders(headerRow, expectedHeaders, sheetName, headerRowIndex + 1);
+
+  return rows
+    .slice(headerRowIndex + 1)
+    .filter((row) => Array.isArray(row) && row.some((cell) => String(cell || '').trim() !== ''))
+    .map((row) => {
+      const record = {};
+      expectedHeaders.forEach((header, index) => {
+        record[header] = row[index] !== undefined ? row[index] : '';
+      });
+      return record;
+    });
+}
+
+function parsePosVentaRows(ventaRows, fallbackLocal) {
+  return ventaRows
+    .filter((row) => normalizeText(row.Estado) === 'cerrada')
+    .map((row) => {
+      const fecha = parsePosDateOnly(row.Fecha);
+      const hora = parsePosTime(row.Creación, fecha);
+      const fechaCierre = parsePosDateTime(row.Cerrada, fecha);
+      const tipoVenta = String(row['Tipo de Venta'] || '').trim();
+
+      return {
+        ventaId: String(row.Id || '').trim(),
+        fecha,
+        hora,
+        fechaCierre,
+        local: fallbackLocal,
+        estado: String(row.Estado || '').trim(),
+        origen: String(row.Origen || 'POS').trim() || 'POS',
+        tipoVenta,
+        medioPago: String(row['Medio de Pago'] || '').trim(),
+        totalBruto: Math.round(normalizeAmount(row.Total)),
+        esDelivery: normalizeText(tipoVenta).includes('delivery'),
+        esCancelada: false,
+        esValidaComision: true,
+        motivoExclusion: '',
+      };
+    })
+    .filter((row) => row.ventaId !== '');
+}
+
+function parsePosPropinaRows(propinaRows, ventas, fallbackLocal) {
+  const ventasById = new Map(ventas.map((venta) => [String(venta.ventaId), venta]));
+
+  return propinaRows
+    .filter((row) => normalizeText(row.Cancelada) !== 'si')
+    .map((row) => {
+      const ventaId = String(row['Id. Venta'] || '').trim();
+      const venta = ventasById.get(ventaId);
+      const hasLinkedVenta = Boolean(venta);
+
+      return {
+        ventaId,
+        fecha: venta ? venta.fecha : '',
+        hora: venta ? venta.hora : '',
+        local: venta ? venta.local : fallbackLocal,
+        montoPropina: Math.round(normalizeAmount(row.Valor)),
+        cancelada: false,
+        esDelivery: venta ? venta.esDelivery : false,
+        esValidaPropina: hasLinkedVenta,
+        motivoExclusion: hasLinkedVenta ? '' : 'Propina sin venta asociada en hoja Ventas.',
+      };
+    })
+    .filter((row) => row.ventaId !== '');
+}
+
+function parsePosWorkbook(workbook, fileName, fallbackLocal) {
+  const xlsx = window.XLSX;
+  const ventasSheet = workbook.Sheets[POS_V1_SHEETS.ventas];
+  const propinasSheet = workbook.Sheets[POS_V1_SHEETS.propinas];
+
+  if (!ventasSheet) {
+    throw new Error('El archivo no contiene la hoja obligatoria "Ventas".');
+  }
+
+  if (!propinasSheet) {
+    throw new Error('El archivo no contiene la hoja obligatoria "Propinas".');
+  }
+
+  const ventasMatrix = xlsx.utils.sheet_to_json(ventasSheet, { header: 1, defval: '' });
+  const propinasMatrix = xlsx.utils.sheet_to_json(propinasSheet, { header: 1, defval: '' });
+  const metadata = derivePosPeriodMetadataFromVentasMatrix(ventasMatrix);
+  const ventaRows = rowsToObjectsWithFixedHeaders(ventasMatrix, 3, POS_V1_VENTAS_HEADERS, POS_V1_SHEETS.ventas);
+  const propinaRows = rowsToObjectsWithFixedHeaders(propinasMatrix, 0, POS_V1_PROPINAS_HEADERS, POS_V1_SHEETS.propinas);
+  const ventas = parsePosVentaRows(ventaRows, fallbackLocal);
+  const propinas = parsePosPropinaRows(propinaRows, ventas, fallbackLocal);
+
+  return {
+    metadata: {
+      periodo: metadata.periodo,
+      nombreArchivo: fileName,
+      fechaDesde: metadata.fechaDesde,
+      fechaHasta: metadata.fechaHasta,
+      observaciones: `Archivo POS V1 normalizado desde ${fileName}.`,
+    },
+    ventas,
+    propinas,
+  };
 }
 
 function getRowValue(row, aliases, fallback = '') {
@@ -488,47 +738,15 @@ async function parseSpreadsheetFile(file, fallbackLocal) {
   }
 
   if (extension === 'csv') {
-    const text = await file.text();
-    return {
-      payload: buildPayloadFromSheetEntries([{ name: file.name, rows: parseCsvToObjects(text) }], file.name, fallbackLocal),
-      mode: 'csv',
-    };
+    throw new Error('CSV ya no se procesa con heurística genérica. Usa JSON normalizado o el export XLS/XLSX del POS soportado.');
   }
 
   if (extension === 'xls' || extension === 'xlsx') {
     const XLSX = await ensureXlsxLoaded();
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array' });
-    const sheetEntries = workbook.SheetNames.map((sheetName) => ({
-      name: sheetName,
-      matrix: XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' }),
-    }))
-      .map((entry) => {
-        const expectedAliases = normalizeText(entry.name).includes('propina')
-          ? [
-              ['fecha pago', 'fecha', 'dia'],
-              ['monto', 'monto propina', 'propina', 'tip'],
-              ['cancelado', 'cancelada'],
-              ['id venta', 'id. venta', 'ventaId', 'folio'],
-            ]
-          : [
-              ['fecha', 'dia'],
-              ['medio de pago', 'medioPago', 'pago'],
-              ['total', 'total bruto', 'monto'],
-              ['tipo de venta', 'tipoVenta'],
-              ['camarero / repartidor', 'origen', 'estado'],
-            ];
-
-        return {
-          name: entry.name,
-          metadata: extractMetadataFromMatrix(entry.matrix),
-          rows: sheetRowsToObjects(entry.matrix, expectedAliases),
-        };
-      })
-      .filter((entry) => entry.rows.length > 0);
-
     return {
-      payload: buildPayloadFromSheetEntries(sheetEntries, file.name, fallbackLocal),
+      payload: parsePosWorkbook(workbook, file.name, fallbackLocal),
       mode: 'spreadsheet',
     };
   }
@@ -677,7 +895,7 @@ function renderApp(session) {
   const sourceCard = createCard({
     eyebrow: 'Fuente',
     title: 'Carga y normalización',
-    body: 'Carga un archivo JSON, CSV, XLS o XLSX. Los campos de local y período pueden sobrescribir lo que venga detectado en el archivo.',
+    body: 'Carga un JSON normalizado o el export XLS/XLSX del POS soportado. El período se deriva desde la hoja Ventas y el local lo define el selector.',
     className: 'relative z-10 rounded-3xl shadow-none md:p-2xl',
   });
 
@@ -709,7 +927,7 @@ function renderApp(session) {
       return wrapper;
     })(),
     createField('Archivo fuente', fileInput, {
-      hint: 'Si el archivo ya viene normalizado como JSON, se usa directo. Si es CSV, XLS o XLSX, se detectan hojas y columnas comunes para construir el payload.',
+      hint: 'Si el archivo ya viene normalizado como JSON, se usa directo. Si es XLS/XLSX, debe coincidir con el formato POS V1 soportado para construir el payload.',
       className: 'md:col-span-2',
     }),
     createField('Nombre de archivo lógico', logicalFileNameBox, { className: 'md:col-span-2' }),
@@ -747,7 +965,7 @@ function renderApp(session) {
   const notesCard = createCard({
     eyebrow: 'Notas',
     title: 'Cobertura actual',
-    body: 'Este importador ya puede transformar archivos JSON, CSV, XLS y XLSX en un payload normalizado para ImportarVentas. Si el formato POS viene con nombres de hojas o columnas distintos, habrá que extender las reglas de detección.',
+    body: 'Este importador ya normaliza el formato POS V1 usando solo las hojas Ventas y Propinas. Pagos sigue fuera de la persistencia principal hasta cerrar el catálogo y las reglas de medios de pago.',
     tone: 'highlight',
     className: 'relative z-0 rounded-3xl shadow-none',
   });
@@ -842,10 +1060,10 @@ function renderApp(session) {
       metadata: {
         ...metadata,
         local: localSelect.value.trim(),
-        periodo: snapshot.period,
+        periodo: metadata.periodo || snapshot.period,
         nombreArchivo: currentSourceFileName || metadata.nombreArchivo || fileNameFromInput || 'ventas-normalizadas.json',
-        fechaDesde: snapshot.from,
-        fechaHasta: snapshot.to,
+        fechaDesde: metadata.fechaDesde || snapshot.from,
+        fechaHasta: metadata.fechaHasta || snapshot.to,
         observaciones: observacionesInput.value.trim() || metadata.observaciones || '',
       },
       ventas: Array.isArray(payload.ventas) ? payload.ventas : [],
@@ -906,6 +1124,7 @@ function renderApp(session) {
 
     const payload = mergePayloadWithForm(parsed, currentSourceFileName);
     const metadata = payload.metadata || {};
+    const snapshot = getCurrentPeriodSnapshot();
     const requiredFields = ['local', 'periodo', 'nombreArchivo', 'fechaDesde', 'fechaHasta'];
 
     requiredFields.forEach((field) => {
@@ -913,6 +1132,18 @@ function renderApp(session) {
         throw new Error(`Falta completar "${field}" antes de generar el preview.`);
       }
     });
+
+    if (parsed && parsed.metadata && parsed.metadata.periodo && snapshot.period && parsed.metadata.periodo !== snapshot.period) {
+      throw new Error('El período seleccionado no coincide con el período derivado desde el archivo POS.');
+    }
+
+    if (parsed && parsed.metadata && parsed.metadata.fechaDesde && snapshot.from && parsed.metadata.fechaDesde !== snapshot.from) {
+      throw new Error('La fechaDesde seleccionada no coincide con la derivada desde el archivo POS.');
+    }
+
+    if (parsed && parsed.metadata && parsed.metadata.fechaHasta && snapshot.to && parsed.metadata.fechaHasta !== snapshot.to) {
+      throw new Error('La fechaHasta seleccionada no coincide con la derivada desde el archivo POS.');
+    }
 
     const normalizedForHash = {
       metadata: {
@@ -993,6 +1224,10 @@ function renderApp(session) {
   async function handleSourceFile(file) {
     if (!file) return;
     const result = await parseSpreadsheetFile(file, localSelectField.getValue().trim());
+    if (result.payload && result.payload.metadata && result.payload.metadata.periodo) {
+      periodPicker.setType('mensual');
+      periodPicker.setValue('mensual', result.payload.metadata.periodo);
+    }
     jsonInput.value = formatJson(result.payload);
     currentSourceFileName = file.name;
     logicalFileNameBox.textContent = file.name;
