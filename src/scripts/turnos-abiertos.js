@@ -69,7 +69,7 @@ function createStateMessage(kind, message) {
   return block;
 }
 
-function createAccordionSection({ id, title, subtitle, badgeText = '', open = false }) {
+function createAccordionSection({ id, title, subtitle, badgeText = '', open = false, showBadge = false }) {
   const card = createCard({
     className: 'overflow-hidden rounded-3xl p-0',
   });
@@ -80,7 +80,7 @@ function createAccordionSection({ id, title, subtitle, badgeText = '', open = fa
 
   const toggle = document.createElement('button');
   toggle.type = 'button';
-  toggle.className = 'flex w-full items-center justify-between gap-lg bg-gradient-to-b from-[#fffaf1] to-neutral-cream px-xl py-xl text-left';
+  toggle.className = 'flex w-full items-center justify-between gap-lg px-xl py-xl text-left';
   toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   toggle.setAttribute('aria-controls', `${id}-panel`);
 
@@ -96,7 +96,9 @@ function createAccordionSection({ id, title, subtitle, badgeText = '', open = fa
 
   const badge = document.createElement('div');
   badge.id = `${id}-badge`;
-  badge.className = 'grid min-h-[46px] min-w-[46px] place-items-center rounded-2xl bg-gradient-to-r from-brand-cheese to-brand-bun px-md text-xl font-black text-neutral-charcoal';
+  badge.className = showBadge
+    ? 'grid min-h-[46px] min-w-[46px] place-items-center rounded-2xl bg-gradient-to-r from-brand-cheese to-brand-bun px-md text-xl font-black text-neutral-charcoal lg:hidden'
+    : 'hidden';
   badge.textContent = badgeText;
 
   const chevron = document.createElement('span');
@@ -423,6 +425,8 @@ function createAttendanceForm(options = {}) {
 
   const container = document.createElement('div');
   container.className = 'grid gap-lg';
+  const fieldsGrid = document.createElement('div');
+  fieldsGrid.className = 'grid gap-lg xl:grid-cols-3';
 
   const localField = createSelectField({
     label: 'Local',
@@ -457,20 +461,21 @@ function createAttendanceForm(options = {}) {
   status.hidden = true;
 
   const actions = document.createElement('div');
-  actions.className = 'grid gap-sm md:grid-cols-[1fr_1fr]';
+  actions.className = 'grid gap-sm xl:grid-cols-[minmax(0,180px)_minmax(0,220px)] xl:justify-end';
 
   const submitButton = createButton('Registrar accion', {
-    className: 'min-h-[52px]',
+    className: 'min-h-[52px] xl:w-full',
   });
   submitButton.type = 'button';
 
   const resetButton = createButton('Limpiar', {
     variant: 'secondary',
-    className: 'min-h-[52px] bg-white/82 text-neutral-charcoal',
+    className: 'min-h-[52px] bg-white/82 text-neutral-charcoal xl:w-full',
   });
 
-  actions.append(submitButton, resetButton);
-  container.append(localField.wrapper, collaboratorField.wrapper, actionField.wrapper, status, actions);
+  actions.append(resetButton, submitButton);
+  fieldsGrid.append(localField.wrapper, collaboratorField.wrapper, actionField.wrapper);
+  container.append(fieldsGrid, status, actions);
 
   function setStatus(type, message) {
     const tones = {
@@ -645,17 +650,20 @@ function createTurnosAbiertosApp(session) {
 
   function createRefreshPill() {
     const node = document.createElement('div');
-    node.className = 'rounded-full border border-neutral-cream/14 bg-neutral-cream/12 px-lg py-md text-sm font-black leading-relaxed text-neutral-cream';
+    node.className = 'rounded-full border border-neutral-cream/14 bg-neutral-cream/12 px-lg py-sm text-sm font-black leading-relaxed text-neutral-cream lg:min-h-[50px] lg:flex lg:flex-col lg:justify-center';
     node.innerHTML = `
-      <span class="mr-sm text-[11px] uppercase tracking-[0.16em] text-neutral-cream/60">Última actualización</span>
-      <span data-refresh-label class="text-sm font-black text-neutral-cream">--:--</span>
+      <span class="block text-[11px] uppercase tracking-[0.16em] text-neutral-cream/60">Última actualización</span>
+      <span data-refresh-label class="mt-xs block text-sm font-black text-neutral-cream">--:--</span>
     `;
     return node;
   }
 
-  function createActionButtons() {
+  function createActionButtons(options = {}) {
+    const { includeRefresh = true } = options;
     const row = document.createElement('div');
-    row.className = 'flex flex-col gap-sm sm:flex-row sm:flex-wrap';
+    row.className = includeRefresh
+      ? 'flex flex-col gap-sm sm:flex-row sm:flex-wrap'
+      : 'grid gap-sm';
 
     const btnBack = createButton('Volver al panel', {
       variant: 'secondary',
@@ -675,28 +683,51 @@ function createTurnosAbiertosApp(session) {
       },
     });
 
-    const btnActualizar = createButton('Actualizar ahora', {
-      variant: 'success',
-      className: 'sm:flex-1',
-    });
-    btnActualizar.dataset.role = 'refresh-button';
+    row.append(btnBack, btnLogout);
 
-    row.append(btnBack, btnLogout, btnActualizar);
-    return { row };
+    let btnActualizar = null;
+    if (includeRefresh) {
+      btnActualizar = createButton('Actualizar ahora', {
+        variant: 'success',
+        className: 'sm:flex-1',
+      });
+      btnActualizar.dataset.role = 'refresh-button';
+      row.append(btnActualizar);
+    }
+
+    return { row, btnActualizar };
   }
 
-  const desktopContextPills = document.createElement('div');
-  desktopContextPills.className = 'hidden flex-wrap gap-sm lg:flex';
-  desktopContextPills.append(createSessionPill(), createRefreshPill());
+  const desktopActions = createActionButtons({ includeRefresh: false });
+  const desktopRefreshAction = document.createElement('div');
+  desktopRefreshAction.className = 'mt-lg hidden items-center gap-sm lg:flex';
+  const heroRefreshPill = createRefreshPill();
+  heroRefreshPill.classList.add('shrink-0');
+  const heroRefreshButton = createButton('Actualizar turnos abiertos', {
+    variant: 'success',
+    className: 'min-h-[50px] px-xl',
+  });
+  heroRefreshButton.dataset.role = 'refresh-button';
+  desktopRefreshAction.append(heroRefreshPill, heroRefreshButton);
 
-  const desktopActions = createActionButtons();
+  const mobileRefreshAction = document.createElement('div');
+  mobileRefreshAction.className = 'mt-lg flex justify-end lg:hidden';
+  const mobileHeroRefreshButton = createButton('Actualizar ahora', {
+    variant: 'success',
+    size: 'sm',
+    className: 'min-h-[42px] rounded-2xl px-lg shadow-none',
+  });
+  mobileHeroRefreshButton.dataset.role = 'refresh-button';
+  mobileRefreshAction.appendChild(mobileHeroRefreshButton);
+
+  const heroHighlights = document.createElement('div');
+  heroHighlights.append(desktopRefreshAction, mobileRefreshAction);
 
   const mobileSessionCard = createCard({
-    eyebrow: 'Sesión y refresh',
     className: 'rounded-3xl lg:hidden',
   });
   const mobileActions = document.createElement('div');
-  mobileActions.className = 'grid grid-cols-3 gap-sm';
+  mobileActions.className = 'grid grid-cols-2 gap-sm';
   mobileActions.append(
     createButton('Volver', {
       variant: 'secondary',
@@ -705,7 +736,7 @@ function createTurnosAbiertosApp(session) {
         window.location.href = withCurrentEnvironment('adminPanel.html');
       },
     }),
-    createButton('Cerrar', {
+    createButton('Cerrar sesión', {
       className: 'min-h-[44px] px-md py-sm text-sm shadow-none',
       onClick: async () => {
         overlay.setLoading(true, 'Cerrando sesión...');
@@ -714,24 +745,17 @@ function createTurnosAbiertosApp(session) {
         window.LVAuth.redirectToIndex();
       },
     }),
-    createButton('Actualizar', {
-      variant: 'success',
-      className: 'min-h-[44px] px-md py-sm text-sm shadow-none',
-    }),
   );
-  mobileActions.querySelector('button:last-child').dataset.role = 'refresh-button';
   mobileSessionCard.appendChild(mobileActions);
 
   const hero = createPageHero({
     badge: 'La Victoria · Administración',
     title: 'Turnos abiertos',
     lead: 'Revisa turnos abiertos por local y registra asistencia administrativa desde una sección dedicada al final del tablero.',
-    sideTitle: 'Sesión y refresh',
-    sideStatus: desktopContextPills,
-    sideCopy: 'Para revisión funcional usa siempre la ruta con ?env=staging, así mantienes todo el circuito de navegación en el entorno correcto.',
+    highlights: heroHighlights,
     sideActions: (() => {
       const wrapper = document.createElement('div');
-      wrapper.className = 'grid gap-sm';
+      wrapper.className = 'grid gap-sm lg:mt-0';
       wrapper.append(desktopActions.row);
       return wrapper;
     })(),
@@ -739,7 +763,7 @@ function createTurnosAbiertosApp(session) {
     contentClassName: 'lg:basis-[70%]',
     titleClassName: 'mt-sm max-w-[9ch] text-[clamp(32px,8vw,68px)]',
     leadClassName: 'mt-md max-w-[58ch] text-sm leading-7 md:mt-xl md:text-lg',
-    sideClassName: 'hidden p-lg lg:block lg:w-[420px]',
+    sideClassName: 'hidden p-lg lg:block lg:w-[320px] [&_.mt-xl]:lg:mt-0',
     className: 'p-lg md:p-2xl',
   });
 
@@ -753,6 +777,7 @@ function createTurnosAbiertosApp(session) {
       subtitle: 'Colaboradores pendientes de salida',
       badgeText: '0',
       open: !isMobileView(),
+      showBadge: true,
     });
 
     localGrid.appendChild(section.element);
@@ -763,8 +788,8 @@ function createTurnosAbiertosApp(session) {
     id: 'AsistenciaAdministrativa',
     title: 'Asistencia Administrativa',
     subtitle: 'Registra ingreso o salida de colaboradores',
-    badgeText: 'A',
-    open: !isMobileView(),
+    open: false,
+    showBadge: false,
   });
 
   const confirmModal = createConfirmModal();
@@ -796,6 +821,7 @@ function createTurnosAbiertosApp(session) {
   const refreshLabels = shell.querySelectorAll('[data-refresh-label]');
   const actionButtons = shell.querySelectorAll('[data-role="refresh-button"]');
   const accordionSections = [...localSections.map((item) => item.section), adminSection];
+  let accordionMode = isMobileView() ? 'mobile' : 'desktop';
 
   function setExclusiveOpen(sectionToToggle) {
     const shouldOpen = !sectionToToggle.isOpen();
@@ -806,7 +832,12 @@ function createTurnosAbiertosApp(session) {
 
   function attachAccordionToggle(section) {
     section.bindToggle(() => {
-      setExclusiveOpen(section);
+      if (isMobileView()) {
+        setExclusiveOpen(section);
+        return;
+      }
+
+      section.setOpen(!section.isOpen());
     });
   }
 
@@ -817,14 +848,22 @@ function createTurnosAbiertosApp(session) {
   attachAccordionToggle(adminSection);
 
   function syncAccordionMode() {
-    if (isMobileView()) {
+    const nextMode = isMobileView() ? 'mobile' : 'desktop';
+    if (nextMode === accordionMode) {
+      return;
+    }
+
+    accordionMode = nextMode;
+
+    if (nextMode === 'mobile') {
       accordionSections.forEach((section) => section.setOpen(false));
       return;
     }
 
-    accordionSections.forEach((section, index) => {
-      section.setOpen(index === 0);
+    localSections.forEach(({ section }) => {
+      section.setOpen(true);
     });
+    adminSection.setOpen(false);
   }
 
   function updateDashboardTimestamp() {
@@ -889,7 +928,13 @@ function createTurnosAbiertosApp(session) {
 
   actionButtons.forEach((button) => button.addEventListener('click', cargarDashboard));
   window.addEventListener('resize', syncAccordionMode);
-  syncAccordionMode();
+
+  if (!isMobileView()) {
+    localSections.forEach(({ section }) => {
+      section.setOpen(true);
+    });
+    adminSection.setOpen(false);
+  }
 
   return { cargarDashboard };
 }

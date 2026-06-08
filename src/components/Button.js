@@ -33,7 +33,7 @@ export function createButton(label, options = {}) {
   const element = document.createElement(as === 'a' ? 'a' : 'button');
   element.textContent = label;
   element.className = cn(
-    'inline-flex items-center justify-center gap-sm font-semibold shadow-brand-sm transition-all duration-fast',
+    'inline-flex items-center justify-center gap-sm font-semibold shadow-none transition-all duration-fast',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-bun focus-visible:ring-offset-2',
     'disabled:pointer-events-none disabled:opacity-50',
     VARIANT_CLASSES[variant] || VARIANT_CLASSES.primary,

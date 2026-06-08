@@ -240,6 +240,12 @@ Siguientes pasos recomendados:
 
 Existe una implementación base en `src/components/Button.js` para generar botones consistentes desde JavaScript.
 
+Regla visual del sistema:
+
+- los botones no usan sombra
+- la jerarquía visual de botones se define con color, borde, contraste y estados hover/focus
+- no se debe reintroducir `shadow-*` en CTAs o acciones de formulario salvo que exista una excepción documentada
+
 ```html
 <!-- Primario -->
 <button class="px-lg py-md bg-brand-bun text-neutral-charcoal rounded-lg font-semibold hover:bg-brand-bun-dark transition-colors">

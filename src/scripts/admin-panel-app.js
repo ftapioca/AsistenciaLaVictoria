@@ -135,7 +135,7 @@ export function createAdminPanelApp(options = {}) {
   });
 
   const quickAccess = document.createElement('section');
-  quickAccess.className = 'grid gap-md';
+  quickAccess.className = 'grid gap-md md:hidden';
 
   const quickAccessCopy = document.createElement('div');
   quickAccessCopy.className = 'flex flex-col gap-xs px-sm';
