@@ -84,6 +84,7 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
 - `postcss.config.js`: Configuración de PostCSS
 - `vite.config.js`: Configuración de Vite
 - `Docs/DESIGN_SYSTEM.md`: Documentación completa del sistema
+- `Docs/ventas-comisiones-roadmap.md`: Estado funcional y siguientes pasos del módulo de ventas, comisiones y propinas
 
 ### Backend
 - `AppsScript/`: Copia local del proyecto real de Google Apps Script (referencia y documentación)
@@ -95,6 +96,14 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
   - `programadorTurnos.js`: Programación semanal y helpers asociados
   - `versionesSistema.js`: Versión del sistema
   - `appsscript.json`: Manifest del proyecto Apps Script usado por `clasp`
+
+### Ventas y Comisiones
+- El desarrollo del módulo vive en la rama `feature/spreadsheet-by-id`.
+- El roadmap técnico consolidado está en `Docs/ventas-comisiones-roadmap.md`.
+- Estado documental actual:
+  - `ImportarVentas`, `ConsultarImportacionesVentas`, `ConsultarImportacionActivaVentas` y `RecalcularComisiones` aparecen implementados en esa rama.
+  - El parser POS V1 ya está bastante formalizado en frontend; no es el mayor vacío actual.
+  - El siguiente tramo recomendado es auditar operativamente `RecalcularComisiones` en `staging` y luego exponer una UI mínima para recalcular y ver resumen.
 
 ---
 
@@ -133,6 +142,14 @@ La copia local de referencia está en `AppsScript/`.
 
 La fuente de verdad del backend en este repositorio es `AppsScript/*.js` junto con `AppsScript/appsscript.json`.
 Los archivos `*.gs` dejaron de usarse para evitar drift entre el código trackeado y el código que realmente sincroniza `clasp`.
+
+### Checklist de contribución para Apps Script
+
+- Edita backend solo en `AppsScript/*.js`.
+- Si cambias manifest o permisos del proyecto, actualiza también `AppsScript/appsscript.json`.
+- No agregues archivos `*.gs` nuevos al repositorio.
+- Antes de abrir PR o mergear, valida con `npm run gas:staging:push`.
+- Si haces `clasp pull`, revisa que no reaparezcan archivos fuera de la estructura `AppsScript/*.js` + `appsscript.json`.
 
 ## Acciones Públicas
 
