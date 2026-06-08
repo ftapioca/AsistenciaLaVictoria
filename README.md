@@ -97,6 +97,13 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
   - `VentasComisiones.js`: Cálculo de ventas y comisiones
   - `SpreadsheetStore.js`: Interfaz de almacenamiento en Google Sheets
 
+### Ventas y Comisiones
+- El roadmap técnico consolidado está en `Docs/ventas-comisiones-roadmap.md`.
+- Estado documental actual de esta rama:
+  - `ImportarVentas`, `ConsultarImportacionesVentas`, `ConsultarImportacionActivaVentas` y `RecalcularComisiones` aparecen implementados.
+  - El parser POS V1 ya está bastante formalizado en frontend.
+  - El siguiente tramo recomendado es auditar operativamente `RecalcularComisiones` en `staging` y luego exponer una UI mínima para recalcular y ver resumen.
+
 ---
 
 ## 🎯 Admin Panel

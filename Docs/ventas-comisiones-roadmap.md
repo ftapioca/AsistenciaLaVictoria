@@ -7,6 +7,23 @@ Rama base actual: `feature/spreadsheet-by-id`
 
 ---
 
+## Estado de revisión documental
+
+Revisión más reciente:
+
+- La rama ya contiene más implementación real de la que el nombre de algunas etapas sugiere.
+- `ImportarVentas`, `ConsultarImportacionesVentas`, `ConsultarImportacionActivaVentas` y `RecalcularComisiones` ya aparecen implementados en código.
+- El parser POS V1 ya no debe considerarse una idea futura pura; existe una primera implementación bastante específica.
+- El mayor vacío actual parece ser la auditoría operativa de `RecalcularComisiones` en `staging` y la exposición mínima de esa operación en frontend admin.
+
+Lectura recomendada para continuar:
+
+- tratar este roadmap como guía de cierre y validación del tramo actual
+- no reabrir todavía reparto por colaborador
+- no priorizar nuevas extensiones de parser antes de auditar el recálculo agregado
+
+---
+
 ## Siguientes pasos inmediatos
 
 Orden propuesto para continuar el desarrollo desde el estado ya validado en staging:
