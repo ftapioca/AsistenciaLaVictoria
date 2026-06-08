@@ -12,8 +12,7 @@ Registro de asistencia y turnos para La Victoria.
 - `descargablesLocales/`: archivos adjuntos descargables para administradores y HTML de registro por local.
 - `app-config.js`: configuración compartida del `WEB_APP_URL` y clave de sesión.
 - `auth.js`: autenticación, validación de sesión y control de acceso en frontend.
-- `AppsScriptAuth.gs`: base para integrar login, validación de sesión y control de roles en Google Apps Script.
-- `AppsScript/`: copia local del proyecto real de Google Apps Script usada como referencia y documentación viva.
+- `AppsScript/`: copia local del proyecto real de Google Apps Script usada como referencia operativa y documentación viva.
 
 ### Desarrollo
 ```bash
@@ -93,6 +92,9 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
   - `CierreTurnos.js`: Cierre de turnos
   - `VentasComisiones.js`: Cálculo de ventas y comisiones
   - `SpreadsheetStore.js`: Interfaz de almacenamiento en Google Sheets
+  - `programadorTurnos.js`: Programación semanal y helpers asociados
+  - `versionesSistema.js`: Versión del sistema
+  - `appsscript.json`: Manifest del proyecto Apps Script usado por `clasp`
 
 ---
 
@@ -128,6 +130,9 @@ El `WEB_APP_URL` apunta a un proyecto de Google Apps Script que combina:
 - programación semanal
 
 La copia local de referencia está en `AppsScript/`.
+
+La fuente de verdad del backend en este repositorio es `AppsScript/*.js` junto con `AppsScript/appsscript.json`.
+Los archivos `*.gs` dejaron de usarse para evitar drift entre el código trackeado y el código que realmente sincroniza `clasp`.
 
 ## Acciones Públicas
 

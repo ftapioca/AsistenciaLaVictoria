@@ -22,7 +22,7 @@ function obtenerUsuariosPorRol(params) {
     });
   }
 
-  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_COLABORADORES);
+  var hoja = findSheet_(HOJA_COLABORADORES, SPREADSHEET_KEY_RRHH);
 
   if (!hoja) {
     return responderJSON({
@@ -118,7 +118,7 @@ function logoutSesion(params) {
 
 function buscarUsuarioPorRolNombrePin(role, nombreOUsuario, pin) {
   var nombreHoja = role === "Administrador" ? HOJA_ADMINISTRADORES : HOJA_COLABORADORES;
-  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nombreHoja);
+  var hoja = findSheet_(nombreHoja, SPREADSHEET_KEY_RRHH);
 
   if (!hoja) return null;
 
@@ -159,10 +159,7 @@ function requireSession(params) {
     throw crearErrorAuth("UNAUTHORIZED", "Debes iniciar sesión.");
   }
 
-  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_SESIONES);
-  if (!hoja) {
-    throw crearErrorAuth("UNAUTHORIZED", "Sesión no válida.");
-  }
+  var hoja = getSheet_(HOJA_SESIONES, SPREADSHEET_KEY_RRHH);
 
   var datos = hoja.getDataRange().getValues();
 
@@ -214,7 +211,7 @@ function guardarSesion(token, usuario) {
 }
 
 function eliminarSesion(token) {
-  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_SESIONES);
+  var hoja = findSheet_(HOJA_SESIONES, SPREADSHEET_KEY_RRHH);
   if (!hoja) return;
 
   var datos = hoja.getDataRange().getValues();
@@ -226,17 +223,13 @@ function eliminarSesion(token) {
 }
 
 function getOrCreateSheetSesiones() {
-  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_SESIONES);
-  if (hoja) return hoja;
-
-  hoja = SpreadsheetApp.getActiveSpreadsheet().insertSheet(HOJA_SESIONES);
-  hoja.getRange(1, 1, 1, 5).setValues([[
+  var hoja = getOrCreateSheet_(HOJA_SESIONES, SPREADSHEET_KEY_RRHH, [
     "sessionToken",
     "role",
     "displayName",
     "userKey",
     "expiresAt"
-  ]]);
+  ]);
 
   return hoja;
 }

@@ -4,11 +4,14 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 
 ## Archivos actuales
 
-- `AuthRoles.gs`: autenticación, sesiones y control de roles.
-- `RegistroAsistencias.gs`: router principal `doGet` y `doPost`, registro de asistencia y consultas base.
-- `CierreTurnos.gs`: lógica de turnos abiertos y cierre de turnos.
-- `programadorTurnos.gs`: programación semanal y helpers asociados.
-- `versionesSistema.gs`: versión del sistema.
+- `AuthRoles.js`: autenticación, sesiones y control de roles.
+- `RegistroAsistencias.js`: router principal `doGet` y `doPost`, registro de asistencia y consultas base.
+- `CierreTurnos.js`: lógica de turnos abiertos y cierre de turnos.
+- `SpreadsheetStore.js`: helpers para acceso a hojas por spreadsheet ID.
+- `VentasComisiones.js`: importación y cálculo de ventas/comisiones.
+- `programadorTurnos.js`: programación semanal y helpers asociados.
+- `versionesSistema.js`: versión del sistema.
+- `appsscript.json`: manifest del proyecto sincronizado con Google Apps Script.
 
 ## Acciones y permisos
 
@@ -40,7 +43,7 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 
 ## Turnos abiertos
 
-La lógica base vive en `CierreTurnos.gs`.
+La lógica base vive en `CierreTurnos.js`.
 
 - `obtenerTurnosAbiertos(params)`: respuesta administrativa protegida.
 - `obtenerTurnosAbiertosPublico(params)`: respuesta pública para los HTML de `descargablesLocales`.
@@ -59,4 +62,10 @@ No expone `rut`.
 
 ## Uso de esta carpeta
 
-Esta carpeta debe mantenerse alineada con el proyecto desplegado en Google Apps Script para poder revisar cambios con contexto completo desde este repositorio.
+Esta carpeta es la fuente de verdad del backend para `clasp`.
+Todo cambio de Apps Script debe hacerse sobre `*.js` y `appsscript.json`, y luego sincronizarse con `clasp pull` / `clasp push`.
+
+No se mantienen archivos `*.gs` duplicados para evitar drift entre:
+
+- lo que está versionado en git
+- lo que realmente se despliega a staging y producción
