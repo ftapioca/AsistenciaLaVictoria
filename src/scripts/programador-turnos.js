@@ -156,7 +156,6 @@ async function cambiarLocal(local) {
   try {
     localActivo = local;
     renderLocalTabs();
-    await cargarPlantillasTurnos();
     await cargarSemana(false);
   } finally {
     overlay.setLoading(false);
@@ -176,13 +175,11 @@ async function cargarSemana(usePageLoading = true) {
     const fechaInicio = fechaISO(semana[0]);
     const fechaFin = fechaISO(semana[6]);
 
-    const colabData = await apiGet({ accion: 'ColaboradoresPorLocal', local });
-    if (colabData.status !== 'SUCCESS') throw new Error(colabData.mensaje || 'No se pudieron cargar colaboradores.');
-    colaboradores = colabData.colaboradores || [];
-
-    const turnosData = await apiGet({ accion: 'TurnosSemana', local, fechaInicio, fechaFin });
-    if (turnosData.status !== 'SUCCESS') throw new Error(turnosData.mensaje || 'No se pudieron cargar turnos.');
-    turnos = turnosData.turnos || [];
+    const data = await apiGet({ accion: 'BootstrapProgramadorTurnos', local, fechaInicio, fechaFin });
+    if (data.status !== 'SUCCESS') throw new Error(data.mensaje || 'No se pudieron cargar los datos del programador.');
+    plantillasTurnos = data.data?.plantillas || [];
+    colaboradores = data.data?.colaboradores || [];
+    turnos = data.data?.turnos || [];
 
     renderTabla();
   } catch (err) {
@@ -771,15 +768,6 @@ function copiarSemanaSiguiente() {
   });
 }
 
-async function cargarPlantillasTurnos() {
-  try {
-    const data = await apiGet({ accion: 'PlantillasTurnos', local: localActivo });
-    plantillasTurnos = data.status === 'SUCCESS' ? (data.plantillas || []) : [];
-  } catch {
-    plantillasTurnos = [];
-  }
-}
-
 function buildApp(session) {
   const app = $('app');
   const shell = document.createElement('div');
@@ -1012,7 +1000,6 @@ async function bootstrap() {
     const session = await window.LVAuth.protectPage(['Administrador']);
     if (!session) return;
     buildApp(session);
-    await cargarPlantillasTurnos();
     await cargarSemana();
   } finally {
     overlay.setLoading(false);

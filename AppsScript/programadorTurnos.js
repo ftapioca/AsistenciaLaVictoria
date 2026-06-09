@@ -10,18 +10,13 @@ const HOJA_HORARIO_LOCALES = "HorarioLocales";
 const HOJA_HORARIO_ESPECIAL_LOCALES = "HorarioEspecialLocales";
 const HOJA_PLANTILLAS_TURNOS = "PlantillasTurnos";
 
-function obtenerPlantillasTurnos(params) {
-  var local = params.local;
-
-  if (!local) {
-    return responderJSON({
-      status: "ERROR_DATOS",
-      mensaje: "Debes indicar un local."
-    });
-  }
-
+function listarPlantillasTurnos_(local) {
   var sheet = getSheet_(HOJA_PLANTILLAS_TURNOS, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
+  return listarPlantillasTurnosDesdeDatos_(datos, local);
+}
+
+function listarPlantillasTurnosDesdeDatos_(datos, local) {
   var plantillas = [];
 
   for (var i = 1; i < datos.length; i++) {
@@ -50,6 +45,86 @@ function obtenerPlantillasTurnos(params) {
     }
   }
 
+  return plantillas;
+}
+
+function listarColaboradoresPorLocalTurnos_(local) {
+  var sheet = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
+  var datos = sheet.getDataRange().getValues();
+  return listarColaboradoresPorLocalDesdeDatos_(datos, local);
+}
+
+function listarColaboradoresPorLocalDesdeDatos_(datos, local) {
+  var colaboradores = [];
+
+  for (var i = 1; i < datos.length; i++) {
+    var nombre = datos[i][0];
+    var localColaborador = datos[i][3];
+
+    if (normalizarTexto(localColaborador) === normalizarTexto(local)) {
+      colaboradores.push(nombre);
+    }
+  }
+
+  colaboradores.sort();
+  return colaboradores;
+}
+
+function listarTurnosSemana_(local, fechaInicio, fechaFin) {
+  var sheet = getSheet_(HOJA_TURNOS_PROGRAMADOS, SPREADSHEET_KEY_RRHH);
+  var datos = sheet.getDataRange().getValues();
+  return listarTurnosSemanaDesdeDatos_(datos, local, fechaInicio, fechaFin);
+}
+
+function listarTurnosSemanaDesdeDatos_(datos, local, fechaInicio, fechaFin) {
+  var turnos = [];
+
+  for (var i = 1; i < datos.length; i++) {
+    var fecha = datos[i][0];
+    var colaborador = datos[i][1];
+    var localRegistro = datos[i][2];
+
+    if (
+      normalizarTexto(localRegistro) === normalizarTexto(local) &&
+      new Date(fecha) >= fechaInicio &&
+      new Date(fecha) <= fechaFin
+    ) {
+      turnos.push({
+        fecha: formatearFechaBaseTurnos(fecha),
+        colaborador: colaborador,
+        local: localRegistro,
+        inicio1: formatearHoraTurnos(datos[i][3]),
+        fin1: formatearHoraTurnos(datos[i][4]),
+        inicio2: formatearHoraTurnos(datos[i][5]),
+        fin2: formatearHoraTurnos(datos[i][6]),
+        tipoTurno: datos[i][7],
+        estado: datos[i][8],
+        esTrasnoche: datos[i][9],
+        horasProgramadas: datos[i][10],
+        origenHorario: datos[i][11],
+        observaciones: datos[i][12],
+        plantillaAplicada: datos[i][13]
+      });
+    }
+  }
+
+  return turnos;
+}
+
+function obtenerPlantillasTurnos(params) {
+  var local = params.local;
+
+  if (!local) {
+    return responderJSON({
+      status: "ERROR_DATOS",
+      mensaje: "Debes indicar un local."
+    });
+  }
+
+  var sheet = getSheet_(HOJA_PLANTILLAS_TURNOS, SPREADSHEET_KEY_RRHH);
+  var datos = sheet.getDataRange().getValues();
+  var plantillas = listarPlantillasTurnosDesdeDatos_(datos, local);
+
   return responderJSON({
     status: "SUCCESS",
     local: local,
@@ -69,21 +144,12 @@ function obtenerColaboradoresPorLocalTurnos(params) {
 
   var sheet = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
-  var colaboradores = [];
-
-  for (var i = 1; i < datos.length; i++) {
-    var nombre = datos[i][0];
-    var localColaborador = datos[i][3];
-
-    if (normalizarTexto(localColaborador) === normalizarTexto(local)) {
-      colaboradores.push(nombre);
-    }
-  }
+  var colaboradores = listarColaboradoresPorLocalDesdeDatos_(datos, local);
 
   return responderJSON({
     status: "SUCCESS",
     local: local,
-    colaboradores: colaboradores.sort()
+    colaboradores: colaboradores
   });
 }
 
@@ -238,41 +304,60 @@ function obtenerTurnosSemana(params) {
 
   var sheet = getSheet_(HOJA_TURNOS_PROGRAMADOS, SPREADSHEET_KEY_RRHH);
   var datos = sheet.getDataRange().getValues();
-  var turnos = [];
-
-  for (var i = 1; i < datos.length; i++) {
-    var fecha = datos[i][0];
-    var colaborador = datos[i][1];
-    var localRegistro = datos[i][2];
-
-    if (
-      normalizarTexto(localRegistro) === normalizarTexto(local) &&
-      new Date(fecha) >= fechaInicio &&
-      new Date(fecha) <= fechaFin
-    ) {
-      turnos.push({
-        fecha: formatearFechaBaseTurnos(fecha),
-        colaborador: colaborador,
-        local: localRegistro,
-        inicio1: formatearHoraTurnos(datos[i][3]),
-        fin1: formatearHoraTurnos(datos[i][4]),
-        inicio2: formatearHoraTurnos(datos[i][5]),
-        fin2: formatearHoraTurnos(datos[i][6]),
-        tipoTurno: datos[i][7],
-        estado: datos[i][8],
-        esTrasnoche: datos[i][9],
-        horasProgramadas: datos[i][10],
-        origenHorario: datos[i][11],
-        observaciones: datos[i][12],
-        plantillaAplicada: datos[i][13]
-      });
-    }
-  }
+  var turnos = listarTurnosSemanaDesdeDatos_(datos, local, fechaInicio, fechaFin);
 
   return responderJSON({
     status: "SUCCESS",
     local: local,
     turnos: turnos
+  });
+}
+
+function bootstrapProgramadorTurnos(params) {
+  var local = params.local;
+  var fechaInicioTexto = params.fechaInicio;
+  var fechaFinTexto = params.fechaFin;
+
+  if (!local || !fechaInicioTexto || !fechaFinTexto) {
+    return responderJSON({
+      status: "ERROR_DATOS",
+      mensaje: "Debes indicar local, fechaInicio y fechaFin."
+    });
+  }
+
+  var sesion = requireAdminSession(params);
+
+  var fechaInicio = convertirFechaTurnos(fechaInicioTexto);
+  var fechaFin = convertirFechaTurnos(fechaFinTexto);
+
+  var plantillas = listarPlantillasTurnos_(local);
+  var colaboradores = listarColaboradoresPorLocalTurnos_(local);
+  var turnos = listarTurnosSemana_(local, fechaInicio, fechaFin);
+
+  return responderJSON({
+    status: "SUCCESS",
+    session: {
+      role: sesion.role,
+      displayName: sesion.displayName,
+      userKey: sesion.userKey
+    },
+    context: {
+      local: local,
+      fechaInicio: fechaInicioTexto,
+      fechaFin: fechaFinTexto
+    },
+    data: {
+      plantillas: plantillas,
+      colaboradores: colaboradores,
+      turnos: turnos
+    },
+    meta: {
+      counts: {
+        plantillas: plantillas.length,
+        colaboradores: colaboradores.length,
+        turnos: turnos.length
+      }
+    }
   });
 }
 

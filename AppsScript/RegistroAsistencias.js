@@ -61,6 +61,17 @@ function doGet(e) {
     }
   }
 
+  if (accion === "BootstrapProgramadorTurnos") {
+    try {
+      return bootstrapProgramadorTurnos(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "Acceso no autorizado."
+      });
+    }
+  }
+
   if (accion === "HorarioLocal") {
     try {
       requireAdminSession(params);
