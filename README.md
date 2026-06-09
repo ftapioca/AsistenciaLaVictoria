@@ -165,6 +165,7 @@ Los archivos `*.gs` dejaron de usarse para evitar drift entre el código trackea
 
 Requieren sesión válida y rol `Administrador`:
 
+- `BootstrapProgramadorTurnos`
 - `TurnosAbiertos`
 - `ColaboradoresPorLocal`
 - `TurnosSemana`
@@ -178,6 +179,38 @@ Requieren sesión válida y rol `Administrador`:
 Requieren sesión válida y rol `Colaborador`:
 
 - `TurnosSemanaColaborador`
+
+## Programador de turnos
+
+Desde junio de 2026, la carga principal del programador administrativo usa el endpoint agregado `BootstrapProgramadorTurnos`.
+
+Su objetivo es reducir la latencia del arranque y de los cambios de contexto concentrando en una sola request:
+
+- validación de sesión de administrador
+- `plantillas` del local activo
+- `colaboradores` del local activo
+- `turnos` de la semana visible
+
+Esto reemplaza, para la carga principal del frontend, la secuencia serial anterior basada en:
+
+- `PlantillasTurnos`
+- `ColaboradoresPorLocal`
+- `TurnosSemana`
+
+Estado actual:
+
+- el cambio quedó activo en código
+- fue validado en `staging`
+- fue promovido a `prod`
+- el frontend público ya consume `BootstrapProgramadorTurnos`
+
+Próximo paso documentado:
+
+- extender `BootstrapProgramadorTurnos` para incluir `horariosSemana`, de modo que la apertura de modales no dependa de nuevas consultas a `HorarioLocal`
+
+Referencia de desarrollo:
+
+- [Docs/programador-turnos-roadmap.md](/Users/ftapioca/Projects/AsistenciaLaVictoria/Docs/programador-turnos-roadmap.md:1)
 
 ## Turnos Abiertos
 

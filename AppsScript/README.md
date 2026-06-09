@@ -27,6 +27,7 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 
 ### Protegidas para administradores
 
+- `BootstrapProgramadorTurnos`
 - `TurnosAbiertos`
 - `ColaboradoresPorLocal`
 - `EliminarTurno`
@@ -40,6 +41,40 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 ### Protegidas para colaboradores
 
 - `TurnosSemanaColaborador`
+
+## Programador de turnos
+
+La carga administrativa principal del programador semanal ya no depende de tres requests seriales separadas para:
+
+- `PlantillasTurnos`
+- `ColaboradoresPorLocal`
+- `TurnosSemana`
+
+Desde junio de 2026, el flujo principal usa el endpoint agregado:
+
+- `BootstrapProgramadorTurnos`
+
+Contrato funcional actual del bootstrap:
+
+- valida sesión admin
+- recibe `local`, `fechaInicio` y `fechaFin`
+- devuelve:
+  - `session`
+  - `context`
+  - `data.plantillas`
+  - `data.colaboradores`
+  - `data.turnos`
+  - `meta.counts`
+
+Estado:
+
+- activo en `prod`
+- activo en `staging`
+- consumido por `src/scripts/programador-turnos.js`
+
+Próximo paso planificado:
+
+- agregar `horariosSemana` dentro de `BootstrapProgramadorTurnos` para eliminar consultas repetidas a `HorarioLocal` al abrir modales o validar guardados por fecha
 
 ## Turnos abiertos
 
