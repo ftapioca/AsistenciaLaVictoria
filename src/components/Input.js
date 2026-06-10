@@ -28,7 +28,7 @@ export function createInputField(options = {}) {
     disabled = false,
   } = options;
 
-  const wrapper = document.createElement('div');
+  const wrapper = document.createElement('label');
   wrapper.className = 'flex flex-col gap-sm';
 
   if (label) {
@@ -74,7 +74,7 @@ export function createPinInputField(options = {}) {
     maxLength = 12,
   } = options;
 
-  const wrapper = document.createElement('div');
+  const wrapper = document.createElement('label');
   wrapper.className = 'flex flex-col gap-sm';
 
   if (label) {
