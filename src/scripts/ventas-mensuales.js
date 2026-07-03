@@ -451,11 +451,15 @@ function extractMetadataFromMatrix(matrix) {
 function detectSheetByRole(sheetEntries, role) {
   const roleTokens = role === 'propinas'
     ? ['propina', 'propinas', 'tip', 'tips']
-    : ['venta', 'ventas', 'sales', 'ticket', 'tickets', 'boleta', 'boletas'];
+    : role === 'pagos'
+      ? ['pago', 'pagos', 'payment', 'payments']
+      : ['venta', 'ventas', 'sales', 'ticket', 'tickets', 'boleta', 'boletas'];
 
   const roleHeaders = role === 'propinas'
     ? ['montoPropina', 'monto propina', 'propina', 'tip', 'monto', 'valor', 'cancelado', 'cancelada', 'id venta', 'fecha pago']
-    : ['totalBruto', 'total bruto', 'total', 'monto', 'medioPago', 'medio de pago', 'tipoVenta', 'estado'];
+    : role === 'pagos'
+      ? ['fecha pago', 'medio de pago', 'monto', 'cancelado', 'tipo de venta', 'id venta']
+      : ['totalBruto', 'total bruto', 'total', 'monto', 'medioPago', 'medio de pago', 'tipoVenta', 'estado'];
 
   let best = null;
 
@@ -513,8 +517,8 @@ function normalizeVentaRow(row, fallbackLocal) {
     local: String(getRowValue(row, ['local', 'sucursal'], fallbackLocal)).trim(),
     estado: estado || (esCancelada ? 'ANULADA' : 'PAGADA'),
     origen: String(getRowValue(row, ['origen', 'canal'], 'POS')).trim(),
-    tipoVenta: String(getRowValue(row, ['tipoVenta', 'tipo venta', 'tipo'], '')).trim(),
-    medioPago: String(getRowValue(row, ['medioPago', 'medio pago', 'pago'], '')).trim(),
+    tipoVenta: String(getRowValue(row, ['tipoVenta', 'tipo de venta', 'tipo venta', 'tipo'], '')).trim(),
+    medioPago: String(getRowValue(row, ['medioPago', 'medio de pago', 'medio pago', 'pago'], '')).trim(),
     totalBruto,
     esDelivery,
     esCancelada,
@@ -549,16 +553,60 @@ function normalizePropinaRow(row, fallbackLocal) {
   };
 }
 
+function normalizePagoRow(row, fallbackLocal) {
+  const fechaPagoRaw = getRowValue(row, ['fechaPago', 'fecha pago', 'fecha'], '');
+  const fechaPagoParts = parseSpreadsheetDateTimeParts(fechaPagoRaw);
+  const cancelado = normalizeBoolean(getRowValue(row, ['cancelado', 'cancelada', 'anulada'], false), false);
+
+  return {
+    ventaId: String(getRowValue(row, ['ventaId', 'id venta', 'id. venta', 'id', 'folio', 'ticket', 'numero', 'nro'], '')).trim(),
+    fecha: String(getRowValue(row, ['fecha', 'dia'], fechaPagoParts?.fecha || '')).trim(),
+    hora: String(getRowValue(row, ['hora'], fechaPagoParts?.hora || '')).trim(),
+    local: String(getRowValue(row, ['local', 'sucursal'], fallbackLocal)).trim(),
+    medioPago: String(getRowValue(row, ['medioPago', 'medio de pago', 'medio pago', 'pago'], '')).trim(),
+    monto: normalizeAmount(getRowValue(row, ['monto', 'total', 'valor'], 0)),
+    cancelado,
+    tipoVenta: String(getRowValue(row, ['tipoVenta', 'tipo de venta', 'tipo venta', 'tipo'], '')).trim(),
+  };
+}
+
 function buildPayloadFromSheetEntries(sheetEntries, fileName, fallbackLocal) {
   const ventasSheet = detectSheetByRole(sheetEntries, 'ventas');
   const propinasSheet = detectSheetByRole(sheetEntries, 'propinas');
+  const pagosSheet = detectSheetByRole(sheetEntries, 'pagos');
   const metadataFromVentas = ventasSheet && ventasSheet.metadata ? ventasSheet.metadata : {};
 
-  const ventas = ventasSheet
+  let ventas = ventasSheet
     ? ventasSheet.rows
         .map((row) => normalizeVentaRow(row, fallbackLocal))
         .filter((row) => row.ventaId || row.fecha || row.totalBruto || row.medioPago)
     : [];
+
+  const pagos = pagosSheet
+    ? pagosSheet.rows
+        .map((row) => normalizePagoRow(row, fallbackLocal))
+        .filter((row) => row.ventaId || row.fecha || row.monto || row.medioPago)
+    : [];
+
+  const pagosByVentaId = new Map();
+  pagos.forEach((row) => {
+    if (!row.ventaId) return;
+    const key = String(row.ventaId).trim();
+    if (!pagosByVentaId.has(key)) pagosByVentaId.set(key, []);
+    pagosByVentaId.get(key).push(row);
+  });
+
+  ventas = ventas.map((row) => {
+    const pagosVenta = row.ventaId ? pagosByVentaId.get(String(row.ventaId).trim()) : null;
+    const primerPago = pagosVenta && pagosVenta.length ? pagosVenta[0] : null;
+    if (!primerPago) return row;
+
+    return {
+      ...row,
+      medioPago: row.medioPago || primerPago.medioPago || '',
+      tipoVenta: row.tipoVenta || primerPago.tipoVenta || '',
+    };
+  });
 
   const ventasById = new Map(
     ventas
@@ -583,6 +631,18 @@ function buildPayloadFromSheetEntries(sheetEntries, fileName, fallbackLocal) {
         .filter((row) => row.ventaId || row.fecha || row.montoPropina)
     : [];
 
+  const pagosEnriquecidos = pagos.map((row) => {
+    const linkedVenta = row.ventaId ? ventasById.get(String(row.ventaId).trim()) : null;
+    if (!linkedVenta) return row;
+
+    return {
+      ...row,
+      fecha: row.fecha || linkedVenta.fecha || '',
+      hora: row.hora || linkedVenta.hora || '',
+      local: row.local || linkedVenta.local || fallbackLocal || '',
+    };
+  });
+
   return {
     metadata: {
       nombreArchivo: fileName,
@@ -592,6 +652,7 @@ function buildPayloadFromSheetEntries(sheetEntries, fileName, fallbackLocal) {
     },
     ventas,
     propinas,
+    pagos: pagosEnriquecidos,
   };
 }
 
@@ -628,7 +689,8 @@ async function parseSpreadsheetFile(file, fallbackLocal) {
       matrix: XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' }),
     }))
       .map((entry) => {
-        const expectedAliases = normalizeText(entry.name).includes('propina')
+        const normalizedSheetName = normalizeText(entry.name);
+        const expectedAliases = normalizedSheetName.includes('propina')
           ? [
               ['fecha pago', 'fecha', 'dia'],
               ['monto', 'monto propina', 'propina', 'tip', 'valor'],
@@ -636,14 +698,23 @@ async function parseSpreadsheetFile(file, fallbackLocal) {
               ['id venta', 'id. venta', 'ventaId', 'folio', 'ticket'],
               ['local', 'sucursal'],
             ]
-          : [
-              ['fecha', 'dia'],
-              ['medio de pago', 'medioPago', 'pago'],
-              ['total', 'total bruto', 'monto'],
-              ['tipo de venta', 'tipoVenta'],
-              ['camarero / repartidor', 'origen', 'estado'],
-              ['id venta', 'id. venta', 'ventaId', 'folio', 'ticket'],
-            ];
+          : normalizedSheetName.includes('pago')
+            ? [
+                ['fecha pago', 'fecha', 'dia'],
+                ['medio de pago', 'medioPago', 'pago'],
+                ['monto', 'total', 'valor'],
+                ['tipo de venta', 'tipoVenta'],
+                ['cancelado', 'cancelada', 'anulada', 'estado'],
+                ['id venta', 'id. venta', 'ventaId', 'folio', 'ticket'],
+              ]
+            : [
+                ['fecha', 'dia'],
+                ['medio de pago', 'medioPago', 'pago'],
+                ['total', 'total bruto', 'monto'],
+                ['tipo de venta', 'tipoVenta'],
+                ['camarero / repartidor', 'origen', 'estado'],
+                ['id venta', 'id. venta', 'ventaId', 'folio', 'ticket'],
+              ];
 
         return {
           name: entry.name,
@@ -701,6 +772,7 @@ async function sendImport(payload) {
     metadata: JSON.stringify(payload.metadata),
     ventas: JSON.stringify(payload.ventas),
     propinas: JSON.stringify(payload.propinas),
+    pagos: JSON.stringify(payload.pagos || []),
   });
 
   const response = await fetch(window.APP_CONFIG.WEB_APP_URL, {
@@ -976,6 +1048,7 @@ function renderApp(session) {
       },
       ventas: Array.isArray(payload.ventas) ? payload.ventas : [],
       propinas: Array.isArray(payload.propinas) ? payload.propinas : [],
+      pagos: Array.isArray(payload.pagos) ? payload.pagos : [],
     };
   }
 

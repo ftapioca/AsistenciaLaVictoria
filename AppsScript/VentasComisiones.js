@@ -6,6 +6,7 @@ const HOJA_COMISIONES_DIARIAS = "ComisionesDiarias";
 const HOJA_RESUMEN_MENSUAL_COMISIONES = "ResumenMensualComisiones";
 const HOJA_PAGOS_POS = "PagosPOS";
 const HOJA_PRODUCTOS_POS = "ProductosPOS";
+const HOJA_TRAMOS_COMISIONES = "TramosComisiones";
 const HOJA_CUADRATURA_PAGOS = "CuadraturaPagos";
 const HOJA_KPI_VENTAS_DIARIAS = "KPIVentasDiarias";
 const ESTADO_IMPORTACION_SUCCESS = "SUCCESS";
@@ -140,6 +141,17 @@ const VENTAS_SHEETS_CONFIG = [
     ]
   },
   {
+    name: HOJA_TRAMOS_COMISIONES,
+    headers: [
+      "Tramo",
+      "VentaNetaMin",
+      "VentaNetaMax",
+      "PorcentajeComision",
+      "Activo",
+      "Observaciones"
+    ]
+  },
+  {
     name: HOJA_CUADRATURA_PAGOS,
     headers: [
       "ImportId",
@@ -207,6 +219,9 @@ function asegurarEstructuraVentasSheets_() {
     if (!hoja) {
       hoja = getOrCreateSheet_(config.name, SPREADSHEET_KEY_VENTAS, config.headers);
       hoja.setFrozenRows(1);
+      if (config.name === HOJA_TRAMOS_COMISIONES) {
+        inicializarHojaTramosComisiones_(hoja);
+      }
       resultado.creadas++;
       resultado.hojas.push({
         hoja: config.name,
@@ -224,6 +239,9 @@ function asegurarEstructuraVentasSheets_() {
 
     if (comparacion.coincide) {
       hoja.setFrozenRows(1);
+      if (config.name === HOJA_TRAMOS_COMISIONES) {
+        inicializarHojaTramosComisiones_(hoja);
+      }
       resultado.existentes++;
       resultado.hojas.push({
         hoja: config.name,
@@ -236,6 +254,9 @@ function asegurarEstructuraVentasSheets_() {
     if (!hoja.getLastRow()) {
       hoja.getRange(1, 1, 1, config.headers.length).setValues([config.headers]);
       hoja.setFrozenRows(1);
+      if (config.name === HOJA_TRAMOS_COMISIONES) {
+        inicializarHojaTramosComisiones_(hoja);
+      }
       resultado.existentes++;
       resultado.hojas.push({
         hoja: config.name,
@@ -257,6 +278,17 @@ function asegurarEstructuraVentasSheets_() {
   });
 
   return resultado;
+}
+
+function inicializarHojaTramosComisiones_(hoja) {
+  if (hoja.getLastRow() > 1) {
+    return;
+  }
+
+  hoja.getRange(2, 1, 2, 6).setValues([
+    ["BAJO", 0, 499999.99, 0.01, true, "Tramo inicial por defecto."],
+    ["ALTO", 500000, "", 0.013, true, "Tramo inicial por defecto."]
+  ]);
 }
 
 function compararHeadersVentas_(actuales, esperados) {
@@ -416,13 +448,15 @@ function importarVentasInterno_(params) {
     metadata = normalizarMetadataImportacion_(params.metadata);
     var ventas = normalizarArrayImportacion_(params.ventas, "ventas");
     var propinas = normalizarArrayImportacion_(params.propinas, "propinas");
+    var pagos = normalizarArrayImportacion_(params.pagos, "pagos");
 
     validarMetadataImportacion_(metadata);
-    validarColeccionesImportacion_(ventas, propinas);
+    validarColeccionesImportacion_(ventas, propinas, pagos);
 
     hojaImportaciones = getSheet_(HOJA_IMPORTACIONES_VENTAS, SPREADSHEET_KEY_VENTAS);
     var hojaVentas = getSheet_(HOJA_VENTAS_POS, SPREADSHEET_KEY_VENTAS);
     var hojaPropinas = getSheet_(HOJA_PROPINAS_POS, SPREADSHEET_KEY_VENTAS);
+    var hojaPagos = getSheet_(HOJA_PAGOS_POS, SPREADSHEET_KEY_VENTAS);
     var importaciones = obtenerRegistrosImportacionesVentas_(hojaImportaciones);
 
     var importacionDuplicada = buscarImportacionActivaPorHash_(importaciones, metadata.hashArchivo);
@@ -444,6 +478,7 @@ function importarVentasInterno_(params) {
 
     var filasVentas = construirFilasVentasPOS_(importId, metadata, ventas);
     var filasPropinas = construirFilasPropinasPOS_(importId, metadata, propinas);
+    var filasPagos = construirFilasPagosPOS_(importId, metadata, pagos);
     var resumen = construirResumenImportacion_(ventas, propinas);
     var observacionBase = construirObservacionImportacion_(
       metadata.observaciones,
@@ -482,6 +517,12 @@ function importarVentasInterno_(params) {
       hojaPropinas
         .getRange(hojaPropinas.getLastRow() + 1, 1, filasPropinas.length, filasPropinas[0].length)
         .setValues(filasPropinas);
+    }
+
+    if (filasPagos.length > 0) {
+      hojaPagos
+        .getRange(hojaPagos.getLastRow() + 1, 1, filasPagos.length, filasPagos[0].length)
+        .setValues(filasPagos);
     }
 
     var idsReemplazados = marcarImportacionesComoReemplazadas_(
@@ -527,6 +568,7 @@ function importarVentasInterno_(params) {
       importacionReemplazada: idsReemplazados,
       registrosVentas: filasVentas.length,
       registrosPropinas: filasPropinas.length,
+      registrosPagos: filasPagos.length,
       observaciones: observaciones,
       recalculoAutomatico: {
         status: "SUCCESS",
@@ -605,11 +647,11 @@ function validarMetadataImportacion_(metadata) {
   }
 }
 
-function validarColeccionesImportacion_(ventas, propinas) {
-  if (!Array.isArray(ventas) || !Array.isArray(propinas)) {
+function validarColeccionesImportacion_(ventas, propinas, pagos) {
+  if (!Array.isArray(ventas) || !Array.isArray(propinas) || !Array.isArray(pagos)) {
     throw crearErrorImportacion_(
       "ERROR_DATOS",
-      'Los campos "ventas" y "propinas" deben ser arrays.'
+      'Los campos "ventas", "propinas" y "pagos" deben ser arrays.'
     );
   }
 }
@@ -1040,8 +1082,9 @@ function crearGrupoVentaDiaria_(fecha, local) {
 function calcularMetricasDiarias_(ventaBrutaValida) {
   var ventaBruta = normalizarMontoImportacion_(ventaBrutaValida);
   var ventaNeta = redondearMonto_(ventaBruta / 1.19);
-  var tramo = ventaNeta < 500000 ? "BAJO" : "ALTO";
-  var porcentaje = tramo === "ALTO" ? 0.013 : 0.01;
+  var tramoConfig = resolverTramoComision_(ventaNeta);
+  var tramo = tramoConfig.tramo;
+  var porcentaje = tramoConfig.porcentajeComision;
   var comisionTotalDia = redondearMonto_(ventaNeta * porcentaje);
 
   return {
@@ -1050,6 +1093,63 @@ function calcularMetricasDiarias_(ventaBrutaValida) {
     porcentajeComision: porcentaje,
     comisionTotalDia: comisionTotalDia
   };
+}
+
+function resolverTramoComision_(ventaNetaValida) {
+  var ventaNeta = normalizarMontoImportacion_(ventaNetaValida);
+  var tramos = obtenerTramosComisionActivos_();
+
+  for (var i = 0; i < tramos.length; i++) {
+    var tramo = tramos[i];
+    var minimo = normalizarMontoImportacion_(tramo.ventaNetaMin);
+    var maximo = tramo.ventaNetaMax === "" ? null : normalizarMontoImportacion_(tramo.ventaNetaMax);
+    var cumpleMinimo = ventaNeta >= minimo;
+    var cumpleMaximo = maximo === null || ventaNeta <= maximo;
+
+    if (cumpleMinimo && cumpleMaximo) {
+      return {
+        tramo: tramo.tramo,
+        porcentajeComision: normalizarMontoImportacion_(tramo.porcentajeComision)
+      };
+    }
+  }
+
+  throw crearErrorImportacion_(
+    "ERROR_CONFIG",
+    "No existe un tramo activo que cubra la venta neta calculada."
+  );
+}
+
+function obtenerTramosComisionActivos_() {
+  var hoja = getSheet_(HOJA_TRAMOS_COMISIONES, SPREADSHEET_KEY_VENTAS);
+  inicializarHojaTramosComisiones_(hoja);
+
+  var tramos = leerHojaComoObjetos_(hoja)
+    .map(function(registro) {
+      return {
+        tramo: limpiarTextoImportacion_(registro.Tramo),
+        ventaNetaMin: registro.VentaNetaMin,
+        ventaNetaMax: registro.VentaNetaMax,
+        porcentajeComision: registro.PorcentajeComision,
+        activo: normalizarBooleanImportacion_(registro.Activo, false),
+        observaciones: limpiarTextoImportacion_(registro.Observaciones)
+      };
+    })
+    .filter(function(registro) {
+      return registro.activo && registro.tramo && registro.porcentajeComision !== "";
+    })
+    .sort(function(a, b) {
+      return normalizarMontoImportacion_(a.ventaNetaMin) - normalizarMontoImportacion_(b.ventaNetaMin);
+    });
+
+  if (!tramos.length) {
+    throw crearErrorImportacion_(
+      "ERROR_CONFIG",
+      "La hoja TramosComisiones no tiene tramos activos configurados."
+    );
+  }
+
+  return tramos;
 }
 
 function redondearMonto_(valor) {
@@ -1108,6 +1208,25 @@ function construirFilasPropinasPOS_(importId, metadata, propinas) {
       normalizarBooleanImportacion_(obtenerCampoImportacion_(fila, ["esDelivery", "delivery"], false)),
       normalizarBooleanImportacion_(obtenerCampoImportacion_(fila, ["esValidaPropina", "validaPropina"], true)),
       obtenerCampoImportacion_(fila, ["motivoExclusion"], "")
+    ];
+  });
+}
+
+function construirFilasPagosPOS_(importId, metadata, pagos) {
+  return pagos.map(function(pago, indice) {
+    var fila = pago && typeof pago === "object" ? pago : {};
+    var cancelado = normalizarBooleanImportacion_(obtenerCampoImportacion_(fila, ["cancelado", "cancelada"], false));
+
+    return [
+      importId,
+      obtenerCampoImportacion_(fila, ["ventaId", "id", "folio"], importId + "-pago-" + (indice + 1)),
+      obtenerCampoImportacion_(fila, ["fecha"], metadata.fechaDesde),
+      obtenerCampoImportacion_(fila, ["hora"], ""),
+      obtenerCampoImportacion_(fila, ["local"], metadata.local),
+      obtenerCampoImportacion_(fila, ["medioPago", "medio de pago", "medio pago", "pago"], ""),
+      normalizarMontoImportacion_(obtenerCampoImportacion_(fila, ["monto", "total", "valor"], 0)),
+      cancelado,
+      !cancelado
     ];
   });
 }
