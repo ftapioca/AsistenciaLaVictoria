@@ -381,7 +381,7 @@ function detectSheetByRole(sheetEntries, role) {
     : ['venta', 'ventas', 'sales', 'ticket', 'tickets', 'boleta', 'boletas'];
 
   const roleHeaders = role === 'propinas'
-    ? ['montoPropina', 'monto propina', 'propina', 'tip', 'monto', 'cancelado', 'cancelada', 'id venta', 'fecha pago']
+    ? ['montoPropina', 'monto propina', 'propina', 'tip', 'monto', 'valor', 'cancelado', 'cancelada', 'id venta', 'fecha pago']
     : ['totalBruto', 'total bruto', 'total', 'monto', 'medioPago', 'medio de pago', 'tipoVenta', 'estado'];
 
   let best = null;
@@ -465,7 +465,7 @@ function normalizePropinaRow(row, fallbackLocal) {
     fecha: String(getRowValue(row, ['fecha', 'dia'], '')).trim(),
     hora: String(getRowValue(row, ['hora'], '')).trim(),
     local: String(getRowValue(row, ['local', 'sucursal'], fallbackLocal)).trim(),
-    montoPropina: normalizeAmount(getRowValue(row, ['montoPropina', 'monto propina', 'propina', 'tip', 'monto'], 0)),
+    montoPropina: normalizeAmount(getRowValue(row, ['montoPropina', 'monto propina', 'propina', 'tip', 'monto', 'valor'], 0)),
     cancelada,
     esDelivery: normalizeBoolean(getRowValue(row, ['esDelivery', 'delivery'], false), false),
     esValidaPropina,
@@ -538,7 +538,7 @@ async function parseSpreadsheetFile(file, fallbackLocal) {
         const expectedAliases = normalizeText(entry.name).includes('propina')
           ? [
               ['fecha pago', 'fecha', 'dia'],
-              ['monto', 'monto propina', 'propina', 'tip'],
+              ['monto', 'monto propina', 'propina', 'tip', 'valor'],
               ['cancelado', 'cancelada', 'anulada', 'estado'],
               ['id venta', 'id. venta', 'ventaId', 'folio', 'ticket'],
               ['local', 'sucursal'],
