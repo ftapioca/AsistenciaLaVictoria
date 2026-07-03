@@ -227,6 +227,52 @@ function isRejectedStatus(value) {
   ].some((token) => text.includes(token));
 }
 
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+function toIsoDate(year, month, day) {
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+function toTime24(hours, minutes, seconds = 0) {
+  return `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
+}
+
+function parseSpreadsheetDateTimeParts(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return {
+      fecha: toIsoDate(value.getFullYear(), value.getMonth() + 1, value.getDate()),
+      hora: toTime24(value.getHours(), value.getMinutes(), value.getSeconds()),
+    };
+  }
+
+  const text = String(value || '').trim();
+  if (!text) return null;
+
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  const match = normalized.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  let hours = match[4] !== undefined ? Number(match[4]) : 0;
+  const minutes = match[5] !== undefined ? Number(match[5]) : 0;
+  const seconds = match[6] !== undefined ? Number(match[6]) : 0;
+  const meridiem = String(match[7] || '').toUpperCase();
+
+  if (meridiem === 'PM' && hours < 12) hours += 12;
+  if (meridiem === 'AM' && hours === 12) hours = 0;
+
+  if (!year || !month || !day) return null;
+
+  return {
+    fecha: toIsoDate(year, month, day),
+    hora: match[4] !== undefined ? toTime24(hours, minutes, seconds) : '',
+  };
+}
+
 function detectDelimiter(text) {
   const firstLine = String(text || '').split(/\r?\n/).find((line) => line.trim()) || '';
   const candidates = [',', ';', '\t'];
@@ -417,6 +463,8 @@ function detectSheetByRole(sheetEntries, role) {
 function normalizeVentaRow(row, fallbackLocal) {
   const totalBruto = normalizeAmount(getRowValue(row, ['totalBruto', 'total bruto', 'total', 'monto', 'venta bruta'], 0));
   const estado = String(getRowValue(row, ['estado', 'status', 'estado venta'], '')).trim();
+  const cierreRaw = getRowValue(row, ['fechaCierre', 'fecha cierre', 'cierre', 'cerrada'], '');
+  const cierreParts = parseSpreadsheetDateTimeParts(cierreRaw);
   const esCanceladaExplicita = normalizeBoolean(getRowValue(row, ['esCancelada', 'cancelada', 'anulada', 'nula'], false), false);
   const esCancelada = esCanceladaExplicita || isRejectedStatus(estado);
   const esDelivery = normalizeBoolean(getRowValue(row, ['esDelivery', 'delivery'], false), false);
@@ -431,9 +479,9 @@ function normalizeVentaRow(row, fallbackLocal) {
 
   return {
     ventaId: String(getRowValue(row, ['ventaId', 'id', 'folio', 'ticket', 'numero', 'nro'], '')).trim(),
-    fecha: String(getRowValue(row, ['fecha', 'dia'], '')).trim(),
-    hora: String(getRowValue(row, ['hora'], '')).trim(),
-    fechaCierre: String(getRowValue(row, ['fechaCierre', 'fecha cierre', 'cierre'], '')).trim(),
+    fecha: String(getRowValue(row, ['fecha', 'dia'], cierreParts?.fecha || '')).trim(),
+    hora: String(getRowValue(row, ['hora'], cierreParts?.hora || '')).trim(),
+    fechaCierre: String(getRowValue(row, ['fechaCierre', 'fecha cierre', 'cierre', 'cerrada'], cierreParts ? `${cierreParts.fecha} ${cierreParts.hora}`.trim() : '')).trim(),
     local: String(getRowValue(row, ['local', 'sucursal'], fallbackLocal)).trim(),
     estado: estado || (esCancelada ? 'ANULADA' : 'PAGADA'),
     origen: String(getRowValue(row, ['origen', 'canal'], 'POS')).trim(),
