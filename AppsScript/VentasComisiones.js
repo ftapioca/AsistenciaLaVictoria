@@ -143,6 +143,7 @@ const VENTAS_SHEETS_CONFIG = [
   {
     name: HOJA_TRAMOS_COMISIONES,
     headers: [
+      "Local",
       "Tramo",
       "VentaNetaMin",
       "VentaNetaMax",
@@ -220,12 +221,23 @@ function asegurarEstructuraVentasSheets_() {
       hoja = getOrCreateSheet_(config.name, SPREADSHEET_KEY_VENTAS, config.headers);
       hoja.setFrozenRows(1);
       if (config.name === HOJA_TRAMOS_COMISIONES) {
-        inicializarHojaTramosComisiones_(hoja);
+        asegurarHojaTramosComisiones_(hoja, config.headers);
       }
       resultado.creadas++;
       resultado.hojas.push({
         hoja: config.name,
         estado: "CREADA",
+        columnas: config.headers.length
+      });
+      return;
+    }
+
+    if (config.name === HOJA_TRAMOS_COMISIONES) {
+      asegurarHojaTramosComisiones_(hoja, config.headers);
+      resultado.existentes++;
+      resultado.hojas.push({
+        hoja: config.name,
+        estado: "OK",
         columnas: config.headers.length
       });
       return;
@@ -285,10 +297,28 @@ function inicializarHojaTramosComisiones_(hoja) {
     return;
   }
 
-  hoja.getRange(2, 1, 2, 6).setValues([
-    ["BAJO", 0, 499999.99, 0.01, true, "Tramo inicial por defecto."],
-    ["ALTO", 500000, "", 0.013, true, "Tramo inicial por defecto."]
+  hoja.getRange(2, 1, 4, 7).setValues([
+    ["Paseo del Lago", "BAJO", 0, 499999.99, 0.01, true, "Tramo inicial por defecto."],
+    ["Paseo del Lago", "ALTO", 500000, "", 0.013, true, "Tramo inicial por defecto."],
+    ["Segunda Faja", "BAJO", 0, 499999.99, 0.01, true, "Tramo inicial por defecto."],
+    ["Segunda Faja", "ALTO", 500000, "", 0.013, true, "Tramo inicial por defecto."]
   ]);
+}
+
+function asegurarHojaTramosComisiones_(hoja, headers) {
+  var ultimaColumna = headers.length;
+  var headersActuales = hoja.getLastColumn()
+    ? hoja.getRange(1, 1, 1, Math.max(hoja.getLastColumn(), ultimaColumna)).getValues()[0]
+    : [];
+  var comparacion = compararHeadersVentas_(headersActuales, headers);
+
+  if (!comparacion.coincide) {
+    hoja.clearContents();
+    hoja.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+
+  hoja.setFrozenRows(1);
+  inicializarHojaTramosComisiones_(hoja);
 }
 
 function compararHeadersVentas_(actuales, esperados) {
@@ -941,6 +971,10 @@ function obtenerPropinasPorImportId_(importId) {
   return obtenerRegistrosPorImportId_(HOJA_PROPINAS_POS, importId);
 }
 
+function obtenerPagosPorImportId_(importId) {
+  return obtenerRegistrosPorImportId_(HOJA_PAGOS_POS, importId);
+}
+
 function obtenerVentasValidasPorImportId_(importId) {
   return obtenerVentasPorImportId_(importId).filter(function(venta) {
     return normalizarBooleanImportacion_(venta.EsValidaComision);
@@ -953,6 +987,12 @@ function obtenerPropinasValidasPorImportId_(importId) {
   });
 }
 
+function obtenerPagosValidosPorImportId_(importId) {
+  return obtenerPagosPorImportId_(importId).filter(function(pago) {
+    return normalizarBooleanImportacion_(pago.EsValidoCuadratura);
+  });
+}
+
 function sumarMontosPorCampo_(registros, nombreCampo) {
   return (registros || []).reduce(function(total, registro) {
     return total + normalizarMontoImportacion_(registro[nombreCampo]);
@@ -961,6 +1001,10 @@ function sumarMontosPorCampo_(registros, nombreCampo) {
 
 function limpiarResultadosCalculoPorImportId_(importId) {
   eliminarFilasPorImportIdEnHoja_(HOJA_VENTAS_DIARIAS, importId);
+  eliminarFilasPorImportIdEnHoja_(HOJA_COMISIONES_DIARIAS, importId);
+  eliminarFilasPorImportIdEnHoja_(HOJA_RESUMEN_MENSUAL_COMISIONES, importId);
+  eliminarFilasPorImportIdEnHoja_(HOJA_CUADRATURA_PAGOS, importId);
+  eliminarFilasPorImportIdEnHoja_(HOJA_KPI_VENTAS_DIARIAS, importId);
 }
 
 function recalcularComisionesPorImportacion_(importacion) {
@@ -974,23 +1018,52 @@ function recalcularComisionesPorImportacion_(importacion) {
 
   var ventasValidas = obtenerVentasValidasPorImportId_(importId);
   var propinasValidas = obtenerPropinasValidasPorImportId_(importId);
-  var filasVentasDiarias = construirFilasVentasDiarias_(importacion, ventasValidas, propinasValidas);
+  var pagosValidos = obtenerPagosValidosPorImportId_(importId);
+  var contextoDiario = construirContextoDiarioImportacion_(importacion, ventasValidas, propinasValidas, pagosValidos);
 
   limpiarResultadosCalculoPorImportId_(importId);
 
-  if (filasVentasDiarias.length > 0) {
+  if (contextoDiario.filasVentasDiarias.length > 0) {
     var hojaVentasDiarias = getSheet_(HOJA_VENTAS_DIARIAS, SPREADSHEET_KEY_VENTAS);
     hojaVentasDiarias
-      .getRange(hojaVentasDiarias.getLastRow() + 1, 1, filasVentasDiarias.length, filasVentasDiarias[0].length)
-      .setValues(filasVentasDiarias);
+      .getRange(hojaVentasDiarias.getLastRow() + 1, 1, contextoDiario.filasVentasDiarias.length, contextoDiario.filasVentasDiarias[0].length)
+      .setValues(contextoDiario.filasVentasDiarias);
+  }
+
+  if (contextoDiario.filasComisionesDiarias.length > 0) {
+    var hojaComisionesDiarias = getSheet_(HOJA_COMISIONES_DIARIAS, SPREADSHEET_KEY_VENTAS);
+    hojaComisionesDiarias
+      .getRange(hojaComisionesDiarias.getLastRow() + 1, 1, contextoDiario.filasComisionesDiarias.length, contextoDiario.filasComisionesDiarias[0].length)
+      .setValues(contextoDiario.filasComisionesDiarias);
+  }
+
+  if (contextoDiario.filasResumenMensual.length > 0) {
+    var hojaResumenMensual = getSheet_(HOJA_RESUMEN_MENSUAL_COMISIONES, SPREADSHEET_KEY_VENTAS);
+    hojaResumenMensual
+      .getRange(hojaResumenMensual.getLastRow() + 1, 1, contextoDiario.filasResumenMensual.length, contextoDiario.filasResumenMensual[0].length)
+      .setValues(contextoDiario.filasResumenMensual);
+  }
+
+  if (contextoDiario.filasCuadraturaPagos.length > 0) {
+    var hojaCuadraturaPagos = getSheet_(HOJA_CUADRATURA_PAGOS, SPREADSHEET_KEY_VENTAS);
+    hojaCuadraturaPagos
+      .getRange(hojaCuadraturaPagos.getLastRow() + 1, 1, contextoDiario.filasCuadraturaPagos.length, contextoDiario.filasCuadraturaPagos[0].length)
+      .setValues(contextoDiario.filasCuadraturaPagos);
+  }
+
+  if (contextoDiario.filasKpiVentasDiarias.length > 0) {
+    var hojaKpiVentasDiarias = getSheet_(HOJA_KPI_VENTAS_DIARIAS, SPREADSHEET_KEY_VENTAS);
+    hojaKpiVentasDiarias
+      .getRange(hojaKpiVentasDiarias.getLastRow() + 1, 1, contextoDiario.filasKpiVentasDiarias.length, contextoDiario.filasKpiVentasDiarias[0].length)
+      .setValues(contextoDiario.filasKpiVentasDiarias);
   }
 
   return {
     importId: importId,
     local: String(importacion.local || "").trim(),
     periodo: String(importacion.periodo || "").trim(),
-    diasProcesados: filasVentasDiarias.length,
-    resumen: construirResumenRecalculo_(filasVentasDiarias)
+    diasProcesados: contextoDiario.filasVentasDiarias.length,
+    resumen: construirResumenRecalculo_(contextoDiario.filasVentasDiarias)
   };
 }
 
@@ -1011,6 +1084,183 @@ function eliminarFilasPorImportIdEnHoja_(sheetName, importId) {
   filas.forEach(function(rowNumber) {
     hoja.deleteRow(rowNumber);
   });
+}
+
+function construirContextoDiarioImportacion_(importacion, ventasValidas, propinasValidas, pagosValidos) {
+  var grupos = agruparMetricasDiarias_(importacion, ventasValidas, propinasValidas, pagosValidos);
+  var filasVentasDiarias = [];
+  var filasComisionesDiarias = [];
+  var filasCuadraturaPagos = [];
+  var filasKpiVentasDiarias = [];
+
+  Object.keys(grupos)
+    .sort()
+    .forEach(function(key) {
+      var grupo = grupos[key];
+      var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida, grupo.local);
+      var cantidadColaboradores = grupo.colaboradoresPresentes.length;
+      var comisionIndividual = calculo.comisionTotalDia;
+      var propinaIndividual = cantidadColaboradores
+        ? redondearMonto_(grupo.propinasValidas / cantidadColaboradores)
+        : 0;
+      var horasTrabajadas = redondearMonto_(grupo.horasTrabajadasTotales);
+      var cantidadVentas = grupo.cantidadVentas;
+      var ticketPromedio = cantidadVentas
+        ? redondearMonto_(grupo.ventaBrutaValida / cantidadVentas)
+        : 0;
+      var ventaPorColaborador = cantidadColaboradores
+        ? redondearMonto_(grupo.ventaBrutaValida / cantidadColaboradores)
+        : 0;
+      var ventaPorHoraTrabajada = horasTrabajadas > 0
+        ? redondearMonto_(grupo.ventaBrutaValida / horasTrabajadas)
+        : 0;
+
+      filasVentasDiarias.push([
+        importacion.importId,
+        grupo.fecha,
+        grupo.local,
+        grupo.ventaBrutaValida,
+        calculo.ventaNetaValida,
+        calculo.tramoComision,
+        calculo.porcentajeComision,
+        comisionIndividual,
+        grupo.propinasValidas,
+        cantidadColaboradores,
+        propinaIndividual,
+        grupo.observacionesPresencia
+      ]);
+
+      grupo.colaboradoresPresentes.forEach(function(colaborador) {
+        filasComisionesDiarias.push([
+          importacion.importId,
+          grupo.fecha,
+          grupo.local,
+          colaborador.nombre,
+          comisionIndividual,
+          propinaIndividual,
+          redondearMonto_(comisionIndividual + propinaIndividual),
+          colaborador.fuentePresencia,
+          colaborador.horasTrabajadas > 0
+            ? "Horas registradas: " + redondearMonto_(colaborador.horasTrabajadas)
+            : "Sin horas pareadas; presencia por marca diaria."
+        ]);
+      });
+
+      filasCuadraturaPagos.push([
+        importacion.importId,
+        grupo.fecha,
+        grupo.local,
+        grupo.pagosPorMedio.efectivo,
+        grupo.pagosPorMedio.debito,
+        grupo.pagosPorMedio.credito,
+        grupo.pagosPorMedio.voucher,
+        grupo.pagosPorMedio.transferencia,
+        grupo.pagosPorMedio.delivery,
+        grupo.totalPagosValidos,
+        redondearMonto_(grupo.ventaBrutaValida - grupo.totalPagosValidos),
+        "Cuadratura diaria generada desde PagosPOS válidos."
+      ]);
+
+      filasKpiVentasDiarias.push([
+        importacion.importId,
+        grupo.fecha,
+        grupo.local,
+        grupo.ventaBrutaValida,
+        calculo.ventaNetaValida,
+        cantidadVentas,
+        ticketPromedio,
+        grupo.propinasValidas,
+        comisionIndividual,
+        cantidadColaboradores,
+        ventaPorColaborador,
+        ventaPorHoraTrabajada
+      ]);
+    });
+
+  return {
+    filasVentasDiarias: filasVentasDiarias,
+    filasComisionesDiarias: filasComisionesDiarias,
+    filasResumenMensual: construirFilasResumenMensualComisiones_(importacion, filasComisionesDiarias),
+    filasCuadraturaPagos: filasCuadraturaPagos,
+    filasKpiVentasDiarias: filasKpiVentasDiarias
+  };
+}
+
+function agruparMetricasDiarias_(importacion, ventasValidas, propinasValidas, pagosValidos) {
+  var grupos = {};
+  var localDefault = limpiarTextoImportacion_(importacion.local);
+  var importId = limpiarTextoImportacion_(importacion.importId);
+
+  ventasValidas.forEach(function(venta) {
+    var fecha = limpiarTextoImportacion_(venta.Fecha);
+    var local = limpiarTextoImportacion_(venta.Local) || localDefault;
+    if (!fecha || !local) return;
+
+    var grupo = obtenerGrupoDiario_(grupos, fecha, local);
+    grupo.ventaBrutaValida += normalizarMontoImportacion_(venta.TotalBruto);
+    grupo.cantidadVentas += 1;
+
+    if (esVentaDelivery_(venta)) {
+      grupo.pagosPorMedio.delivery += normalizarMontoImportacion_(venta.TotalBruto);
+    }
+  });
+
+  propinasValidas.forEach(function(propina) {
+    var fecha = limpiarTextoImportacion_(propina.Fecha);
+    var local = limpiarTextoImportacion_(propina.Local) || localDefault;
+    if (!fecha || !local) return;
+
+    var grupo = obtenerGrupoDiario_(grupos, fecha, local);
+    grupo.propinasValidas += normalizarMontoImportacion_(propina.MontoPropina);
+  });
+
+  pagosValidos.forEach(function(pago) {
+    var fecha = limpiarTextoImportacion_(pago.Fecha);
+    var local = limpiarTextoImportacion_(pago.Local) || localDefault;
+    if (!fecha || !local) return;
+
+    var grupo = obtenerGrupoDiario_(grupos, fecha, local);
+    var monto = normalizarMontoImportacion_(pago.Monto);
+    grupo.totalPagosValidos += monto;
+    acumularPagoPorMedio_(grupo.pagosPorMedio, limpiarTextoImportacion_(pago.MedioPago), monto);
+  });
+
+  Object.keys(grupos).forEach(function(key) {
+    var grupo = grupos[key];
+    var asistencia = obtenerPresenciaDiariaPorLocalFecha_(grupo.local, grupo.fecha, importId);
+    grupo.colaboradoresPresentes = asistencia.colaboradores;
+    grupo.horasTrabajadasTotales = asistencia.horasTotales;
+    grupo.observacionesPresencia = asistencia.observaciones;
+  });
+
+  return grupos;
+}
+
+function obtenerGrupoDiario_(grupos, fecha, local) {
+  var key = fecha + "|" + local;
+  if (!grupos[key]) {
+    grupos[key] = {
+      fecha: fecha,
+      local: local,
+      ventaBrutaValida: 0,
+      propinasValidas: 0,
+      cantidadVentas: 0,
+      totalPagosValidos: 0,
+      pagosPorMedio: {
+        efectivo: 0,
+        debito: 0,
+        credito: 0,
+        voucher: 0,
+        transferencia: 0,
+        delivery: 0
+      },
+      colaboradoresPresentes: [],
+      horasTrabajadasTotales: 0,
+      observacionesPresencia: ""
+    };
+  }
+
+  return grupos[key];
 }
 
 function construirFilasVentasDiarias_(importacion, ventasValidas, propinasValidas) {
@@ -1051,7 +1301,7 @@ function construirFilasVentasDiarias_(importacion, ventasValidas, propinasValida
     .sort()
     .map(function(key) {
       var grupo = grupos[key];
-      var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida);
+      var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida, grupo.local);
 
       return [
         importacion.importId,
@@ -1079,10 +1329,10 @@ function crearGrupoVentaDiaria_(fecha, local) {
   };
 }
 
-function calcularMetricasDiarias_(ventaBrutaValida) {
+function calcularMetricasDiarias_(ventaBrutaValida, local) {
   var ventaBruta = normalizarMontoImportacion_(ventaBrutaValida);
   var ventaNeta = redondearMonto_(ventaBruta / 1.19);
-  var tramoConfig = resolverTramoComision_(ventaNeta);
+  var tramoConfig = resolverTramoComision_(ventaNeta, local);
   var tramo = tramoConfig.tramo;
   var porcentaje = tramoConfig.porcentajeComision;
   var comisionTotalDia = redondearMonto_(ventaNeta * porcentaje);
@@ -1095,9 +1345,9 @@ function calcularMetricasDiarias_(ventaBrutaValida) {
   };
 }
 
-function resolverTramoComision_(ventaNetaValida) {
+function resolverTramoComision_(ventaNetaValida, local) {
   var ventaNeta = normalizarMontoImportacion_(ventaNetaValida);
-  var tramos = obtenerTramosComisionActivos_();
+  var tramos = obtenerTramosComisionActivos_(local);
 
   for (var i = 0; i < tramos.length; i++) {
     var tramo = tramos[i];
@@ -1120,13 +1370,17 @@ function resolverTramoComision_(ventaNetaValida) {
   );
 }
 
-function obtenerTramosComisionActivos_() {
+function obtenerTramosComisionActivos_(local) {
   var hoja = getSheet_(HOJA_TRAMOS_COMISIONES, SPREADSHEET_KEY_VENTAS);
-  inicializarHojaTramosComisiones_(hoja);
+  asegurarHojaTramosComisiones_(hoja, VENTAS_SHEETS_CONFIG.filter(function(config) {
+    return config.name === HOJA_TRAMOS_COMISIONES;
+  })[0].headers);
+  var localNormalizado = normalizarTexto(local);
 
   var tramos = leerHojaComoObjetos_(hoja)
     .map(function(registro) {
       return {
+        local: limpiarTextoImportacion_(registro.Local),
         tramo: limpiarTextoImportacion_(registro.Tramo),
         ventaNetaMin: registro.VentaNetaMin,
         ventaNetaMax: registro.VentaNetaMax,
@@ -1136,7 +1390,10 @@ function obtenerTramosComisionActivos_() {
       };
     })
     .filter(function(registro) {
-      return registro.activo && registro.tramo && registro.porcentajeComision !== "";
+      return registro.activo &&
+        registro.tramo &&
+        registro.porcentajeComision !== "" &&
+        normalizarTexto(registro.local) === localNormalizado;
     })
     .sort(function(a, b) {
       return normalizarMontoImportacion_(a.ventaNetaMin) - normalizarMontoImportacion_(b.ventaNetaMin);
@@ -1169,6 +1426,264 @@ function construirResumenRecalculo_(filasVentasDiarias) {
     comisionTotal: 0,
     propinasValidas: 0
   });
+}
+
+function construirFilasResumenMensualComisiones_(importacion, filasComisionesDiarias) {
+  var grupos = {};
+
+  filasComisionesDiarias.forEach(function(fila) {
+    var key = [fila[2], fila[3]].join("|");
+    if (!grupos[key]) {
+      grupos[key] = {
+        local: fila[2],
+        colaborador: fila[3],
+        dias: {},
+        comisionTotal: 0,
+        propinaTotal: 0
+      };
+    }
+
+    grupos[key].dias[fila[1]] = true;
+    grupos[key].comisionTotal += normalizarMontoImportacion_(fila[4]);
+    grupos[key].propinaTotal += normalizarMontoImportacion_(fila[5]);
+  });
+
+  return Object.keys(grupos)
+    .sort()
+    .map(function(key) {
+      var grupo = grupos[key];
+      var diasTrabajados = Object.keys(grupo.dias).length;
+      var totalPagar = redondearMonto_(grupo.comisionTotal + grupo.propinaTotal);
+
+      return [
+        importacion.importId,
+        limpiarTextoImportacion_(importacion.periodo),
+        grupo.local,
+        grupo.colaborador,
+        diasTrabajados,
+        redondearMonto_(grupo.comisionTotal),
+        redondearMonto_(grupo.propinaTotal),
+        totalPagar,
+        "Resumen mensual generado desde ComisionesDiarias."
+      ];
+    });
+}
+
+function obtenerPresenciaDiariaPorLocalFecha_(local, fechaIso, importId) {
+  var hoja = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
+  var datos = leerHojaComoObjetos_(hoja);
+  var localNormalizado = normalizarTexto(local);
+  var fechaBuscada = limpiarTextoImportacion_(fechaIso);
+  var porColaborador = {};
+  var marcasCrudas = [];
+
+  datos.forEach(function(registro) {
+    if (normalizarTexto(registro.Local) !== localNormalizado) {
+      return;
+    }
+
+    var fechaRegistro = convertirFechaAsistenciaAIso_(registro["Fecha/Hora"]);
+    if (fechaRegistro !== fechaBuscada) {
+      return;
+    }
+
+    var nombre = limpiarTextoImportacion_(registro.Nombre);
+    if (!nombre) {
+      return;
+    }
+
+    var accionRegistro = limpiarTextoImportacion_(registro["Acción"] || registro.Accion);
+    marcasCrudas.push({
+      fechaIso: fechaRegistro,
+      fechaHora: formatearFechaHora(registro["Fecha/Hora"]),
+      nombre: nombre,
+      rut: limpiarTextoImportacion_(registro.RUT || registro.Rut),
+      local: limpiarTextoImportacion_(registro.Local),
+      accion: accionRegistro
+    });
+
+    var key = normalizarTexto(nombre);
+    if (!porColaborador[key]) {
+      porColaborador[key] = {
+        nombre: nombre,
+        marcas: [],
+        fuentePresencia: "RegistroAsistencia",
+        horasTrabajadas: 0
+      };
+    }
+
+    porColaborador[key].marcas.push({
+      fechaHora: new Date(registro["Fecha/Hora"]),
+      accion: accionRegistro
+    });
+  });
+
+  var colaboradores = Object.keys(porColaborador)
+    .sort()
+    .map(function(key) {
+      var colaborador = porColaborador[key];
+      colaborador.horasTrabajadas = calcularHorasTrabajadasDesdeMarcas_(colaborador.marcas);
+      return colaborador;
+    });
+
+  var horasTotales = colaboradores.reduce(function(total, colaborador) {
+    return total + normalizarMontoImportacion_(colaborador.horasTrabajadas);
+  }, 0);
+
+  return {
+    colaboradores: colaboradores,
+    horasTotales: horasTotales,
+    marcasCrudas: marcasCrudas,
+    observaciones: colaboradores.length
+      ? "Presencia diaria derivada desde RegistroAsistencia."
+      : "Sin marcas de asistencia para Fecha + Local."
+  };
+}
+
+function auditarPresenciaVentas(params) {
+  requireAdminSession(params);
+
+  var importId = limpiarTextoImportacion_(params.importId);
+  var fecha = limpiarTextoImportacion_(params.fecha);
+  var local = limpiarTextoImportacion_(params.local);
+
+  if (importId) {
+    var contexto = resolverImportacionParaCalculo_({ importId: importId });
+    local = local || limpiarTextoImportacion_(contexto.importacion.local);
+
+    if (!fecha) {
+      var ventasValidas = obtenerVentasValidasPorImportId_(importId);
+      var fechas = {};
+      ventasValidas.forEach(function(venta) {
+        var fechaVenta = limpiarTextoImportacion_(venta.Fecha);
+        if (fechaVenta) {
+          fechas[fechaVenta] = true;
+        }
+      });
+
+      return responderJSON({
+        status: "SUCCESS",
+        importId: importId,
+        local: local,
+        fechasDisponibles: Object.keys(fechas).sort(),
+        mensaje: "Indica fecha para auditar presencia de un dia especifico."
+      });
+    }
+  }
+
+  if (!fecha || !local) {
+    throw crearErrorImportacion_(
+      "ERROR_DATOS",
+      'Debes indicar "local" y "fecha", o bien "importId" + "fecha".'
+    );
+  }
+
+  var presencia = obtenerPresenciaDiariaPorLocalFecha_(local, fecha, importId);
+
+  return responderJSON({
+    status: "SUCCESS",
+    importId: importId,
+    local: local,
+    fecha: fecha,
+    totalColaboradoresPresentes: presencia.colaboradores.length,
+    horasTotales: redondearMonto_(presencia.horasTotales),
+    observaciones: presencia.observaciones,
+    colaboradores: presencia.colaboradores.map(function(colaborador) {
+      return {
+        nombre: colaborador.nombre,
+        fuentePresencia: colaborador.fuentePresencia,
+        horasTrabajadas: redondearMonto_(colaborador.horasTrabajadas),
+        marcas: colaborador.marcas.map(function(marca) {
+          return {
+            fechaHora: formatearFechaHora(marca.fechaHora),
+            accion: marca.accion
+          };
+        })
+      };
+    }),
+    marcasCrudas: presencia.marcasCrudas
+  });
+}
+
+function convertirFechaAsistenciaAIso_(valor) {
+  var fecha = new Date(valor);
+  if (isNaN(fecha.getTime())) {
+    return "";
+  }
+
+  return Utilities.formatDate(
+    fecha,
+    Session.getScriptTimeZone(),
+    "yyyy-MM-dd"
+  );
+}
+
+function calcularHorasTrabajadasDesdeMarcas_(marcas) {
+  if (!marcas || !marcas.length) {
+    return 0;
+  }
+
+  var ordenadas = marcas.slice().sort(function(a, b) {
+    return new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime();
+  });
+
+  var ingresoAbierto = null;
+  var totalMs = 0;
+
+  ordenadas.forEach(function(marca) {
+    var accion = normalizarTexto(marca.accion);
+    var fechaHora = new Date(marca.fechaHora).getTime();
+
+    if (accion === "ingreso") {
+      ingresoAbierto = fechaHora;
+      return;
+    }
+
+    if (accion === "salida" && ingresoAbierto !== null && fechaHora >= ingresoAbierto) {
+      totalMs += (fechaHora - ingresoAbierto);
+      ingresoAbierto = null;
+    }
+  });
+
+  return redondearMonto_(totalMs / (1000 * 60 * 60));
+}
+
+function acumularPagoPorMedio_(acumulado, medioPago, monto) {
+  var medio = normalizarTexto(medioPago);
+
+  if (medio.indexOf("efectivo") !== -1) {
+    acumulado.efectivo += monto;
+    return;
+  }
+
+  if (medio.indexOf("debito") !== -1) {
+    acumulado.debito += monto;
+    return;
+  }
+
+  if (medio.indexOf("credito") !== -1) {
+    acumulado.credito += monto;
+    return;
+  }
+
+  if (medio.indexOf("voucher") !== -1) {
+    acumulado.voucher += monto;
+    return;
+  }
+
+  if (medio.indexOf("transfer") !== -1) {
+    acumulado.transferencia += monto;
+    return;
+  }
+}
+
+function esVentaDelivery_(venta) {
+  if (normalizarBooleanImportacion_(venta.EsDelivery)) {
+    return true;
+  }
+
+  var tipoVenta = normalizarTexto(venta.TipoVenta);
+  return tipoVenta.indexOf("delivery") !== -1;
 }
 
 function construirFilasVentasPOS_(importId, metadata, ventas) {

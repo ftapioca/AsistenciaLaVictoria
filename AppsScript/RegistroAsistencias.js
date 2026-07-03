@@ -169,6 +169,17 @@ function doGet(e) {
     }
   }
 
+  if (accion === "AuditarPresenciaVentas") {
+    try {
+      return auditarPresenciaVentas(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "Acceso no autorizado."
+      });
+    }
+  }
+
   return obtenerColaboradoresPorLocal(params);
 }
 
