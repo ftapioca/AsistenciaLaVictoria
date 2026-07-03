@@ -239,6 +239,24 @@ function toTime24(hours, minutes, seconds = 0) {
   return `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
 }
 
+function parseExcelSerialDate(value) {
+  const serial = Number(value);
+  if (!Number.isFinite(serial) || serial <= 0) return null;
+
+  const excelEpoch = Date.UTC(1899, 11, 30);
+  const wholeDays = Math.floor(serial);
+  const fractionalDay = serial - wholeDays;
+  const milliseconds = Math.round(fractionalDay * 24 * 60 * 60 * 1000);
+  const date = new Date(excelEpoch + wholeDays * 24 * 60 * 60 * 1000 + milliseconds);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  return {
+    fecha: toIsoDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()),
+    hora: toTime24(date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds()),
+  };
+}
+
 function parseSpreadsheetDateTimeParts(value) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return {
@@ -247,8 +265,17 @@ function parseSpreadsheetDateTimeParts(value) {
     };
   }
 
+  if (typeof value === 'number') {
+    return parseExcelSerialDate(value);
+  }
+
   const text = String(value || '').trim();
   if (!text) return null;
+
+  if (/^\d+(\.\d+)?$/.test(text)) {
+    const fromSerial = parseExcelSerialDate(text);
+    if (fromSerial) return fromSerial;
+  }
 
   const normalized = text.replace(/\s+/g, ' ').trim();
   const match = normalized.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i);
