@@ -208,6 +208,25 @@ function normalizeHeader(value) {
   return normalizeText(value).replace(/[^a-z0-9]+/g, '');
 }
 
+function isRejectedStatus(value) {
+  const text = normalizeText(value);
+  if (!text) return false;
+
+  return [
+    'anulada',
+    'anulado',
+    'cancelada',
+    'cancelado',
+    'eliminada',
+    'eliminado',
+    'nula',
+    'nulo',
+    'void',
+    'borrada',
+    'borrado',
+  ].some((token) => text.includes(token));
+}
+
 function detectDelimiter(text) {
   const firstLine = String(text || '').split(/\r?\n/).find((line) => line.trim()) || '';
   const candidates = [',', ';', '\t'];
@@ -362,8 +381,8 @@ function detectSheetByRole(sheetEntries, role) {
     : ['venta', 'ventas', 'sales', 'ticket', 'tickets', 'boleta', 'boletas'];
 
   const roleHeaders = role === 'propinas'
-    ? ['montoPropina', 'propina', 'tip', 'monto tip']
-    : ['totalBruto', 'total', 'monto', 'medioPago', 'tipoVenta'];
+    ? ['montoPropina', 'monto propina', 'propina', 'tip', 'monto', 'cancelado', 'cancelada', 'id venta', 'fecha pago']
+    : ['totalBruto', 'total bruto', 'total', 'monto', 'medioPago', 'medio de pago', 'tipoVenta', 'estado'];
 
   let best = null;
 
@@ -397,12 +416,18 @@ function detectSheetByRole(sheetEntries, role) {
 
 function normalizeVentaRow(row, fallbackLocal) {
   const totalBruto = normalizeAmount(getRowValue(row, ['totalBruto', 'total bruto', 'total', 'monto', 'venta bruta'], 0));
-  const esCancelada = normalizeBoolean(getRowValue(row, ['esCancelada', 'cancelada', 'anulada', 'nula'], false), false);
+  const estado = String(getRowValue(row, ['estado', 'status', 'estado venta'], '')).trim();
+  const esCanceladaExplicita = normalizeBoolean(getRowValue(row, ['esCancelada', 'cancelada', 'anulada', 'nula'], false), false);
+  const esCancelada = esCanceladaExplicita || isRejectedStatus(estado);
   const esDelivery = normalizeBoolean(getRowValue(row, ['esDelivery', 'delivery'], false), false);
   const esValidaComision = normalizeBoolean(
     getRowValue(row, ['esValidaComision', 'valida comision', 'valida', 'comisionable'], !esCancelada),
     !esCancelada
   );
+  const motivoExclusionOriginal = String(getRowValue(row, ['motivoExclusion', 'motivo exclusion', 'observacion', 'observaciones'], '')).trim();
+  const motivoExclusion = !esValidaComision && !motivoExclusionOriginal
+    ? (estado ? `Venta excluida por estado ${estado}.` : 'Venta excluida por estado no comisionable.')
+    : motivoExclusionOriginal;
 
   return {
     ventaId: String(getRowValue(row, ['ventaId', 'id', 'folio', 'ticket', 'numero', 'nro'], '')).trim(),
@@ -410,7 +435,7 @@ function normalizeVentaRow(row, fallbackLocal) {
     hora: String(getRowValue(row, ['hora'], '')).trim(),
     fechaCierre: String(getRowValue(row, ['fechaCierre', 'fecha cierre', 'cierre'], '')).trim(),
     local: String(getRowValue(row, ['local', 'sucursal'], fallbackLocal)).trim(),
-    estado: String(getRowValue(row, ['estado'], esCancelada ? 'ANULADA' : 'PAGADA')).trim(),
+    estado: estado || (esCancelada ? 'ANULADA' : 'PAGADA'),
     origen: String(getRowValue(row, ['origen', 'canal'], 'POS')).trim(),
     tipoVenta: String(getRowValue(row, ['tipoVenta', 'tipo venta', 'tipo'], '')).trim(),
     medioPago: String(getRowValue(row, ['medioPago', 'medio pago', 'pago'], '')).trim(),
@@ -418,16 +443,22 @@ function normalizeVentaRow(row, fallbackLocal) {
     esDelivery,
     esCancelada,
     esValidaComision,
-    motivoExclusion: String(getRowValue(row, ['motivoExclusion', 'motivo exclusion', 'observacion', 'observaciones'], '')).trim(),
+    motivoExclusion,
   };
 }
 
 function normalizePropinaRow(row, fallbackLocal) {
-  const cancelada = normalizeBoolean(getRowValue(row, ['cancelada', 'anulada'], false), false);
+  const estado = String(getRowValue(row, ['estado', 'status', 'estado propina'], '')).trim();
+  const canceladaExplicita = normalizeBoolean(getRowValue(row, ['cancelada', 'anulada', 'cancelado'], false), false);
+  const cancelada = canceladaExplicita || isRejectedStatus(estado);
   const esValidaPropina = normalizeBoolean(
     getRowValue(row, ['esValidaPropina', 'valida propina', 'valida'], !cancelada),
     !cancelada
   );
+  const motivoExclusionOriginal = String(getRowValue(row, ['motivoExclusion', 'motivo exclusion', 'observacion', 'observaciones'], '')).trim();
+  const motivoExclusion = !esValidaPropina && !motivoExclusionOriginal
+    ? (estado ? `Propina excluida por estado ${estado}.` : 'Propina excluida por estado no valido.')
+    : motivoExclusionOriginal;
 
   return {
     ventaId: String(getRowValue(row, ['ventaId', 'id', 'folio', 'ticket', 'numero', 'nro'], '')).trim(),
@@ -438,7 +469,7 @@ function normalizePropinaRow(row, fallbackLocal) {
     cancelada,
     esDelivery: normalizeBoolean(getRowValue(row, ['esDelivery', 'delivery'], false), false),
     esValidaPropina,
-    motivoExclusion: String(getRowValue(row, ['motivoExclusion', 'motivo exclusion', 'observacion', 'observaciones'], '')).trim(),
+    motivoExclusion,
   };
 }
 
@@ -508,8 +539,9 @@ async function parseSpreadsheetFile(file, fallbackLocal) {
           ? [
               ['fecha pago', 'fecha', 'dia'],
               ['monto', 'monto propina', 'propina', 'tip'],
-              ['cancelado', 'cancelada'],
-              ['id venta', 'id. venta', 'ventaId', 'folio'],
+              ['cancelado', 'cancelada', 'anulada', 'estado'],
+              ['id venta', 'id. venta', 'ventaId', 'folio', 'ticket'],
+              ['local', 'sucursal'],
             ]
           : [
               ['fecha', 'dia'],
@@ -517,6 +549,7 @@ async function parseSpreadsheetFile(file, fallbackLocal) {
               ['total', 'total bruto', 'monto'],
               ['tipo de venta', 'tipoVenta'],
               ['camarero / repartidor', 'origen', 'estado'],
+              ['id venta', 'id. venta', 'ventaId', 'folio', 'ticket'],
             ];
 
         return {

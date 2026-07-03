@@ -98,12 +98,12 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
   - `appsscript.json`: Manifest del proyecto Apps Script usado por `clasp`
 
 ### Ventas y Comisiones
-- El desarrollo del módulo vive en la rama `feature/spreadsheet-by-id`.
+- La base operativa del módulo ya está presente en `main`.
 - El roadmap técnico consolidado está en `Docs/ventas-comisiones-roadmap.md`.
 - Estado documental actual:
-  - `ImportarVentas`, `ConsultarImportacionesVentas`, `ConsultarImportacionActivaVentas` y `RecalcularComisiones` aparecen implementados en esa rama.
+  - `ImportarVentas`, `ConsultarImportacionesVentas`, `ConsultarImportacionActivaVentas` y `RecalcularComisiones` ya existen en `main`.
   - El parser POS V1 ya está bastante formalizado en frontend; no es el mayor vacío actual.
-  - El siguiente tramo recomendado es auditar operativamente `RecalcularComisiones` en `staging` y luego exponer una UI mínima para recalcular y ver resumen.
+  - El siguiente tramo recomendado es auditar operativamente `RecalcularComisiones` en `staging` con datos reales para confirmar el cálculo de comisiones sobre ventas diarias.
 
 ---
 

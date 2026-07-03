@@ -1,19 +1,19 @@
 # Roadmap Técnico
 # Módulo Ventas, Comisiones y Propinas
 
-Estado documental: actualizado desde `feature/spreadsheet-by-id`  
-Estado del trabajo: en desarrollo, no mergeado a `main`  
+Estado documental: actualizado contra `main`  
+Estado del trabajo: base operativa presente en `main`; auditoría funcional pendiente  
 Entorno recomendado para pruebas: `staging`  
-Rama funcional de referencia: `feature/spreadsheet-by-id`
+Rama histórica de referencia: `feature/spreadsheet-by-id`
 
 ---
 
 ## Resumen ejecutivo
 
-La rama `feature/spreadsheet-by-id` ya contiene una implementación sustancial del módulo.
+`main` ya contiene una implementación sustancial del módulo.
 No está solo en etapa de ideas o documentación.
 
-Estado observado al revisar esa rama:
+Estado observado al revisar `main`:
 
 - `ImportarVentas` implementado.
 - `ConsultarImportacionesVentas` implementado.
@@ -30,7 +30,7 @@ Conclusión:
 
 ---
 
-## Implementado en la rama de referencia
+## Implementado en `main`
 
 ### Backend
 
@@ -71,6 +71,7 @@ Conclusión:
 ### Pendiente real
 
 - Auditoría operativa de `RecalcularComisiones` en `staging`.
+- Validar con datos reales que el cálculo de comisiones diarias sea coherente para cada `Fecha + Local + ImportId`.
 - Confirmar idempotencia del recálculo.
 - Confirmar contenido real de `VentasDiarias` por `Fecha + Local + ImportId`.
 - Revisar placeholders de columnas como `ColaboradoresPresentes` y `PropinaIndividualDiaria` mientras no exista `pagosColaboradores`.
@@ -86,8 +87,9 @@ Conclusión:
 Orden recomendado para retomar el desarrollo:
 
 1. Auditar `RecalcularComisiones` en `staging`.
-2. Ajustar el contrato funcional documentado según esa auditoría.
-3. Exponer una UI mínima para:
+2. Confirmar con datos reales que el cálculo diario producido permita sostener comisiones confiables.
+3. Ajustar el contrato funcional documentado según esa auditoría.
+4. Exponer una UI mínima para:
    - detectar importación activa por `Local + Periodo`
    - ejecutar `RecalcularComisiones`
    - mostrar resumen del resultado
@@ -112,13 +114,14 @@ Motivo:
 - El archivo bruto no se envía a Apps Script.
 - El parser vive en frontend.
 - Apps Script recibe JSON normalizado.
+- La pauta operativa de auditoría vive en `Docs/auditoria-recalculo-comisiones-staging.md`.
 
 ---
 
 ## Nota de mantenimiento
 
-Este roadmap refleja la revisión documental realizada sobre `feature/spreadsheet-by-id`.
-Si esa rama cambia, este archivo debe actualizarse para mantener sincronía entre:
+Este roadmap refleja la revisión documental realizada sobre el estado actual de `main`.
+Si `main` o la rama de trabajo activa cambian este flujo, este archivo debe actualizarse para mantener sincronía entre:
 
 - estado real del código
 - estado declarado en roadmap

@@ -37,6 +37,11 @@ Esta carpeta se usa para mantener una copia local del proyecto de Google Apps Sc
 - `CopiarSemana`
 - `CopiarSemanaAnterior`
 - `PlantillasTurnos`
+- `TestVentasSheet`
+- `ConsultarImportacionesVentas`
+- `ConsultarImportacionActivaVentas`
+- `ImportarVentas`
+- `RecalcularComisiones`
 
 ### Protegidas para colaboradores
 
@@ -94,6 +99,21 @@ La respuesta pública expone solo:
 - `iniciales`
 
 No expone `rut`.
+
+## Ventas, comisiones y propinas
+
+La base operativa del módulo ya está presente en `main`.
+
+Estado actual:
+
+- `ImportarVentas` persiste importaciones normalizadas en el spreadsheet de ventas.
+- `ConsultarImportacionesVentas` lista historial por `Local + Periodo`.
+- `ConsultarImportacionActivaVentas` resuelve la importación activa y su resumen base.
+- `RecalcularComisiones` recompone `VentasDiarias` para una importación activa o resuelta por `importId`.
+
+Siguiente paso operativo:
+
+- auditar `RecalcularComisiones` en `staging` con datos reales para confirmar que el cálculo diario soporta correctamente el cálculo de comisiones
 
 ## Uso de esta carpeta
 
