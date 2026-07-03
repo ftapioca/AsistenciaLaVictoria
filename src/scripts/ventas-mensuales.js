@@ -490,7 +490,8 @@ function detectSheetByRole(sheetEntries, role) {
 function normalizeVentaRow(row, fallbackLocal) {
   const totalBruto = normalizeAmount(getRowValue(row, ['totalBruto', 'total bruto', 'total', 'monto', 'venta bruta'], 0));
   const estado = String(getRowValue(row, ['estado', 'status', 'estado venta'], '')).trim();
-  const cierreRaw = getRowValue(row, ['fechaCierre', 'fecha cierre', 'cierre', 'cerrada'], '');
+  const fechaCierreExplicita = String(getRowValue(row, ['fechaCierre', 'fecha cierre', 'cierre'], '')).trim();
+  const cierreRaw = fechaCierreExplicita || getRowValue(row, ['cerrada'], '');
   const cierreParts = parseSpreadsheetDateTimeParts(cierreRaw);
   const esCanceladaExplicita = normalizeBoolean(getRowValue(row, ['esCancelada', 'cancelada', 'anulada', 'nula'], false), false);
   const esCancelada = esCanceladaExplicita || isRejectedStatus(estado);
@@ -508,7 +509,7 @@ function normalizeVentaRow(row, fallbackLocal) {
     ventaId: String(getRowValue(row, ['ventaId', 'id', 'folio', 'ticket', 'numero', 'nro'], '')).trim(),
     fecha: String(getRowValue(row, ['fecha', 'dia'], cierreParts?.fecha || '')).trim(),
     hora: String(getRowValue(row, ['hora'], cierreParts?.hora || '')).trim(),
-    fechaCierre: String(getRowValue(row, ['fechaCierre', 'fecha cierre', 'cierre', 'cerrada'], cierreParts ? `${cierreParts.fecha} ${cierreParts.hora}`.trim() : '')).trim(),
+    fechaCierre: fechaCierreExplicita || (cierreParts ? `${cierreParts.fecha} ${cierreParts.hora}`.trim() : ''),
     local: String(getRowValue(row, ['local', 'sucursal'], fallbackLocal)).trim(),
     estado: estado || (esCancelada ? 'ANULADA' : 'PAGADA'),
     origen: String(getRowValue(row, ['origen', 'canal'], 'POS')).trim(),
