@@ -140,7 +140,16 @@ Objetivo:
 
 ---
 
-## Paso 3: ejecutar `RecalcularComisiones`
+## Paso 3: verificar recálculo automático y reproceso manual
+
+`ImportarVentas` debe dejar `VentasDiarias` listas automáticamente al cerrar la importación con estado `SUCCESS`.
+
+Antes de correr el endpoint manual, validar:
+
+1. que la importación recién creada ya tenga filas en `VentasDiarias`
+2. que la cantidad de filas coincida con los días/locales esperados del payload
+
+Luego usar `RecalcularComisiones` como reproceso explícito para auditar idempotencia y consistencia.
 
 En consola, con sesión admin en `staging`:
 

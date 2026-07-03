@@ -381,29 +381,16 @@ function recalcularComisiones(params) {
   requireAdminSession(params);
 
   var contexto = resolverImportacionParaCalculo_(params);
-  var importacion = contexto.importacion;
-  var importId = importacion.importId;
-  var ventasValidas = obtenerVentasValidasPorImportId_(importId);
-  var propinasValidas = obtenerPropinasValidasPorImportId_(importId);
-  var filasVentasDiarias = construirFilasVentasDiarias_(importacion, ventasValidas, propinasValidas);
-
-  limpiarResultadosCalculoPorImportId_(importId);
-
-  if (filasVentasDiarias.length > 0) {
-    var hojaVentasDiarias = getSheet_(HOJA_VENTAS_DIARIAS, SPREADSHEET_KEY_VENTAS);
-    hojaVentasDiarias
-      .getRange(hojaVentasDiarias.getLastRow() + 1, 1, filasVentasDiarias.length, filasVentasDiarias[0].length)
-      .setValues(filasVentasDiarias);
-  }
+  var resultado = recalcularComisionesPorImportacion_(contexto.importacion);
 
   return responderJSON({
     status: "SUCCESS",
-    importId: String(importId || "").trim(),
-    local: String(importacion.local || "").trim(),
-    periodo: String(importacion.periodo || "").trim(),
+    importId: String(resultado.importId || "").trim(),
+    local: String(resultado.local || "").trim(),
+    periodo: String(resultado.periodo || "").trim(),
     importacionResueltaPor: contexto.resueltoPor,
-    diasProcesados: filasVentasDiarias.length,
-    resumen: construirResumenRecalculo_(filasVentasDiarias)
+    diasProcesados: resultado.diasProcesados,
+    resumen: resultado.resumen
   });
 }
 
@@ -525,6 +512,13 @@ function importarVentasInterno_(params) {
       }
     );
 
+    var resultadoRecalculo = recalcularComisionesPorImportacion_({
+      importId: importId,
+      local: metadata.local,
+      periodo: metadata.periodo,
+      estado: ESTADO_IMPORTACION_SUCCESS
+    });
+
     return {
       status: ESTADO_IMPORTACION_SUCCESS,
       importId: importId,
@@ -533,7 +527,12 @@ function importarVentasInterno_(params) {
       importacionReemplazada: idsReemplazados,
       registrosVentas: filasVentas.length,
       registrosPropinas: filasPropinas.length,
-      observaciones: observaciones
+      observaciones: observaciones,
+      recalculoAutomatico: {
+        status: "SUCCESS",
+        diasProcesados: resultadoRecalculo.diasProcesados,
+        resumen: resultadoRecalculo.resumen
+      }
     };
   } catch (error) {
     if (hojaImportaciones && importRowNumber) {
@@ -920,6 +919,37 @@ function sumarMontosPorCampo_(registros, nombreCampo) {
 
 function limpiarResultadosCalculoPorImportId_(importId) {
   eliminarFilasPorImportIdEnHoja_(HOJA_VENTAS_DIARIAS, importId);
+}
+
+function recalcularComisionesPorImportacion_(importacion) {
+  var importId = String(importacion && importacion.importId || "").trim();
+  if (!importId) {
+    throw crearErrorImportacion_(
+      "ERROR_DATOS",
+      "No se puede recalcular sin importId."
+    );
+  }
+
+  var ventasValidas = obtenerVentasValidasPorImportId_(importId);
+  var propinasValidas = obtenerPropinasValidasPorImportId_(importId);
+  var filasVentasDiarias = construirFilasVentasDiarias_(importacion, ventasValidas, propinasValidas);
+
+  limpiarResultadosCalculoPorImportId_(importId);
+
+  if (filasVentasDiarias.length > 0) {
+    var hojaVentasDiarias = getSheet_(HOJA_VENTAS_DIARIAS, SPREADSHEET_KEY_VENTAS);
+    hojaVentasDiarias
+      .getRange(hojaVentasDiarias.getLastRow() + 1, 1, filasVentasDiarias.length, filasVentasDiarias[0].length)
+      .setValues(filasVentasDiarias);
+  }
+
+  return {
+    importId: importId,
+    local: String(importacion.local || "").trim(),
+    periodo: String(importacion.periodo || "").trim(),
+    diasProcesados: filasVentasDiarias.length,
+    resumen: construirResumenRecalculo_(filasVentasDiarias)
+  };
 }
 
 function eliminarFilasPorImportIdEnHoja_(sheetName, importId) {
