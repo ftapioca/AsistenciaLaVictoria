@@ -461,7 +461,7 @@ function normalizePropinaRow(row, fallbackLocal) {
     : motivoExclusionOriginal;
 
   return {
-    ventaId: String(getRowValue(row, ['ventaId', 'id', 'folio', 'ticket', 'numero', 'nro'], '')).trim(),
+    ventaId: String(getRowValue(row, ['ventaId', 'id venta', 'id. venta', 'id', 'folio', 'ticket', 'numero', 'nro'], '')).trim(),
     fecha: String(getRowValue(row, ['fecha', 'dia'], '')).trim(),
     hora: String(getRowValue(row, ['hora'], '')).trim(),
     local: String(getRowValue(row, ['local', 'sucursal'], fallbackLocal)).trim(),
@@ -484,9 +484,26 @@ function buildPayloadFromSheetEntries(sheetEntries, fileName, fallbackLocal) {
         .filter((row) => row.ventaId || row.fecha || row.totalBruto || row.medioPago)
     : [];
 
+  const ventasById = new Map(
+    ventas
+      .filter((row) => row.ventaId)
+      .map((row) => [String(row.ventaId).trim(), row])
+  );
+
   const propinas = propinasSheet
     ? propinasSheet.rows
         .map((row) => normalizePropinaRow(row, fallbackLocal))
+        .map((row) => {
+          const linkedVenta = row.ventaId ? ventasById.get(String(row.ventaId).trim()) : null;
+          if (!linkedVenta) return row;
+
+          return {
+            ...row,
+            fecha: row.fecha || linkedVenta.fecha || '',
+            hora: row.hora || linkedVenta.hora || '',
+            local: row.local || linkedVenta.local || fallbackLocal || '',
+          };
+        })
         .filter((row) => row.ventaId || row.fecha || row.montoPropina)
     : [];
 
