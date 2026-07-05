@@ -47,6 +47,9 @@ Conclusión:
 - Detección de duplicado por `hashArchivo`.
 - Normalización de `periodo` a formato `YYYY-MM`.
 - Compatibilidad de lectura para importaciones legacy con `periodo` persistido en formato no canónico.
+- Integración mensual de pagos base desde RRHH en:
+  - `DetalleMensualPagos`
+  - `ResumenMensualPagos`
 
 ### Frontend
 
@@ -67,6 +70,7 @@ Conclusión:
 
 - El parser POS V1 no está solo “pendiente”; ya existe una primera implementación bastante específica.
 - El backend de recálculo tampoco está pendiente como idea; ya existe y persiste en `VentasDiarias`.
+- El cierre mensual ya no depende solo de `ComisionesDiarias`; ahora combina pagos base desde `RegistroAsistencia` con comisión y propina por colaborador.
 
 ### Pendiente real
 
@@ -91,7 +95,6 @@ Orden recomendado para retomar el desarrollo:
 No se recomienda partir por:
 
 - `pagosColaboradores`
-- resumen mensual por colaborador
 - nuevas extensiones de parser
 
 Motivo:

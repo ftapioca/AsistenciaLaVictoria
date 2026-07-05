@@ -3,7 +3,9 @@ const HOJA_VENTAS_POS = "VentasPOS";
 const HOJA_PROPINAS_POS = "PropinasPOS";
 const HOJA_VENTAS_DIARIAS = "VentasDiarias";
 const HOJA_COMISIONES_DIARIAS = "ComisionesDiarias";
-const HOJA_RESUMEN_MENSUAL_COMISIONES = "ResumenMensualComisiones";
+const HOJA_RESUMEN_MENSUAL_PAGOS = "ResumenMensualPagos";
+const HOJA_RESUMEN_MENSUAL_COMISIONES_LEGACY = "ResumenMensualComisiones";
+const HOJA_DETALLE_MENSUAL_PAGOS = "DetalleMensualPagos";
 const HOJA_PAGOS_POS = "PagosPOS";
 const HOJA_PRODUCTOS_POS = "ProductosPOS";
 const HOJA_TRAMOS_COMISIONES = "TramosComisiones";
@@ -102,16 +104,42 @@ const VENTAS_SHEETS_CONFIG = [
     ]
   },
   {
-    name: HOJA_RESUMEN_MENSUAL_COMISIONES,
+    name: HOJA_RESUMEN_MENSUAL_PAGOS,
     headers: [
       "ImportId",
       "Periodo",
       "Local",
       "Colaborador",
-      "DiasTrabajados",
+      "TotalHorasNormales",
+      "TotalHorasExtras",
+      "TotalDiasNormales",
+      "TotalHorasFeriado",
+      "TotalHorasExtrasFeriado",
+      "TotalDiasFeriados",
+      "TotalDiasTrabajados",
       "ComisionTotal",
       "PropinaTotal",
-      "TotalPagar",
+      "TotalPagar"
+    ]
+  },
+  {
+    name: HOJA_DETALLE_MENSUAL_PAGOS,
+    headers: [
+      "ImportId",
+      "Periodo",
+      "Fecha",
+      "Local",
+      "Colaborador",
+      "PagoHorasNormales",
+      "PagoHorasExtras",
+      "PagoDiasNormales",
+      "PagoHorasFeriado",
+      "PagoHorasExtrasFeriado",
+      "PagoDiasFeriados",
+      "PagoDiaTrabajado",
+      "ComisionDia",
+      "PropinaDia",
+      "TotalPagarDia",
       "Observaciones"
     ]
   },
@@ -216,6 +244,10 @@ function asegurarEstructuraVentasSheets_() {
   };
 
   VENTAS_SHEETS_CONFIG.forEach(function(config) {
+    if (config.name === HOJA_RESUMEN_MENSUAL_PAGOS) {
+      migrarNombreHojaResumenMensualPagos_();
+    }
+
     var hoja = findSheet_(config.name, SPREADSHEET_KEY_VENTAS);
 
     if (!hoja) {
@@ -245,6 +277,16 @@ function asegurarEstructuraVentasSheets_() {
     }
 
     if (config.name === HOJA_VENTAS_DIARIAS && migrarHojaVentasDiarias_(hoja, config.headers)) {
+      resultado.existentes++;
+      resultado.hojas.push({
+        hoja: config.name,
+        estado: "MIGRADA",
+        columnas: config.headers.length
+      });
+      return;
+    }
+
+    if (config.name === HOJA_RESUMEN_MENSUAL_PAGOS && migrarHojaResumenMensualPagos_(hoja, config.headers)) {
       resultado.existentes++;
       resultado.hojas.push({
         hoja: config.name,
@@ -324,6 +366,21 @@ function asegurarEstructuraVentasSheets_() {
   });
 
   return resultado;
+}
+
+function migrarNombreHojaResumenMensualPagos_() {
+  var spreadsheet = getSpreadsheetByKey_(SPREADSHEET_KEY_VENTAS);
+  var hojaNueva = spreadsheet.getSheetByName(HOJA_RESUMEN_MENSUAL_PAGOS);
+  if (hojaNueva) {
+    return;
+  }
+
+  var hojaLegacy = spreadsheet.getSheetByName(HOJA_RESUMEN_MENSUAL_COMISIONES_LEGACY);
+  if (!hojaLegacy) {
+    return;
+  }
+
+  hojaLegacy.setName(HOJA_RESUMEN_MENSUAL_PAGOS);
 }
 
 function inicializarHojaTramosComisiones_(hoja) {
@@ -440,6 +497,38 @@ function migrarHojaVentasDiarias_(hoja, headersEsperados) {
   if (filasMigradas.length) {
     hoja.getRange(2, 1, filasMigradas.length, headersEsperados.length).setValues(filasMigradas);
   }
+  hoja.setFrozenRows(1);
+  return true;
+}
+
+function migrarHojaResumenMensualPagos_(hoja, headersEsperados) {
+  var ultimaColumna = Math.max(hoja.getLastColumn(), headersEsperados.length);
+  var headersActuales = ultimaColumna
+    ? hoja.getRange(1, 1, 1, ultimaColumna).getValues()[0].map(function(valor) {
+        return String(valor || "").trim();
+      })
+    : [];
+  var headersLegacy = [
+    "ImportId",
+    "Periodo",
+    "Local",
+    "Colaborador",
+    "DiasTrabajados",
+    "ComisionTotal",
+    "PropinaTotal",
+    "TotalPagar",
+    "Observaciones"
+  ];
+  var coincideLegacy = headersLegacy.every(function(header, indice) {
+    return headersActuales[indice] === header;
+  });
+
+  if (!coincideLegacy) {
+    return false;
+  }
+
+  hoja.clearContents();
+  hoja.getRange(1, 1, 1, headersEsperados.length).setValues([headersEsperados]);
   hoja.setFrozenRows(1);
   return true;
 }
@@ -1189,7 +1278,8 @@ function sumarMontosPorCampo_(registros, nombreCampo) {
 function limpiarResultadosCalculoPorImportId_(importId) {
   eliminarFilasPorImportIdEnHoja_(HOJA_VENTAS_DIARIAS, importId);
   eliminarFilasPorImportIdEnHoja_(HOJA_COMISIONES_DIARIAS, importId);
-  eliminarFilasPorImportIdEnHoja_(HOJA_RESUMEN_MENSUAL_COMISIONES, importId);
+  eliminarFilasPorImportIdEnHoja_(HOJA_RESUMEN_MENSUAL_PAGOS, importId);
+  eliminarFilasPorImportIdEnHoja_(HOJA_DETALLE_MENSUAL_PAGOS, importId);
   eliminarFilasPorImportIdEnHoja_(HOJA_CUADRATURA_PAGOS, importId);
   eliminarFilasPorImportIdEnHoja_(HOJA_KPI_VENTAS_DIARIAS, importId);
 }
@@ -1232,8 +1322,15 @@ function recalcularComisionesPorImportacion_(importacion) {
       .setValues(contextoDiario.filasComisionesDiarias);
   }
 
+  if (contextoDiario.filasDetalleMensualPagos.length > 0) {
+    var hojaDetalleMensualPagos = getSheet_(HOJA_DETALLE_MENSUAL_PAGOS, SPREADSHEET_KEY_VENTAS);
+    hojaDetalleMensualPagos
+      .getRange(hojaDetalleMensualPagos.getLastRow() + 1, 1, contextoDiario.filasDetalleMensualPagos.length, contextoDiario.filasDetalleMensualPagos[0].length)
+      .setValues(contextoDiario.filasDetalleMensualPagos);
+  }
+
   if (contextoDiario.filasResumenMensual.length > 0) {
-    var hojaResumenMensual = getSheet_(HOJA_RESUMEN_MENSUAL_COMISIONES, SPREADSHEET_KEY_VENTAS);
+    var hojaResumenMensual = getSheet_(HOJA_RESUMEN_MENSUAL_PAGOS, SPREADSHEET_KEY_VENTAS);
     hojaResumenMensual
       .getRange(hojaResumenMensual.getLastRow() + 1, 1, contextoDiario.filasResumenMensual.length, contextoDiario.filasResumenMensual[0].length)
       .setValues(contextoDiario.filasResumenMensual);
@@ -1382,10 +1479,13 @@ function construirContextoDiarioImportacion_(importacion, ventasValidas, propina
       ]);
     });
 
+  var filasDetalleMensualPagos = construirFilasDetalleMensualPagos_(importacion, filasComisionesDiarias);
+
   return {
     filasVentasDiarias: filasVentasDiarias,
     filasComisionesDiarias: filasComisionesDiarias,
-    filasResumenMensual: construirFilasResumenMensualComisiones_(importacion, filasComisionesDiarias),
+    filasDetalleMensualPagos: filasDetalleMensualPagos,
+    filasResumenMensual: construirFilasResumenMensualPagos_(importacion, filasDetalleMensualPagos),
     filasCuadraturaPagos: filasCuadraturaPagos,
     filasKpiVentasDiarias: filasKpiVentasDiarias
   };
@@ -1633,45 +1733,297 @@ function construirResumenRecalculo_(filasVentasDiarias) {
   });
 }
 
-function construirFilasResumenMensualComisiones_(importacion, filasComisionesDiarias) {
-  var grupos = {};
+function construirFilasDetalleMensualPagos_(importacion, filasComisionesDiarias) {
+  var pagosRrhh = obtenerPagosDetalleRrhhPorImportacion_(importacion);
+  var detallePorKey = {};
+
+  pagosRrhh.forEach(function(pago) {
+    var key = [pago.fechaIso, pago.local, pago.colaborador].join("|");
+    if (!detallePorKey[key]) {
+      detallePorKey[key] = {
+        fechaIso: pago.fechaIso,
+        local: pago.local,
+        colaborador: pago.colaborador,
+        pagoHorasNormales: 0,
+        pagoHorasExtras: 0,
+        pagoDiasNormales: 0,
+        pagoHorasFeriado: 0,
+        pagoHorasExtrasFeriado: 0,
+        pagoDiasFeriados: 0,
+        pagoDiaTrabajado: 0,
+        comisionDia: 0,
+        propinaDia: 0,
+        observaciones: ""
+      };
+    }
+
+    detallePorKey[key].pagoHorasNormales += redondearMonto_(pago.pagoHorasNormales);
+    detallePorKey[key].pagoHorasExtras += redondearMonto_(pago.pagoHorasExtras);
+    detallePorKey[key].pagoDiasNormales += redondearMonto_(pago.pagoDiasNormales);
+    detallePorKey[key].pagoHorasFeriado += redondearMonto_(pago.pagoHorasFeriado);
+    detallePorKey[key].pagoHorasExtrasFeriado += redondearMonto_(pago.pagoHorasExtrasFeriado);
+    detallePorKey[key].pagoDiasFeriados += redondearMonto_(pago.pagoDiasFeriados);
+    detallePorKey[key].pagoDiaTrabajado += redondearMonto_(pago.pagoDiaTrabajado);
+    detallePorKey[key].observaciones = unirObservacionesPagoDetalle_(
+      detallePorKey[key].observaciones,
+      pago.observaciones
+    );
+  });
 
   filasComisionesDiarias.forEach(function(fila) {
-    var key = [fila[2], fila[3]].join("|");
+    var fechaIso = normalizarFechaOperacionAIso_(fila[1]);
+    var local = limpiarTextoImportacion_(fila[2]);
+    var colaborador = limpiarTextoImportacion_(fila[3]);
+    var key = [fechaIso, local, colaborador].join("|");
+
+    if (!detallePorKey[key]) {
+      detallePorKey[key] = {
+        fechaIso: fechaIso,
+        local: local,
+        colaborador: colaborador,
+        pagoHorasNormales: 0,
+        pagoHorasExtras: 0,
+        pagoDiasNormales: 0,
+        pagoHorasFeriado: 0,
+        pagoHorasExtrasFeriado: 0,
+        pagoDiasFeriados: 0,
+        pagoDiaTrabajado: 0,
+        comisionDia: 0,
+        propinaDia: 0,
+        observaciones: "Sin pago base RRHH; fila generada desde ComisionesDiarias."
+      };
+    }
+
+    detallePorKey[key].comisionDia += normalizarMontoImportacion_(fila[4]);
+    detallePorKey[key].propinaDia += normalizarMontoImportacion_(fila[5]);
+  });
+
+  return Object.keys(detallePorKey)
+    .sort()
+    .map(function(key) {
+      var detalle = detallePorKey[key];
+      var totalPagarDia = redondearMonto_(
+        detalle.pagoDiaTrabajado +
+        detalle.comisionDia +
+        detalle.propinaDia
+      );
+
+      return [
+        limpiarTextoImportacion_(importacion.importId),
+        normalizarPeriodoImportacion_(importacion.periodo),
+        formatearFechaVisibleImportacion_(detalle.fechaIso),
+        detalle.local,
+        detalle.colaborador,
+        redondearMonto_(detalle.pagoHorasNormales),
+        redondearMonto_(detalle.pagoHorasExtras),
+        redondearMonto_(detalle.pagoDiasNormales),
+        redondearMonto_(detalle.pagoHorasFeriado),
+        redondearMonto_(detalle.pagoHorasExtrasFeriado),
+        redondearMonto_(detalle.pagoDiasFeriados),
+        redondearMonto_(detalle.pagoDiaTrabajado),
+        redondearMonto_(detalle.comisionDia),
+        redondearMonto_(detalle.propinaDia),
+        totalPagarDia,
+        detalle.observaciones
+      ];
+    });
+}
+
+function construirFilasResumenMensualPagos_(importacion, filasDetalleMensualPagos) {
+  var grupos = {};
+
+  filasDetalleMensualPagos.forEach(function(fila) {
+    var key = [fila[3], fila[4]].join("|");
     if (!grupos[key]) {
       grupos[key] = {
-        local: fila[2],
-        colaborador: fila[3],
-        dias: {},
+        local: fila[3],
+        colaborador: fila[4],
+        totalHorasNormales: 0,
+        totalHorasExtras: 0,
+        totalDiasNormales: 0,
+        totalHorasFeriado: 0,
+        totalHorasExtrasFeriado: 0,
+        totalDiasFeriados: 0,
+        totalDiasTrabajados: 0,
         comisionTotal: 0,
         propinaTotal: 0
       };
     }
 
-    grupos[key].dias[fila[1]] = true;
-    grupos[key].comisionTotal += normalizarMontoImportacion_(fila[4]);
-    grupos[key].propinaTotal += normalizarMontoImportacion_(fila[5]);
+    grupos[key].totalHorasNormales += normalizarMontoImportacion_(fila[5]);
+    grupos[key].totalHorasExtras += normalizarMontoImportacion_(fila[6]);
+    grupos[key].totalDiasNormales += normalizarMontoImportacion_(fila[7]);
+    grupos[key].totalHorasFeriado += normalizarMontoImportacion_(fila[8]);
+    grupos[key].totalHorasExtrasFeriado += normalizarMontoImportacion_(fila[9]);
+    grupos[key].totalDiasFeriados += normalizarMontoImportacion_(fila[10]);
+    grupos[key].totalDiasTrabajados += normalizarMontoImportacion_(fila[11]);
+    grupos[key].comisionTotal += normalizarMontoImportacion_(fila[12]);
+    grupos[key].propinaTotal += normalizarMontoImportacion_(fila[13]);
   });
 
   return Object.keys(grupos)
     .sort()
     .map(function(key) {
       var grupo = grupos[key];
-      var diasTrabajados = Object.keys(grupo.dias).length;
-      var totalPagar = redondearMonto_(grupo.comisionTotal + grupo.propinaTotal);
+      var totalPagar = redondearMonto_(
+        grupo.totalDiasTrabajados +
+        grupo.comisionTotal +
+        grupo.propinaTotal
+      );
 
       return [
         importacion.importId,
         limpiarTextoImportacion_(importacion.periodo),
         grupo.local,
         grupo.colaborador,
-        diasTrabajados,
+        redondearMonto_(grupo.totalHorasNormales),
+        redondearMonto_(grupo.totalHorasExtras),
+        redondearMonto_(grupo.totalDiasNormales),
+        redondearMonto_(grupo.totalHorasFeriado),
+        redondearMonto_(grupo.totalHorasExtrasFeriado),
+        redondearMonto_(grupo.totalDiasFeriados),
+        redondearMonto_(grupo.totalDiasTrabajados),
         redondearMonto_(grupo.comisionTotal),
         redondearMonto_(grupo.propinaTotal),
-        totalPagar,
-        "Resumen mensual generado desde ComisionesDiarias."
+        totalPagar
       ];
     });
+}
+
+function obtenerPagosDetalleRrhhPorImportacion_(importacion) {
+  var hoja = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
+  var registros = leerHojaComoObjetos_(hoja);
+  var localBuscado = normalizarTexto(importacion.local);
+  var periodoBuscado = normalizarPeriodoImportacion_(importacion.periodo);
+
+  return registros
+    .filter(function(registro) {
+      if (normalizarTexto(registro.Local) !== localBuscado) {
+        return false;
+      }
+
+      var validacion = obtenerCampoImportacion_(registro, ["Validacion", "Validación"], "");
+      if (!esValidacionTurnoCerradoOk_(normalizarTexto(validacion))) {
+        return false;
+      }
+
+      var fechaTurnoIso = convertirFechaTurnoAIso_(obtenerCampoImportacion_(registro, [
+        "Fecha turno",
+        "Fecha Turno",
+        "FechaTurno"
+      ], ""));
+      if (!fechaTurnoIso) {
+        fechaTurnoIso = convertirFechaAsistenciaAIso_(obtenerCampoImportacion_(registro, [
+          "Fecha/Hora",
+          "Fecha y Hora",
+          "FechaHora"
+        ], ""));
+      }
+
+      if (!fechaTurnoIso) {
+        return false;
+      }
+
+      return normalizarPeriodoImportacion_(fechaTurnoIso.slice(0, 7)) === periodoBuscado;
+    })
+    .map(function(registro) {
+      var fechaTurnoIso = convertirFechaTurnoAIso_(obtenerCampoImportacion_(registro, [
+        "Fecha turno",
+        "Fecha Turno",
+        "FechaTurno"
+      ], ""));
+      if (!fechaTurnoIso) {
+        fechaTurnoIso = convertirFechaAsistenciaAIso_(obtenerCampoImportacion_(registro, [
+          "Fecha/Hora",
+          "Fecha y Hora",
+          "FechaHora"
+        ], ""));
+      }
+
+      var pagoHorasNormales = normalizarMontoImportacion_(obtenerCampoImportacion_(registro, [
+        "Pago Normal"
+      ], 0));
+      var pagoHorasExtras = normalizarMontoImportacion_(obtenerCampoImportacion_(registro, [
+        "Pago Horas Extras"
+      ], 0));
+      var pagoHorasFeriado = normalizarMontoImportacion_(obtenerCampoImportacion_(registro, [
+        "Pago Feriado"
+      ], 0));
+      var pagoHorasExtrasFeriado = normalizarMontoImportacion_(obtenerCampoImportacion_(registro, [
+        "Pago Feriado Extras"
+      ], 0));
+      var pagoDiasNormales = redondearMonto_(pagoHorasNormales + pagoHorasExtras);
+      var pagoDiasFeriados = redondearMonto_(pagoHorasFeriado + pagoHorasExtrasFeriado);
+      var pagoDiaTrabajado = redondearMonto_(pagoDiasNormales + pagoDiasFeriados);
+      var horasTrabajadas = normalizarMontoImportacion_(obtenerCampoImportacion_(registro, [
+        "Horas Trabajadas"
+      ], 0));
+      var horasNormales = normalizarMontoImportacion_(obtenerCampoImportacion_(registro, [
+        "Horas Normales"
+      ], 0));
+      var horasExtras = normalizarMontoImportacion_(obtenerCampoImportacion_(registro, [
+        "Horas Extra"
+      ], 0));
+      var feriado = normalizarBooleanImportacion_(obtenerCampoImportacion_(registro, [
+        "Feriado"
+      ], false));
+
+      return {
+        fechaIso: fechaTurnoIso,
+        local: limpiarTextoImportacion_(registro.Local),
+        colaborador: limpiarTextoImportacion_(registro.Nombre),
+        pagoHorasNormales: pagoHorasNormales,
+        pagoHorasExtras: pagoHorasExtras,
+        pagoDiasNormales: pagoDiasNormales,
+        pagoHorasFeriado: pagoHorasFeriado,
+        pagoHorasExtrasFeriado: pagoHorasExtrasFeriado,
+        pagoDiasFeriados: pagoDiasFeriados,
+        pagoDiaTrabajado: pagoDiaTrabajado,
+        observaciones: construirObservacionDetallePagoRrhh_({
+          horasTrabajadas: horasTrabajadas,
+          horasNormales: horasNormales,
+          horasExtras: horasExtras,
+          feriado: feriado,
+          validacion: obtenerCampoImportacion_(registro, ["Validacion", "Validación"], "")
+        })
+      };
+    });
+}
+
+function construirObservacionDetallePagoRrhh_(detalle) {
+  var partes = [];
+
+  if (detalle.feriado) {
+    partes.push("Feriado");
+  } else {
+    partes.push("Dia normal");
+  }
+
+  partes.push(
+    "Horas trabajadas: " + redondearMonto_(detalle.horasTrabajadas)
+  );
+  partes.push(
+    "Horas normales: " + redondearMonto_(detalle.horasNormales)
+  );
+  partes.push(
+    "Horas extra: " + redondearMonto_(detalle.horasExtras)
+  );
+
+  var validacion = limpiarTextoImportacion_(detalle.validacion);
+  if (validacion) {
+    partes.push(validacion);
+  }
+
+  return partes.join(". ");
+}
+
+function unirObservacionesPagoDetalle_(actual, nueva) {
+  var observaciones = [limpiarTextoImportacion_(actual), limpiarTextoImportacion_(nueva)]
+    .filter(function(valor, indice, array) {
+      return valor && array.indexOf(valor) === indice;
+    });
+
+  return observaciones.join(" | ");
 }
 
 function obtenerPresenciaDiariaPorLocalFecha_(local, fechaIso, importId) {

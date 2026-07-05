@@ -17,7 +17,8 @@ El flujo de `staging` quedó operativo para:
 - poblar:
   - `VentasDiarias`
   - `ComisionesDiarias`
-  - `ResumenMensualComisiones`
+  - `ResumenMensualPagos`
+  - `DetalleMensualPagos`
   - `CuadraturaPagos`
   - `KPIVentasDiarias`
 - resolver presencia diaria desde `RegistroAsistencia`
@@ -57,6 +58,16 @@ El flujo de `staging` quedó operativo para:
 - endpoint de auditoría:
   - `AuditarPresenciaVentas`
 
+### Pagos base RRHH
+
+- la hoja `RegistroAsistencia` ya contiene columnas monetarias para pago base:
+  - `Pago Normal`
+  - `Pago Horas Extras`
+  - `Pago Feriado`
+  - `Pago Feriado Extras`
+- el detalle mensual y el resumen mensual de pagos usan esas columnas como fuente
+- solo se consideran filas con `Validacion = Turno Cerrado Ok`
+
 ### Comisión y propinas por colaborador
 
 - `ComisionTotalDia` no se reparte
@@ -88,6 +99,8 @@ Cambios relevantes:
 - normalización de fechas de operación antes del cruce con asistencia
 - migraciones automáticas de headers compatibles
 - migración específica de `VentasDiarias` para insertar `ListaColaboradoresPresentes`
+- construcción de `DetalleMensualPagos` desde `RegistroAsistencia + ComisionesDiarias`
+- construcción de `ResumenMensualPagos` desde `DetalleMensualPagos`
 
 Archivo complementario:
 
@@ -209,6 +222,46 @@ Orden esperado:
 
 - una fila por `ImportId + Fecha + Local + Colaborador`
 - incluso si `ComisionDia = 0`, debe existir fila si hay propina a repartir
+
+### `DetalleMensualPagos`
+
+Orden esperado:
+
+1. `ImportId`
+2. `Periodo`
+3. `Fecha`
+4. `Local`
+5. `Colaborador`
+6. `PagoHorasNormales`
+7. `PagoHorasExtras`
+8. `PagoDiasNormales`
+9. `PagoHorasFeriado`
+10. `PagoHorasExtrasFeriado`
+11. `PagoDiasFeriados`
+12. `PagoDiaTrabajado`
+13. `ComisionDia`
+14. `PropinaDia`
+15. `TotalPagarDia`
+16. `Observaciones`
+
+### `ResumenMensualPagos`
+
+Orden esperado:
+
+1. `ImportId`
+2. `Periodo`
+3. `Local`
+4. `Colaborador`
+5. `TotalHorasNormales`
+6. `TotalHorasExtras`
+7. `TotalDiasNormales`
+8. `TotalHorasFeriado`
+9. `TotalHorasExtrasFeriado`
+10. `TotalDiasFeriados`
+11. `TotalDiasTrabajados`
+12. `ComisionTotal`
+13. `PropinaTotal`
+14. `TotalPagar`
 
 ---
 
