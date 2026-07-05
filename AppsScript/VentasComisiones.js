@@ -331,11 +331,9 @@ function inicializarHojaTramosComisiones_(hoja) {
     return;
   }
 
-  hoja.getRange(2, 1, 4, 7).setValues([
-    ["Paseo del Lago", "BAJO", 0, 499999.99, 0.01, true, "Tramo inicial por defecto."],
-    ["Paseo del Lago", "ALTO", 500000, "", 0.013, true, "Tramo inicial por defecto."],
-    ["Segunda Faja", "BAJO", 0, 499999.99, 0.01, true, "Tramo inicial por defecto."],
-    ["Segunda Faja", "ALTO", 500000, "", 0.013, true, "Tramo inicial por defecto."]
+  hoja.getRange(2, 1, 2, 7).setValues([
+    ["Segunda Faja", "BAJO", 0, 499999.99, 0.01, true, "Tramo inicial de referencia."],
+    ["Segunda Faja", "ALTO", 500000, "", 0.013, true, "Tramo inicial de referencia."]
   ]);
 }
 
@@ -353,6 +351,47 @@ function asegurarHojaTramosComisiones_(hoja, headers) {
 
   hoja.setFrozenRows(1);
   inicializarHojaTramosComisiones_(hoja);
+  migrarTramosComisionLegacy_(hoja, headers);
+}
+
+function migrarTramosComisionLegacy_(hoja, headers) {
+  var ultimaFila = hoja.getLastRow();
+  if (ultimaFila <= 1) {
+    return;
+  }
+
+  var totalColumnas = headers.length;
+  var valores = hoja.getRange(2, 1, ultimaFila - 1, totalColumnas).getValues();
+  var huboCambios = false;
+
+  valores.forEach(function(fila, indice) {
+    var local = limpiarTextoImportacion_(fila[0]);
+    var tramo = limpiarTextoImportacion_(fila[1]);
+    var ventaNetaMin = normalizarMontoImportacion_(fila[2]);
+    var ventaNetaMax = fila[3] === "" ? "" : normalizarMontoImportacion_(fila[3]);
+    var porcentaje = normalizarMontoImportacion_(fila[4]);
+    var activo = normalizarBooleanImportacion_(fila[5], false);
+    var observaciones = limpiarTextoImportacion_(fila[6]);
+    var esLegacyPaseo = local === "Paseo del Lago" &&
+      activo &&
+      observaciones === "Tramo inicial por defecto." &&
+      (
+        (tramo === "BAJO" && ventaNetaMin === 0 && ventaNetaMax === 499999.99 && porcentaje === 0.01) ||
+        (tramo === "ALTO" && ventaNetaMin === 500000 && ventaNetaMax === "" && porcentaje === 0.013)
+      );
+
+    if (!esLegacyPaseo) {
+      return;
+    }
+
+    valores[indice][5] = false;
+    valores[indice][6] = "Desactivado automaticamente por migracion legacy de produccion.";
+    huboCambios = true;
+  });
+
+  if (huboCambios) {
+    hoja.getRange(2, 1, valores.length, totalColumnas).setValues(valores);
+  }
 }
 
 function migrarHojaVentasDiarias_(hoja, headersEsperados) {
@@ -1515,6 +1554,13 @@ function resolverTramoComision_(ventaNetaValida, local) {
   var ventaNeta = normalizarMontoImportacion_(ventaNetaValida);
   var tramos = obtenerTramosComisionActivos_(local);
 
+  if (!tramos.length) {
+    return {
+      tramo: "SIN_TRAMO",
+      porcentajeComision: 0
+    };
+  }
+
   for (var i = 0; i < tramos.length; i++) {
     var tramo = tramos[i];
     var minimo = normalizarMontoImportacion_(tramo.ventaNetaMin);
@@ -1532,7 +1578,7 @@ function resolverTramoComision_(ventaNetaValida, local) {
 
   throw crearErrorImportacion_(
     "ERROR_CONFIG",
-    "No existe un tramo activo que cubra la venta neta calculada."
+    "Existen tramos activos para el local, pero ninguno cubre la venta neta calculada."
   );
 }
 
@@ -1564,13 +1610,6 @@ function obtenerTramosComisionActivos_(local) {
     .sort(function(a, b) {
       return normalizarMontoImportacion_(a.ventaNetaMin) - normalizarMontoImportacion_(b.ventaNetaMin);
     });
-
-  if (!tramos.length) {
-    throw crearErrorImportacion_(
-      "ERROR_CONFIG",
-      "La hoja TramosComisiones no tiene tramos activos configurados."
-    );
-  }
 
   return tramos;
 }
