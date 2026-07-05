@@ -81,6 +81,7 @@ const VENTAS_SHEETS_CONFIG = [
       "PorcentajeComision",
       "ComisionIndividualDiaria",
       "PropinasValidas",
+      "ListaColaboradoresPresentes",
       "ColaboradoresPresentes",
       "PropinaIndividualDiaria",
       "Observaciones"
@@ -243,13 +244,23 @@ function asegurarEstructuraVentasSheets_() {
       return;
     }
 
+    if (config.name === HOJA_VENTAS_DIARIAS && migrarHojaVentasDiarias_(hoja, config.headers)) {
+      resultado.existentes++;
+      resultado.hojas.push({
+        hoja: config.name,
+        estado: "MIGRADA",
+        columnas: config.headers.length
+      });
+      return;
+    }
+
     var ultimaColumna = Math.max(hoja.getLastColumn(), config.headers.length);
     var headersActuales = ultimaColumna
       ? hoja.getRange(1, 1, 1, ultimaColumna).getValues()[0]
       : [];
     var comparacion = compararHeadersVentas_(headersActuales, config.headers);
 
-    if (comparacion.coincide) {
+    if (comparacion.coincide || comparacion.esSuperconjuntoCompatible) {
       hoja.setFrozenRows(1);
       if (config.name === HOJA_TRAMOS_COMISIONES) {
         inicializarHojaTramosComisiones_(hoja);
@@ -257,7 +268,30 @@ function asegurarEstructuraVentasSheets_() {
       resultado.existentes++;
       resultado.hojas.push({
         hoja: config.name,
-        estado: "OK",
+        estado: comparacion.coincide ? "OK" : "OK_COMPATIBLE",
+        columnas: config.headers.length
+      });
+      return;
+    }
+
+    if (comparacion.esPrefijoCompatible) {
+      hoja.getRange(1, 1, 1, config.headers.length).setValues([config.headers]);
+      hoja.setFrozenRows(1);
+      resultado.existentes++;
+      resultado.hojas.push({
+        hoja: config.name,
+        estado: "ACTUALIZADA",
+        columnas: config.headers.length,
+        columnasAgregadas: comparacion.faltantes
+      });
+      return;
+    }
+
+    if (migrarHojaSegunHeadersEsperados_(hoja, config.headers)) {
+      resultado.existentes++;
+      resultado.hojas.push({
+        hoja: config.name,
+        estado: "MIGRADA_HEADERS",
         columnas: config.headers.length
       });
       return;
@@ -321,6 +355,99 @@ function asegurarHojaTramosComisiones_(hoja, headers) {
   inicializarHojaTramosComisiones_(hoja);
 }
 
+function migrarHojaVentasDiarias_(hoja, headersEsperados) {
+  var ultimaFila = hoja.getLastRow();
+  var ultimaColumna = Math.max(hoja.getLastColumn(), headersEsperados.length);
+  var headersActuales = ultimaColumna
+    ? hoja.getRange(1, 1, 1, ultimaColumna).getValues()[0].map(function(valor) {
+        return String(valor || "").trim();
+      })
+    : [];
+
+  var indiceLista = headersActuales.indexOf("ListaColaboradoresPresentes");
+  var indiceColaboradores = headersActuales.indexOf("ColaboradoresPresentes");
+
+  if (indiceLista === -1 || indiceColaboradores === -1 || indiceLista === indiceColaboradores - 1) {
+    return false;
+  }
+
+  var totalFilasDatos = Math.max(ultimaFila - 1, 0);
+  var valores = totalFilasDatos
+    ? hoja.getRange(2, 1, totalFilasDatos, ultimaColumna).getValues()
+    : [];
+
+  var filasMigradas = valores.map(function(fila) {
+    var porHeader = {};
+    headersActuales.forEach(function(header, index) {
+      porHeader[header] = fila[index];
+    });
+
+    return headersEsperados.map(function(header) {
+      return porHeader.hasOwnProperty(header) ? porHeader[header] : "";
+    });
+  });
+
+  hoja.clearContents();
+  hoja.getRange(1, 1, 1, headersEsperados.length).setValues([headersEsperados]);
+  if (filasMigradas.length) {
+    hoja.getRange(2, 1, filasMigradas.length, headersEsperados.length).setValues(filasMigradas);
+  }
+  hoja.setFrozenRows(1);
+  return true;
+}
+
+function migrarHojaSegunHeadersEsperados_(hoja, headersEsperados) {
+  var ultimaFila = hoja.getLastRow();
+  var ultimaColumna = hoja.getLastColumn();
+  if (!ultimaColumna) {
+    return false;
+  }
+
+  var headersActuales = hoja.getRange(1, 1, 1, ultimaColumna).getValues()[0].map(function(valor) {
+    return String(valor || "").trim();
+  });
+  var headersActualesNoVacios = headersActuales.filter(function(valor) {
+    return valor !== "";
+  });
+  var faltantes = headersEsperados.filter(function(header) {
+    return headersActualesNoVacios.indexOf(header) === -1;
+  });
+
+  if (faltantes.length > 0) {
+    return false;
+  }
+
+  var headersExtras = headersActualesNoVacios.filter(function(header) {
+    return headersEsperados.indexOf(header) === -1;
+  });
+  var headersFinales = headersEsperados.concat(headersExtras);
+  var totalFilasDatos = Math.max(ultimaFila - 1, 0);
+  var valores = totalFilasDatos
+    ? hoja.getRange(2, 1, totalFilasDatos, ultimaColumna).getValues()
+    : [];
+
+  var filasMigradas = valores.map(function(fila) {
+    var porHeader = {};
+    headersActuales.forEach(function(header, index) {
+      if (header) {
+        porHeader[header] = fila[index];
+      }
+    });
+
+    return headersFinales.map(function(header) {
+      return porHeader.hasOwnProperty(header) ? porHeader[header] : "";
+    });
+  });
+
+  hoja.clearContents();
+  hoja.getRange(1, 1, 1, headersFinales.length).setValues([headersFinales]);
+  if (filasMigradas.length) {
+    hoja.getRange(2, 1, filasMigradas.length, headersFinales.length).setValues(filasMigradas);
+  }
+  hoja.setFrozenRows(1);
+  return true;
+}
+
 function compararHeadersVentas_(actuales, esperados) {
   var actualesNormalizados = actuales
     .map(function(valor) { return String(valor || "").trim(); })
@@ -341,8 +468,20 @@ function compararHeadersVentas_(actuales, esperados) {
     return esperadosNormalizados.indexOf(valor) === -1;
   });
 
+  var esPrefijoCompatible = actualesNormalizados.length <= esperadosNormalizados.length &&
+    actualesNormalizados.every(function(valor, indice) {
+      return esperadosNormalizados[indice] === valor;
+    });
+
+  var esSuperconjuntoCompatible = actualesNormalizados.length >= esperadosNormalizados.length &&
+    esperadosNormalizados.every(function(valor, indice) {
+      return actualesNormalizados[indice] === valor;
+    });
+
   return {
     coincide: coincide,
+    esPrefijoCompatible: esPrefijoCompatible,
+    esSuperconjuntoCompatible: esSuperconjuntoCompatible,
     faltantes: faltantes,
     extras: extras
   };
@@ -1016,6 +1155,14 @@ function recalcularComisionesPorImportacion_(importacion) {
     );
   }
 
+  var estructura = asegurarEstructuraVentasSheets_();
+  if (estructura.inconsistentes > 0) {
+    throw crearErrorImportacion_(
+      "ERROR_CONFIG",
+      "La estructura del spreadsheet de ventas tiene hojas con headers inconsistentes."
+    );
+  }
+
   var ventasValidas = obtenerVentasValidasPorImportId_(importId);
   var propinasValidas = obtenerPropinasValidasPorImportId_(importId);
   var pagosValidos = obtenerPagosValidosPorImportId_(importId);
@@ -1097,6 +1244,15 @@ function construirContextoDiarioImportacion_(importacion, ventasValidas, propina
     .sort()
     .forEach(function(key) {
       var grupo = grupos[key];
+      var fechaVisible = formatearFechaVisibleImportacion_(grupo.fecha);
+      var listaColaboradoresPresentes = grupo.colaboradoresPresentes
+        .map(function(colaborador) {
+          return limpiarTextoImportacion_(colaborador.nombre);
+        })
+        .filter(function(nombre) {
+          return nombre !== "";
+        })
+        .join(", ");
       var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida, grupo.local);
       var cantidadColaboradores = grupo.colaboradoresPresentes.length;
       var comisionIndividual = calculo.comisionTotalDia;
@@ -1117,7 +1273,7 @@ function construirContextoDiarioImportacion_(importacion, ventasValidas, propina
 
       filasVentasDiarias.push([
         importacion.importId,
-        grupo.fecha,
+        fechaVisible,
         grupo.local,
         grupo.ventaBrutaValida,
         calculo.ventaNetaValida,
@@ -1125,6 +1281,7 @@ function construirContextoDiarioImportacion_(importacion, ventasValidas, propina
         calculo.porcentajeComision,
         comisionIndividual,
         grupo.propinasValidas,
+        listaColaboradoresPresentes,
         cantidadColaboradores,
         propinaIndividual,
         grupo.observacionesPresencia
@@ -1133,7 +1290,7 @@ function construirContextoDiarioImportacion_(importacion, ventasValidas, propina
       grupo.colaboradoresPresentes.forEach(function(colaborador) {
         filasComisionesDiarias.push([
           importacion.importId,
-          grupo.fecha,
+          fechaVisible,
           grupo.local,
           colaborador.nombre,
           comisionIndividual,
@@ -1148,7 +1305,7 @@ function construirContextoDiarioImportacion_(importacion, ventasValidas, propina
 
       filasCuadraturaPagos.push([
         importacion.importId,
-        grupo.fecha,
+        fechaVisible,
         grupo.local,
         grupo.pagosPorMedio.efectivo,
         grupo.pagosPorMedio.debito,
@@ -1163,7 +1320,7 @@ function construirContextoDiarioImportacion_(importacion, ventasValidas, propina
 
       filasKpiVentasDiarias.push([
         importacion.importId,
-        grupo.fecha,
+        fechaVisible,
         grupo.local,
         grupo.ventaBrutaValida,
         calculo.ventaNetaValida,
@@ -1192,7 +1349,7 @@ function agruparMetricasDiarias_(importacion, ventasValidas, propinasValidas, pa
   var importId = limpiarTextoImportacion_(importacion.importId);
 
   ventasValidas.forEach(function(venta) {
-    var fecha = limpiarTextoImportacion_(venta.Fecha);
+    var fecha = normalizarFechaOperacionAIso_(venta.Fecha);
     var local = limpiarTextoImportacion_(venta.Local) || localDefault;
     if (!fecha || !local) return;
 
@@ -1206,7 +1363,7 @@ function agruparMetricasDiarias_(importacion, ventasValidas, propinasValidas, pa
   });
 
   propinasValidas.forEach(function(propina) {
-    var fecha = limpiarTextoImportacion_(propina.Fecha);
+    var fecha = normalizarFechaOperacionAIso_(propina.Fecha);
     var local = limpiarTextoImportacion_(propina.Local) || localDefault;
     if (!fecha || !local) return;
 
@@ -1215,7 +1372,7 @@ function agruparMetricasDiarias_(importacion, ventasValidas, propinasValidas, pa
   });
 
   pagosValidos.forEach(function(pago) {
-    var fecha = limpiarTextoImportacion_(pago.Fecha);
+    var fecha = normalizarFechaOperacionAIso_(pago.Fecha);
     var local = limpiarTextoImportacion_(pago.Local) || localDefault;
     if (!fecha || !local) return;
 
@@ -1476,13 +1633,41 @@ function obtenerPresenciaDiariaPorLocalFecha_(local, fechaIso, importId) {
   var fechaBuscada = limpiarTextoImportacion_(fechaIso);
   var porColaborador = {};
   var marcasCrudas = [];
+  var usaFechaTurno = false;
 
   datos.forEach(function(registro) {
     if (normalizarTexto(registro.Local) !== localNormalizado) {
       return;
     }
 
-    var fechaRegistro = convertirFechaAsistenciaAIso_(registro["Fecha/Hora"]);
+    var fechaTurnoValor = obtenerCampoImportacion_(registro, [
+      "Fecha turno",
+      "Fecha Turno",
+      "FechaTurno"
+    ], "");
+    var validacionValor = obtenerCampoImportacion_(registro, [
+      "Validacion",
+      "Validación"
+    ], "");
+    var fechaHoraValor = obtenerCampoImportacion_(registro, [
+      "Fecha/Hora",
+      "Fecha y Hora",
+      "FechaHora"
+    ], "");
+    var fechaHoraRegistro = parsearFechaAsistencia_(fechaHoraValor);
+    var fechaRegistro = "";
+    var validacionNormalizada = normalizarTexto(validacionValor);
+
+    if (fechaTurnoValor !== "") {
+      usaFechaTurno = true;
+      fechaRegistro = convertirFechaTurnoAIso_(fechaTurnoValor);
+      if (!esValidacionTurnoCerradoOk_(validacionNormalizada)) {
+        return;
+      }
+    } else {
+      fechaRegistro = convertirFechaAsistenciaAIso_(fechaHoraRegistro);
+    }
+
     if (fechaRegistro !== fechaBuscada) {
       return;
     }
@@ -1495,11 +1680,13 @@ function obtenerPresenciaDiariaPorLocalFecha_(local, fechaIso, importId) {
     var accionRegistro = limpiarTextoImportacion_(registro["Acción"] || registro.Accion);
     marcasCrudas.push({
       fechaIso: fechaRegistro,
-      fechaHora: formatearFechaHora(registro["Fecha/Hora"]),
+      fechaHora: isNaN(fechaHoraRegistro.getTime()) ? "" : formatearFechaHora(fechaHoraRegistro),
+      fechaTurno: fechaTurnoValor !== "" ? convertirFechaTurnoAIso_(fechaTurnoValor) : "",
       nombre: nombre,
       rut: limpiarTextoImportacion_(registro.RUT || registro.Rut),
       local: limpiarTextoImportacion_(registro.Local),
-      accion: accionRegistro
+      accion: accionRegistro,
+      validacion: limpiarTextoImportacion_(validacionValor)
     });
 
     var key = normalizarTexto(nombre);
@@ -1507,15 +1694,19 @@ function obtenerPresenciaDiariaPorLocalFecha_(local, fechaIso, importId) {
       porColaborador[key] = {
         nombre: nombre,
         marcas: [],
-        fuentePresencia: "RegistroAsistencia",
+        fuentePresencia: usaFechaTurno
+          ? "RegistroAsistencia.FechaTurno.Validacion"
+          : "RegistroAsistencia",
         horasTrabajadas: 0
       };
     }
 
-    porColaborador[key].marcas.push({
-      fechaHora: new Date(registro["Fecha/Hora"]),
-      accion: accionRegistro
-    });
+    if (!isNaN(fechaHoraRegistro.getTime())) {
+      porColaborador[key].marcas.push({
+        fechaHora: fechaHoraRegistro,
+        accion: accionRegistro
+      });
+    }
   });
 
   var colaboradores = Object.keys(porColaborador)
@@ -1535,7 +1726,9 @@ function obtenerPresenciaDiariaPorLocalFecha_(local, fechaIso, importId) {
     horasTotales: horasTotales,
     marcasCrudas: marcasCrudas,
     observaciones: colaboradores.length
-      ? "Presencia diaria derivada desde RegistroAsistencia."
+      ? (usaFechaTurno
+        ? "Presencia diaria derivada desde Fecha turno + Validacion=Turno Cerrado ok."
+        : "Presencia diaria derivada desde RegistroAsistencia.")
       : "Sin marcas de asistencia para Fecha + Local."
   };
 }
@@ -1605,8 +1798,74 @@ function auditarPresenciaVentas(params) {
   });
 }
 
+function auditarRegistroAsistenciaRaw(params) {
+  requireAdminSession(params);
+
+  var local = limpiarTextoImportacion_(params.local);
+  var fecha = limpiarTextoImportacion_(params.fecha);
+  var hoja = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
+  var ultimaFila = hoja.getLastRow();
+  var ultimaColumna = hoja.getLastColumn();
+  var headers = ultimaColumna
+    ? hoja.getRange(1, 1, 1, ultimaColumna).getValues()[0].map(function(valor) {
+        return String(valor || "").trim();
+      })
+    : [];
+  var registros = leerHojaComoObjetos_(hoja);
+  var localNormalizado = normalizarTexto(local);
+  var fechaBuscada = limpiarTextoImportacion_(fecha);
+
+  var muestras = registros
+    .filter(function(registro) {
+      if (local && normalizarTexto(registro.Local) !== localNormalizado) {
+        return false;
+      }
+
+      if (!fechaBuscada) {
+        return true;
+      }
+
+      var fechaTurno = convertirFechaTurnoAIso_(obtenerCampoImportacion_(registro, [
+        "Fecha turno",
+        "Fecha Turno",
+        "FechaTurno"
+      ], ""));
+      var fechaHora = convertirFechaAsistenciaAIso_(obtenerCampoImportacion_(registro, [
+        "Fecha/Hora",
+        "Fecha y Hora",
+        "FechaHora"
+      ], ""));
+
+      return fechaTurno === fechaBuscada || fechaHora === fechaBuscada;
+    })
+    .slice(0, 25)
+    .map(function(registro) {
+      return {
+        rowNumber: registro.rowNumber,
+        local: limpiarTextoImportacion_(registro.Local),
+        nombre: limpiarTextoImportacion_(registro.Nombre),
+        fechaHoraRaw: obtenerCampoImportacion_(registro, ["Fecha/Hora", "Fecha y Hora", "FechaHora"], ""),
+        fechaHoraIso: convertirFechaAsistenciaAIso_(obtenerCampoImportacion_(registro, ["Fecha/Hora", "Fecha y Hora", "FechaHora"], "")),
+        fechaTurnoRaw: obtenerCampoImportacion_(registro, ["Fecha turno", "Fecha Turno", "FechaTurno"], ""),
+        fechaTurnoIso: convertirFechaTurnoAIso_(obtenerCampoImportacion_(registro, ["Fecha turno", "Fecha Turno", "FechaTurno"], "")),
+        accion: limpiarTextoImportacion_(registro["Acción"] || registro.Accion),
+        validacion: limpiarTextoImportacion_(obtenerCampoImportacion_(registro, ["Validacion", "Validación"], ""))
+      };
+    });
+
+  return responderJSON({
+    status: "SUCCESS",
+    local: local,
+    fecha: fecha,
+    headers: headers,
+    totalRegistrosHoja: registros.length,
+    totalMuestras: muestras.length,
+    muestras: muestras
+  });
+}
+
 function convertirFechaAsistenciaAIso_(valor) {
-  var fecha = new Date(valor);
+  var fecha = parsearFechaAsistencia_(valor);
   if (isNaN(fecha.getTime())) {
     return "";
   }
@@ -1615,6 +1874,122 @@ function convertirFechaAsistenciaAIso_(valor) {
     fecha,
     Session.getScriptTimeZone(),
     "yyyy-MM-dd"
+  );
+}
+
+function convertirFechaTurnoAIso_(valor) {
+  var fecha = parsearFechaAsistencia_(valor);
+  if (isNaN(fecha.getTime())) {
+    return "";
+  }
+
+  return Utilities.formatDate(
+    fecha,
+    Session.getScriptTimeZone(),
+    "yyyy-MM-dd"
+  );
+}
+
+function normalizarFechaOperacionAIso_(valor) {
+  if (valor instanceof Date) {
+    return Utilities.formatDate(
+      valor,
+      Session.getScriptTimeZone(),
+      "yyyy-MM-dd"
+    );
+  }
+
+  var texto = limpiarTextoImportacion_(valor);
+  if (!texto) {
+    return "";
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+    return texto;
+  }
+
+  var matchLatam = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (matchLatam) {
+    var dia = matchLatam[1].padStart(2, "0");
+    var mes = matchLatam[2].padStart(2, "0");
+    var anio = matchLatam[3];
+    return [anio, mes, dia].join("-");
+  }
+
+  var fecha = parsearFechaAsistencia_(texto);
+  if (isNaN(fecha.getTime())) {
+    return "";
+  }
+
+  return Utilities.formatDate(
+    fecha,
+    Session.getScriptTimeZone(),
+    "yyyy-MM-dd"
+  );
+}
+
+function esValidacionTurnoCerradoOk_(valorNormalizado) {
+  var texto = normalizarTexto(valorNormalizado);
+  if (!texto) {
+    return false;
+  }
+
+  if (texto === "turno cerrado ok") {
+    return true;
+  }
+
+  return texto.indexOf("turno cerrado") !== -1 && texto.indexOf("ok") !== -1;
+}
+
+function parsearFechaAsistencia_(valor) {
+  if (valor instanceof Date) {
+    return valor;
+  }
+
+  if (typeof valor === "number") {
+    return new Date(valor);
+  }
+
+  var texto = limpiarTextoImportacion_(valor);
+  if (!texto) {
+    return new Date("");
+  }
+
+  var match = texto.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (match) {
+    var dia = Number(match[1]);
+    var mes = Number(match[2]) - 1;
+    var anio = Number(match[3]);
+    var hora = Number(match[4] || 0);
+    var minutos = Number(match[5] || 0);
+    var segundos = Number(match[6] || 0);
+    return new Date(anio, mes, dia, hora, minutos, segundos);
+  }
+
+  var fecha = new Date(texto);
+  return fecha;
+}
+
+function formatearFechaVisibleImportacion_(valor) {
+  var texto = limpiarTextoImportacion_(valor);
+  if (!texto) {
+    return "";
+  }
+
+  var matchIso = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (matchIso) {
+    return [matchIso[3], matchIso[2], matchIso[1]].join("/");
+  }
+
+  var fecha = new Date(texto);
+  if (isNaN(fecha.getTime())) {
+    return texto;
+  }
+
+  return Utilities.formatDate(
+    fecha,
+    Session.getScriptTimeZone(),
+    "dd/MM/yyyy"
   );
 }
 
