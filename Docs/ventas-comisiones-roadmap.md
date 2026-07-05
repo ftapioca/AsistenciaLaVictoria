@@ -2,7 +2,7 @@
 # Módulo Ventas, Comisiones y Propinas
 
 Estado documental: actualizado contra `main`  
-Estado del trabajo: flujo validado en `staging`; siguiente paso recomendado: promoción controlada a `prod`  
+Estado del trabajo: flujo validado en `staging` y `prod`; base operativa lista para mejoras incrementales  
 Entorno recomendado para pruebas: `staging`  
 Rama histórica de referencia: `feature/spreadsheet-by-id`
 
@@ -26,7 +26,7 @@ Estado observado al revisar `main`:
 Conclusión:
 
 - El mayor vacío ya no parece ser el parser.
-- El siguiente tramo corto recomendado es promover el backend validado a `prod` y ejecutar una importación controlada.
+- El siguiente tramo corto recomendado ya no es despliegue, sino mejoras incrementales sobre una base productiva operativa.
 
 ---
 
@@ -70,8 +70,6 @@ Conclusión:
 
 ### Pendiente real
 
-- Promoción controlada a `prod`.
-- Verificación productiva con una importación real por local.
 - Endpoint `AnularImportacionVentas`.
 - Endpoint `ConsultarResumenComisiones`.
 - UI administrativa mínima para recalcular y revisar resultados desde frontend.
@@ -82,13 +80,13 @@ Conclusión:
 
 Orden recomendado para retomar el desarrollo:
 
-1. Promover backend y frontend necesarios a `prod`.
-2. Ejecutar una importación controlada en producción.
-3. Confirmar con datos reales que el cálculo diario sigue coherente en ambos locales.
-4. Exponer una UI mínima para:
+1. Exponer una UI mínima para:
    - detectar importación activa por `Local + Periodo`
    - ejecutar `RecalcularComisiones`
    - mostrar resumen del resultado
+2. Implementar `AnularImportacionVentas`.
+3. Implementar `ConsultarResumenComisiones`.
+4. Seguir con mejoras funcionales del flujo operativo ya desplegado.
 
 No se recomienda partir por:
 
@@ -104,7 +102,7 @@ Motivo:
 
 ## Reglas operativas vigentes
 
-- Las pruebas de esta línea de trabajo ya fueron realizadas sobre `staging`.
+- Las pruebas de esta línea de trabajo ya fueron realizadas sobre `staging` y `prod`.
 - Producción se actualiza solo desde `main`.
 - El deploy productivo debe usar deployment versionado, no `@HEAD`.
 - El archivo bruto no se envía a Apps Script.

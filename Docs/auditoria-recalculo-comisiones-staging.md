@@ -1,5 +1,5 @@
 # Pauta Operativa
-# Auditoría y Cierre de `staging` para Ventas, Comisiones y Propinas
+# Auditoría y Cierre de `staging` y `prod` para Ventas, Comisiones y Propinas
 
 Estado: validado en `staging`  
 Fecha de cierre: 5 de julio de 2026
@@ -142,6 +142,46 @@ Observación:
   - `5d99ee2` `Fix staging Apps Script deployment URL typo`
 - commit de cache busting del frontend:
   - `05ca058` `Bust frontend cache for staging ventas deploy`
+
+---
+
+## Cierre productivo
+
+### Estado final en `prod`
+
+- backend productivo actualizado sobre el deployment existente usado por el frontend
+- importaciones de junio ejecutadas correctamente en producción
+- cálculo de ventas, comisiones y propinas confirmado para ambos locales
+- migración legacy de `VentasDiarias` aplicada correctamente en producción
+- `TestVentasSheet` terminó con `inconsistentes = 0`
+
+### Referencias exactas validadas en `prod`
+
+- frontend productivo:
+  - `https://ftapioca.github.io/AsistenciaLaVictoria/ventasMensuales.html?env=prod`
+- Apps Script productivo usado por frontend:
+  - `https://script.google.com/macros/s/AKfycbyqIaw4SLUy1pYl7iAv1QPrgWvHNE51H4dVk-R0qRZ8DppTZNAWRhN0W8bdmG3W23rq/exec`
+- versión de Apps Script productiva validada:
+  - `@30`
+
+### Commits relevantes del cierre
+
+- `2774cb7` `feat: finalize ventas and comisiones production rollout`
+- `89caf7a` `fix: migrate legacy ventas diarias headers in prod`
+
+### Resultado operativo
+
+El módulo queda operativo en producción para:
+
+- importar ventas POS por local y período
+- poblar `VentasPOS`, `PropinasPOS` y `PagosPOS`
+- recalcular automáticamente al finalizar la importación
+- poblar `VentasDiarias`
+- poblar `ComisionesDiarias`
+- poblar `ResumenMensualComisiones`
+- poblar `CuadraturaPagos`
+- poblar `KPIVentasDiarias`
+- calcular colaboradores presentes y reparto de propinas desde `RegistroAsistencia`
 
 ---
 
