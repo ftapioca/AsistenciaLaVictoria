@@ -366,8 +366,17 @@ function migrarHojaVentasDiarias_(hoja, headersEsperados) {
 
   var indiceLista = headersActuales.indexOf("ListaColaboradoresPresentes");
   var indiceColaboradores = headersActuales.indexOf("ColaboradoresPresentes");
+  var puedeMigrarse = false;
 
-  if (indiceLista === -1 || indiceColaboradores === -1 || indiceLista === indiceColaboradores - 1) {
+  if (indiceColaboradores !== -1) {
+    if (indiceLista === -1) {
+      puedeMigrarse = true;
+    } else if (indiceLista !== indiceColaboradores - 1) {
+      puedeMigrarse = true;
+    }
+  }
+
+  if (!puedeMigrarse) {
     return false;
   }
 
