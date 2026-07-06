@@ -108,22 +108,37 @@
     clearSession();
   }
 
+  function buildApiError(data, fallbackMessage) {
+    const error = new Error(data && data.mensaje ? data.mensaje : fallbackMessage);
+    error.code = data && data.status ? data.status : "ERROR";
+    return error;
+  }
+
+  function ensureAuthorized(data) {
+    if (!data || !data.status) {
+      return data;
+    }
+
+    if (data.status === "UNAUTHORIZED") {
+      clearSession();
+      redirectToIndex("session");
+      throw buildApiError(data, "Acceso no autorizado.");
+    }
+
+    if (data.status === "FORBIDDEN") {
+      throw buildApiError(data, "No tienes permisos para esta acción.");
+    }
+
+    return data;
+  }
+
   async function apiGet(params) {
     const session = getSession();
     const data = await request(
       { ...params, sessionToken: session && session.sessionToken ? session.sessionToken : "" },
       { method: "GET" }
     );
-
-    if (data.status === "UNAUTHORIZED" || data.status === "FORBIDDEN") {
-      clearSession();
-      redirectToIndex("session");
-      const error = new Error(data.mensaje || "Acceso no autorizado.");
-      error.code = data.status;
-      throw error;
-    }
-
-    return data;
+    return ensureAuthorized(data);
   }
 
   async function apiPost(params) {
@@ -132,16 +147,7 @@
       { ...params, sessionToken: session && session.sessionToken ? session.sessionToken : "" },
       { method: "POST" }
     );
-
-    if (data.status === "UNAUTHORIZED" || data.status === "FORBIDDEN") {
-      clearSession();
-      redirectToIndex("session");
-      const error = new Error(data.mensaje || "Acceso no autorizado.");
-      error.code = data.status;
-      throw error;
-    }
-
-    return data;
+    return ensureAuthorized(data);
   }
 
   function redirectToIndex(reason) {

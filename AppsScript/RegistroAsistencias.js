@@ -13,6 +13,14 @@ function doGet(e) {
   var params = e.parameter || {};
   var accion = params.accion;
 
+  function responderErrorAccion_(error, fallbackMessage) {
+    var status = String((error && error.code) || "").trim() || "ERROR";
+    return responderJSON({
+      status: status,
+      mensaje: (error && error.message) || fallbackMessage || "No se pudo completar la solicitud."
+    });
+  }
+
   if (accion === "UsuariosPorRol") {
     return obtenerUsuariosPorRol(params);
   }
@@ -174,10 +182,7 @@ function doGet(e) {
       requireAdminSession(params);
       return obtenerLocalesPagosMensuales(params);
     } catch (error) {
-      return responderJSON({
-        status: error.code || "FORBIDDEN",
-        mensaje: error.message || "Acceso no autorizado."
-      });
+      return responderErrorAccion_(error, "No se pudieron cargar los locales exportables.");
     }
   }
 
@@ -186,10 +191,7 @@ function doGet(e) {
       requireAdminSession(params);
       return consultarPagosMensuales(params);
     } catch (error) {
-      return responderJSON({
-        status: error.code || "FORBIDDEN",
-        mensaje: error.message || "Acceso no autorizado."
-      });
+      return responderErrorAccion_(error, "No se pudo consultar el detalle mensual exportable.");
     }
   }
 
