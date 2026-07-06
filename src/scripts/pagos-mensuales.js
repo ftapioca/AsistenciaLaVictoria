@@ -4,6 +4,7 @@ import '../../app-config.staging.js';
 import '../../app-config.js';
 import '../../env-badge.js';
 import '../../auth.js';
+import * as StyledXLSX from 'xlsx-js-style';
 
 import { createButton } from '../components/Button.js';
 import { createCard } from '../components/Card.js';
@@ -527,7 +528,7 @@ function createWeekRows(semanas) {
 }
 
 function buildWorkbookForCollaborator(periodo, local, collaborator, inputState) {
-  const workbook = XLSX.utils.book_new();
+  const workbook = StyledXLSX.utils.book_new();
   const detailRows = collaborator.detalle || [];
   const totalPagoDiario = detailRows.reduce((total, row) => total + Number(row.pagoDiario || 0), 0);
   const totalHorasExtras = detailRows.reduce((total, row) => total + Number(row.horasExtrasDiarias || 0), 0);
@@ -542,7 +543,7 @@ function buildWorkbookForCollaborator(periodo, local, collaborator, inputState) 
   const finalRowLabel = buildFinalRowLabel(periodo);
 
   const rows = [
-    [`Planilla de ${monthLabel}`, collaborator.colaborador, '', '', '', '', ''],
+    [`Planilla de ${monthLabel}`, '', '', collaborator.colaborador, '', '', ''],
     ['', '', '', '', '', '', ''],
     ['Fecha Turno', 'Tipo Dia', 'Pago Diario', 'Horas Extras Diarias', 'Comisión', 'Propina', 'Total'],
     ...detailRows.map((row) => [
@@ -560,7 +561,7 @@ function buildWorkbookForCollaborator(periodo, local, collaborator, inputState) 
     ['', '', '', '', finalRowLabel, '', totalPagar],
   ];
 
-  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  const sheet = StyledXLSX.utils.aoa_to_sheet(rows);
   sheet['!cols'] = [
     { wch: 18 },
     { wch: 20 },
@@ -570,67 +571,107 @@ function buildWorkbookForCollaborator(periodo, local, collaborator, inputState) 
     { wch: 16 },
     { wch: 16 },
   ];
+  sheet['!rows'] = [
+    { hpt: 28 },
+    { hpt: 10 },
+    { hpt: 24 },
+  ];
   sheet['!merges'] = [
-    XLSX.utils.decode_range('A1:A1'),
-    XLSX.utils.decode_range('B1:C1'),
+    StyledXLSX.utils.decode_range('A1:C1'),
+    StyledXLSX.utils.decode_range('D1:G1'),
   ];
 
-  const range = XLSX.utils.decode_range(sheet['!ref']);
+  const range = StyledXLSX.utils.decode_range(sheet['!ref']);
   for (let col = 2; col <= 6; col += 1) {
     for (let rowIndex = 3; rowIndex <= range.e.r; rowIndex += 1) {
-      const ref = XLSX.utils.encode_cell({ r: rowIndex, c: col });
+      const ref = StyledXLSX.utils.encode_cell({ r: rowIndex, c: col });
       if (!sheet[ref]) continue;
       sheet[ref].z = '$#,##0';
     }
   }
 
-  const titleFill = { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } };
-  const headerFill = { patternType: 'solid', fgColor: { rgb: 'F4E1CF' } };
-  const feriadoFill = { patternType: 'solid', fgColor: { rgb: 'D7EBF1' } };
-  const totalColumnFill = { patternType: 'solid', fgColor: { rgb: 'F7E4D4' } };
-  const subtotalFill = { patternType: 'solid', fgColor: { rgb: 'F8EFE4' } };
-  const adjustmentFill = { patternType: 'solid', fgColor: { rgb: 'E7E0EC' } };
-  const finalFill = { patternType: 'solid', fgColor: { rgb: 'DCE8B6' } };
+  const palette = {
+    white: 'FFFFFF',
+    charcoal: '2A1710',
+    muted: '7B675E',
+    peach: 'F4E1CF',
+    peachSoft: 'FBF3EA',
+    totalColumn: 'F7E4D4',
+    feriado: 'D7EBF1',
+    adjustment: 'E7E0EC',
+    final: 'DCE8B6',
+    border: 'D8C9BF',
+  };
 
-  ['A1', 'B1'].forEach((ref) => {
-    if (sheet[ref]) {
-      sheet[ref].s = {
-        font: { bold: true, sz: 18 },
-        fill: titleFill,
-        alignment: { vertical: 'center', horizontal: ref === 'A1' ? 'left' : 'left' },
-      };
-    }
+  const borderAll = {
+    top: { style: 'thin', color: { rgb: palette.border } },
+    bottom: { style: 'thin', color: { rgb: palette.border } },
+    left: { style: 'thin', color: { rgb: palette.border } },
+    right: { style: 'thin', color: { rgb: palette.border } },
+  };
+
+  const baseCellStyle = {
+    border: borderAll,
+    font: { name: 'Aptos', sz: 11, color: { rgb: palette.charcoal } },
+    alignment: { vertical: 'center', horizontal: 'left' },
+  };
+
+  const currencyCellStyle = {
+    ...baseCellStyle,
+    alignment: { vertical: 'center', horizontal: 'right' },
+  };
+
+  const applyStyle = (ref, style) => {
+    if (!sheet[ref]) return;
+    sheet[ref].s = style;
+  };
+
+  const withFill = (style, rgb) => ({
+    ...style,
+    fill: { patternType: 'solid', fgColor: { rgb } },
+  });
+
+  applyStyle('A1', {
+    font: { name: 'Aptos Display', bold: true, sz: 18, color: { rgb: palette.charcoal } },
+    alignment: { vertical: 'center', horizontal: 'left' },
+    fill: { patternType: 'solid', fgColor: { rgb: palette.white } },
+  });
+  applyStyle('D1', {
+    font: { name: 'Aptos Display', bold: true, sz: 18, color: { rgb: palette.charcoal } },
+    alignment: { vertical: 'center', horizontal: 'left' },
+    fill: { patternType: 'solid', fgColor: { rgb: palette.white } },
   });
 
   for (let col = 0; col <= 6; col += 1) {
-    const headerRef = XLSX.utils.encode_cell({ r: 2, c: col });
-    if (sheet[headerRef]) {
-      sheet[headerRef].s = {
-        font: { bold: true },
-        fill: headerFill,
-      };
-    }
+    const headerRef = StyledXLSX.utils.encode_cell({ r: 2, c: col });
+    applyStyle(headerRef, {
+      ...withFill(baseCellStyle, palette.peach),
+      font: { name: 'Aptos', bold: true, sz: 11, color: { rgb: palette.charcoal } },
+      alignment: { vertical: 'center', horizontal: 'left' },
+    });
   }
 
   detailRows.forEach((row, index) => {
     const actualRow = index + 3;
-    if (row.tipoDia !== 'Feriado') return;
     for (let col = 0; col <= 6; col += 1) {
-      const ref = XLSX.utils.encode_cell({ r: actualRow, c: col });
-      if (sheet[ref]) {
-        sheet[ref].s = { fill: feriadoFill };
+      const ref = StyledXLSX.utils.encode_cell({ r: actualRow, c: col });
+      const isCurrencyColumn = col >= 2;
+      const defaultStyle = isCurrencyColumn ? currencyCellStyle : baseCellStyle;
+      let nextStyle = defaultStyle;
+      if (col === 6) {
+        nextStyle = withFill(defaultStyle, palette.totalColumn);
       }
+      if (row.tipoDia === 'Feriado') {
+        nextStyle = withFill(nextStyle, palette.feriado);
+      }
+      applyStyle(ref, nextStyle);
     }
   });
 
   for (let rowIndex = 3; rowIndex <= detailRows.length + 2; rowIndex += 1) {
-    const totalColRef = XLSX.utils.encode_cell({ r: rowIndex, c: 6 });
-    if (sheet[totalColRef]) {
-      sheet[totalColRef].s = {
-        ...(sheet[totalColRef].s || {}),
-        fill: totalColumnFill,
-      };
-    }
+    const totalColRef = StyledXLSX.utils.encode_cell({ r: rowIndex, c: 6 });
+    const existingStyle = sheet[totalColRef] && sheet[totalColRef].s ? sheet[totalColRef].s : currencyCellStyle;
+    applyStyle(totalColRef, withFill(existingStyle, detailRows[rowIndex - 3]?.tipoDia === 'Feriado' ? palette.feriado : palette.totalColumn));
   }
 
   const subtotalRow = detailRows.length + 3;
@@ -639,38 +680,32 @@ function buildWorkbookForCollaborator(periodo, local, collaborator, inputState) 
   const finalRow = subtotalRow + 3;
 
   for (let col = 0; col <= 6; col += 1) {
-    const ref = XLSX.utils.encode_cell({ r: subtotalRow, c: col });
-    if (sheet[ref]) {
-      sheet[ref].s = {
-        font: { bold: true },
-        fill: subtotalFill,
-      };
-    }
+    const ref = StyledXLSX.utils.encode_cell({ r: subtotalRow, c: col });
+    applyStyle(ref, {
+      ...withFill(col >= 2 ? currencyCellStyle : baseCellStyle, palette.peachSoft),
+      font: { name: 'Aptos', bold: true, sz: 11, color: { rgb: palette.charcoal } },
+    });
   }
 
   [descuentoRow, consumoRow].forEach((rowIndex) => {
     for (let col = 4; col <= 6; col += 1) {
-      const ref = XLSX.utils.encode_cell({ r: rowIndex, c: col });
-      if (sheet[ref]) {
-        sheet[ref].s = {
-          font: { bold: col >= 4 },
-          fill: adjustmentFill,
-        };
-      }
+      const ref = StyledXLSX.utils.encode_cell({ r: rowIndex, c: col });
+      applyStyle(ref, {
+        ...withFill(col === 6 ? currencyCellStyle : baseCellStyle, palette.adjustment),
+        font: { name: 'Aptos', bold: true, sz: 11, color: { rgb: palette.charcoal } },
+      });
     }
   });
 
   for (let col = 4; col <= 6; col += 1) {
-    const ref = XLSX.utils.encode_cell({ r: finalRow, c: col });
-    if (sheet[ref]) {
-      sheet[ref].s = {
-        font: { bold: true },
-        fill: finalFill,
-      };
-    }
+    const ref = StyledXLSX.utils.encode_cell({ r: finalRow, c: col });
+    applyStyle(ref, {
+      ...withFill(col === 6 ? currencyCellStyle : baseCellStyle, palette.final),
+      font: { name: 'Aptos', bold: true, sz: 12, color: { rgb: palette.charcoal } },
+    });
   }
 
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Pagos');
+  StyledXLSX.utils.book_append_sheet(workbook, sheet, 'Pagos');
   return workbook;
 }
 
@@ -681,7 +716,7 @@ async function exportZipForCurrentSelection() {
     return;
   }
 
-  if (!window.JSZip || !window.XLSX) {
+  if (!window.JSZip) {
     toast.show('error', 'Faltan las librerías necesarias para exportar ZIP/XLSX.');
     return;
   }
@@ -705,7 +740,7 @@ async function exportZipForCurrentSelection() {
       const key = `${collaborator.local}|${collaborator.colaborador}`;
       const inputState = getCollaboratorInputState(key);
       const workbook = buildWorkbookForCollaborator(periodo, local, collaborator, inputState);
-      const workbookArray = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+      const workbookArray = StyledXLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
       const fileName = `${periodo} - ${slugifyFilename(local)} - ${slugifyFilename(collaborator.colaborador)}.xlsx`;
       zip.file(fileName, workbookArray);
     });
