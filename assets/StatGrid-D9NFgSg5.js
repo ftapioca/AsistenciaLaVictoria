@@ -1,0 +1,5 @@
+import{i as e}from"./Card-sW7aCYO4.js";function t(t=[],n={}){let{tone:r=`dark`,className:i=``}=n,a=r===`dark`?`border-neutral-cream/12 bg-neutral-cream/6 text-neutral-cream`:`border-neutral-charcoal/10 bg-white/78 text-neutral-charcoal`,o=r===`dark`?`text-neutral-cream/54`:`text-neutral-muted`,s=r===`dark`?`text-neutral-cream/68`:`text-neutral-charcoal/70`,c=document.createElement(`div`);return c.className=e(`grid gap-md sm:grid-cols-3`,i),t.forEach(t=>{let n=document.createElement(`div`);n.className=e(`rounded-2xl border p-lg backdrop-blur`,a),n.innerHTML=`
+      <p class="text-xs font-black uppercase tracking-[0.22em] ${o}">${t.label}</p>
+      <p class="mt-sm text-lg font-black">${t.value}</p>
+      <p class="mt-sm text-sm leading-relaxed ${s}">${t.detail}</p>
+    `,c.appendChild(n)}),c}export{t};

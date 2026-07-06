@@ -90,6 +90,22 @@ function formatCurrency(value) {
   return currency.format(Number(value || 0));
 }
 
+function formatPlainAmount(value) {
+  return new Intl.NumberFormat('es-CL', {
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
+
+function parseCurrencyInputValue(value) {
+  const digits = String(value || '').replace(/[^\d-]/g, '');
+  const number = Number(digits || 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatCurrencyInputValue(value) {
+  return `$${formatPlainAmount(value)}`;
+}
+
 function formatMonthYearLabel(periodo) {
   const [year, month] = String(periodo || '').split('-').map(Number);
   if (!year || !month) {
@@ -231,6 +247,37 @@ function numberInput(initialValue = '0') {
   input.min = '0';
   input.step = '1';
   return { wrapper, input };
+}
+
+function currencyInput(initialValue = 0) {
+  const { wrapper, input } = createInputField({
+    type: 'text',
+    value: formatCurrencyInputValue(initialValue),
+    placeholder: '$0',
+  });
+  wrapper.className = 'grid gap-sm';
+  input.inputMode = 'numeric';
+  input.autocomplete = 'off';
+
+  input.addEventListener('focus', () => {
+    input.setSelectionRange(input.value.length, input.value.length);
+  });
+
+  input.addEventListener('input', () => {
+    const parsed = parseCurrencyInputValue(input.value);
+    input.value = formatCurrencyInputValue(parsed);
+  });
+
+  return {
+    wrapper,
+    input,
+    getValue() {
+      return parseCurrencyInputValue(input.value);
+    },
+    setValue(nextValue) {
+      input.value = formatCurrencyInputValue(nextValue);
+    },
+  };
 }
 
 function textInput(placeholder = '') {
@@ -491,7 +538,12 @@ function buildWorkbookForCollaborator(periodo, local, collaborator, inputState) 
   const consumo = Number(inputState.consumo || 0);
   const totalPagar = subtotal - descuento - consumo;
 
+  const monthLabel = formatMonthYearLabel(periodo).toUpperCase();
+  const finalRowLabel = buildFinalRowLabel(periodo);
+
   const rows = [
+    [`Planilla de ${monthLabel}`, collaborator.colaborador, '', '', '', '', ''],
+    ['', '', '', '', '', '', ''],
     ['Fecha Turno', 'Tipo Dia', 'Pago Diario', 'Horas Extras Diarias', 'Comisión', 'Propina', 'Total'],
     ...detailRows.map((row) => [
       row.fechaVisible,
@@ -502,38 +554,56 @@ function buildWorkbookForCollaborator(periodo, local, collaborator, inputState) 
       Number(row.propina || 0),
       Number(row.total || 0),
     ]),
-    ['Totales', '', totalPagoDiario, totalHorasExtras, totalComision, totalPropina, subtotal],
-    ['Descuento', inputState.descuentoObservacion || '', '', '', '', '', descuento ? -descuento : 0],
-    ['Consumo', inputState.consumoObservacion || '', '', '', '', '', consumo ? -consumo : 0],
-    [buildFinalRowLabel(periodo), '', '', '', '', '', totalPagar],
+    ['SubTotales', '', totalPagoDiario, totalHorasExtras, totalComision, totalPropina, subtotal],
+    ['', '', '', '', 'Descuento', inputState.descuentoObservacion || '', descuento ? -descuento : 0],
+    ['', '', '', '', 'Consumo', inputState.consumoObservacion || '', consumo ? -consumo : 0],
+    ['', '', '', '', finalRowLabel, '', totalPagar],
   ];
 
   const sheet = XLSX.utils.aoa_to_sheet(rows);
   sheet['!cols'] = [
-    { wch: 16 },
     { wch: 18 },
+    { wch: 20 },
     { wch: 16 },
     { wch: 22 },
     { wch: 14 },
-    { wch: 14 },
     { wch: 16 },
+    { wch: 16 },
+  ];
+  sheet['!merges'] = [
+    XLSX.utils.decode_range('A1:A1'),
+    XLSX.utils.decode_range('B1:C1'),
   ];
 
   const range = XLSX.utils.decode_range(sheet['!ref']);
   for (let col = 2; col <= 6; col += 1) {
-    for (let rowIndex = 1; rowIndex <= range.e.r; rowIndex += 1) {
+    for (let rowIndex = 3; rowIndex <= range.e.r; rowIndex += 1) {
       const ref = XLSX.utils.encode_cell({ r: rowIndex, c: col });
       if (!sheet[ref]) continue;
       sheet[ref].z = '$#,##0';
     }
   }
 
-  const feriadoFill = { patternType: 'solid', fgColor: { rgb: 'F7E5B9' } };
-  const headerFill = { patternType: 'solid', fgColor: { rgb: 'E7D2A4' } };
-  const totalFill = { patternType: 'solid', fgColor: { rgb: 'F4E9D0' } };
+  const titleFill = { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } };
+  const headerFill = { patternType: 'solid', fgColor: { rgb: 'F4E1CF' } };
+  const feriadoFill = { patternType: 'solid', fgColor: { rgb: 'D7EBF1' } };
+  const totalColumnFill = { patternType: 'solid', fgColor: { rgb: 'F7E4D4' } };
+  const subtotalFill = { patternType: 'solid', fgColor: { rgb: 'F8EFE4' } };
+  const adjustmentFill = { patternType: 'solid', fgColor: { rgb: 'E7E0EC' } };
+  const finalFill = { patternType: 'solid', fgColor: { rgb: 'DCE8B6' } };
+
+  ['A1', 'B1'].forEach((ref) => {
+    if (sheet[ref]) {
+      sheet[ref].s = {
+        font: { bold: true, sz: 18 },
+        fill: titleFill,
+        alignment: { vertical: 'center', horizontal: ref === 'A1' ? 'left' : 'left' },
+      };
+    }
+  });
 
   for (let col = 0; col <= 6; col += 1) {
-    const headerRef = XLSX.utils.encode_cell({ r: 0, c: col });
+    const headerRef = XLSX.utils.encode_cell({ r: 2, c: col });
     if (sheet[headerRef]) {
       sheet[headerRef].s = {
         font: { bold: true },
@@ -543,25 +613,60 @@ function buildWorkbookForCollaborator(periodo, local, collaborator, inputState) 
   }
 
   detailRows.forEach((row, index) => {
+    const actualRow = index + 3;
     if (row.tipoDia !== 'Feriado') return;
     for (let col = 0; col <= 6; col += 1) {
-      const ref = XLSX.utils.encode_cell({ r: index + 1, c: col });
+      const ref = XLSX.utils.encode_cell({ r: actualRow, c: col });
       if (sheet[ref]) {
         sheet[ref].s = { fill: feriadoFill };
       }
     }
   });
 
-  const totalStartRow = detailRows.length + 1;
-  for (let rowIndex = totalStartRow; rowIndex <= totalStartRow + 3; rowIndex += 1) {
-    for (let col = 0; col <= 6; col += 1) {
+  for (let rowIndex = 3; rowIndex <= detailRows.length + 2; rowIndex += 1) {
+    const totalColRef = XLSX.utils.encode_cell({ r: rowIndex, c: 6 });
+    if (sheet[totalColRef]) {
+      sheet[totalColRef].s = {
+        ...(sheet[totalColRef].s || {}),
+        fill: totalColumnFill,
+      };
+    }
+  }
+
+  const subtotalRow = detailRows.length + 3;
+  const descuentoRow = subtotalRow + 1;
+  const consumoRow = subtotalRow + 2;
+  const finalRow = subtotalRow + 3;
+
+  for (let col = 0; col <= 6; col += 1) {
+    const ref = XLSX.utils.encode_cell({ r: subtotalRow, c: col });
+    if (sheet[ref]) {
+      sheet[ref].s = {
+        font: { bold: true },
+        fill: subtotalFill,
+      };
+    }
+  }
+
+  [descuentoRow, consumoRow].forEach((rowIndex) => {
+    for (let col = 4; col <= 6; col += 1) {
       const ref = XLSX.utils.encode_cell({ r: rowIndex, c: col });
       if (sheet[ref]) {
         sheet[ref].s = {
-          font: { bold: rowIndex === totalStartRow || rowIndex === totalStartRow + 3 },
-          fill: totalFill,
+          font: { bold: col >= 4 },
+          fill: adjustmentFill,
         };
       }
+    }
+  });
+
+  for (let col = 4; col <= 6; col += 1) {
+    const ref = XLSX.utils.encode_cell({ r: finalRow, c: col });
+    if (sheet[ref]) {
+      sheet[ref].s = {
+        font: { bold: true },
+        fill: finalFill,
+      };
     }
   }
 
@@ -609,7 +714,7 @@ async function exportZipForCurrentSelection() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `${periodo} - Planilla de pagos ${slugifyFilename(monthName)}.zip`;
+    anchor.download = `${periodo} - Planillas de Pago ${slugifyFilename(monthName)} - ${slugifyFilename(local)}.zip`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -687,10 +792,10 @@ function renderCollaborators(container, consulta) {
     const inputsGrid = document.createElement('div');
     inputsGrid.className = 'mt-lg grid gap-md md:grid-cols-2';
 
-    const descuentoAmount = numberInput(String(currentInputState.descuento || 0));
+    const descuentoAmount = currencyInput(currentInputState.descuento || 0);
     const descuentoObs = textInput('Observación opcional descuento');
     descuentoObs.input.value = currentInputState.descuentoObservacion || '';
-    const consumoAmount = numberInput(String(currentInputState.consumo || 0));
+    const consumoAmount = currencyInput(currentInputState.consumo || 0);
     const consumoObs = textInput('Observación opcional consumo');
     consumoObs.input.value = currentInputState.consumoObservacion || '';
 
@@ -707,9 +812,9 @@ function renderCollaborators(container, consulta) {
     decorateLabel(consumoObs.wrapper, 'Obs. consumo');
 
     const syncInputState = () => {
-      currentInputState.descuento = Number(descuentoAmount.input.value || 0);
+      currentInputState.descuento = descuentoAmount.getValue();
       currentInputState.descuentoObservacion = descuentoObs.input.value || '';
-      currentInputState.consumo = Number(consumoAmount.input.value || 0);
+      currentInputState.consumo = consumoAmount.getValue();
       currentInputState.consumoObservacion = consumoObs.input.value || '';
     };
 
@@ -740,11 +845,29 @@ function renderCollaborators(container, consulta) {
       input.addEventListener('input', refreshFooter);
     });
 
+    card.addEventListener('toggle', () => {
+      if (!card.open) return;
+      Array.from(grid.children).forEach((otherCard) => {
+        if (otherCard instanceof HTMLDetailsElement && otherCard !== card) {
+          otherCard.open = false;
+        }
+      });
+    });
+
     const detailAccordion = document.createElement('details');
-    detailAccordion.className = 'mt-lg rounded-2xl border border-neutral-charcoal/10 bg-white/72';
+    detailAccordion.className = 'group mt-lg rounded-2xl border border-neutral-charcoal/10 bg-white/72';
     const detailSummary = document.createElement('summary');
-    detailSummary.className = 'list-none cursor-pointer px-lg py-md text-sm font-black uppercase tracking-[0.16em] text-neutral-muted';
-    detailSummary.textContent = 'Detalle diario';
+    detailSummary.className = 'list-none cursor-pointer px-lg py-md';
+    const detailSummaryLayout = document.createElement('div');
+    detailSummaryLayout.className = 'flex items-center justify-between gap-md';
+    const detailSummaryLabel = document.createElement('span');
+    detailSummaryLabel.className = 'text-sm font-black uppercase tracking-[0.16em] text-neutral-muted';
+    detailSummaryLabel.textContent = 'Ver detalle diario';
+    const detailChevron = document.createElement('span');
+    detailChevron.className = 'text-lg font-black text-neutral-muted transition-transform duration-200 group-open:rotate-180';
+    detailChevron.textContent = '⌄';
+    detailSummaryLayout.append(detailSummaryLabel, detailChevron);
+    detailSummary.appendChild(detailSummaryLayout);
     detailAccordion.appendChild(detailSummary);
 
     const detailTableWrap = document.createElement('div');
