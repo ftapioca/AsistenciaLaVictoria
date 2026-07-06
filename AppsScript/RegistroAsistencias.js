@@ -169,6 +169,30 @@ function doGet(e) {
     }
   }
 
+  if (accion === "LocalesPagosMensuales") {
+    try {
+      requireAdminSession(params);
+      return obtenerLocalesPagosMensuales(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "Acceso no autorizado."
+      });
+    }
+  }
+
+  if (accion === "ConsultarPagosMensuales") {
+    try {
+      requireAdminSession(params);
+      return consultarPagosMensuales(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "Acceso no autorizado."
+      });
+    }
+  }
+
   if (accion === "AuditarPresenciaVentas") {
     try {
       return auditarPresenciaVentas(params);

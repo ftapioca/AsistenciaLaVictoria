@@ -715,6 +715,107 @@ function consultarImportacionActivaVentas(params) {
   });
 }
 
+function obtenerLocalesPagosMensuales(params) {
+  requireAdminSession(params);
+
+  var hojaLocales = getSheet_("HorarioLocales", SPREADSHEET_KEY_RRHH);
+  var registros = leerHojaComoObjetos_(hojaLocales);
+  var mapa = {};
+
+  registros.forEach(function(registro) {
+    var local = limpiarTextoImportacion_(registro.Local || registro.local || "");
+    if (!local) {
+      return;
+    }
+    mapa[local] = true;
+  });
+
+  return responderJSON({
+    status: "SUCCESS",
+    locales: Object.keys(mapa).sort(),
+    periodoSugerido: obtenerPeriodoMensualAnterior_(),
+    fechaServidor: new Date().toISOString()
+  });
+}
+
+function consultarPagosMensuales(params) {
+  requireAdminSession(params);
+
+  var local = limpiarTextoImportacion_(params.local);
+  var periodo = normalizarPeriodoImportacion_(params.periodo);
+
+  if (!local || !periodo) {
+    throw crearErrorImportacion_(
+      "ERROR_DATOS",
+      'Debes indicar "local" y "periodo" para consultar pagos mensuales.'
+    );
+  }
+
+  var importacion = obtenerImportacionActivaVentasPorLocalPeriodo_(local, periodo);
+  if (!importacion) {
+    return responderJSON({
+      status: "SUCCESS",
+      local: local,
+      periodo: periodo,
+      periodoLabel: formatearPeriodoMensualEspanol_(periodo),
+      importacionActiva: null,
+      validacion: {
+        exportable: false,
+        motivo: "No existe una importación activa SUCCESS para este local y período.",
+        totalColaboradores: 0,
+        totalFilasDetalle: 0
+      },
+      resumen: crearResumenPagosMensualesVacio_(),
+      semanas: [],
+      colaboradores: []
+    });
+  }
+
+  var importId = limpiarTextoImportacion_(importacion.importId);
+  var ventasDiarias = obtenerRegistrosPorImportId_(HOJA_VENTAS_DIARIAS, importId).filter(function(registro) {
+    return normalizarTexto(registro.Local) === normalizarTexto(local);
+  });
+  var comisionesDiarias = obtenerRegistrosPorImportId_(HOJA_COMISIONES_DIARIAS, importId).filter(function(registro) {
+    return normalizarTexto(registro.Local) === normalizarTexto(local);
+  });
+  var resumenMensual = obtenerRegistrosPorImportId_(HOJA_RESUMEN_MENSUAL_PAGOS, importId).filter(function(registro) {
+    return normalizarTexto(registro.Local) === normalizarTexto(local);
+  });
+  var detalleMensual = obtenerRegistrosPorImportId_(HOJA_DETALLE_MENSUAL_PAGOS, importId).filter(function(registro) {
+    return normalizarTexto(registro.Local) === normalizarTexto(local);
+  });
+  var kpisDiarios = obtenerRegistrosPorImportId_(HOJA_KPI_VENTAS_DIARIAS, importId).filter(function(registro) {
+    return normalizarTexto(registro.Local) === normalizarTexto(local);
+  });
+  var propinasPos = obtenerPropinasValidasPorImportId_(importId).filter(function(registro) {
+    return normalizarTexto(registro.Local) === normalizarTexto(local);
+  });
+
+  var colaboradores = construirColaboradoresPagosMensuales_(periodo, resumenMensual, detalleMensual);
+  var resumen = construirResumenPagosMensuales_(ventasDiarias, comisionesDiarias, kpisDiarios, propinasPos);
+  var semanas = construirResumenSemanalPagosMensuales_(ventasDiarias, comisionesDiarias, kpisDiarios, propinasPos);
+  var exportable = colaboradores.length > 0 && detalleMensual.length > 0;
+
+  return responderJSON({
+    status: "SUCCESS",
+    local: local,
+    periodo: periodo,
+    periodoLabel: formatearPeriodoMensualEspanol_(periodo),
+    importacionActiva: serializarImportacionVentas_(importacion),
+    validacion: {
+      exportable: exportable,
+      motivo: exportable
+        ? "Existen datos exportables para este local y período."
+        : "La importación existe, pero aún no hay datos mensuales exportables.",
+      totalColaboradores: colaboradores.length,
+      totalFilasDetalle: detalleMensual.length
+    },
+    resumen: resumen,
+    semanas: semanas,
+    colaboradores: colaboradores
+  });
+}
+
 function recalcularComisiones(params) {
   requireAdminSession(params);
 
@@ -1198,6 +1299,292 @@ function serializarImportacionVentas_(importacion) {
     hashArchivo: String(importacion.hashArchivo || "").trim(),
     estado: String(importacion.estado || "").trim(),
     observaciones: String(importacion.observaciones || "").trim()
+  };
+}
+
+function obtenerPeriodoMensualAnterior_() {
+  var ahora = new Date();
+  var anterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  return Utilities.formatDate(anterior, Session.getScriptTimeZone(), "yyyy-MM");
+}
+
+function formatearPeriodoMensualEspanol_(periodo) {
+  var match = String(periodo || "").match(/^(\d{4})-(\d{2})$/);
+  if (!match) {
+    return String(periodo || "");
+  }
+
+  var meses = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
+
+  return meses[Number(match[2]) - 1] + " " + match[1];
+}
+
+function crearResumenPagosMensualesVacio_() {
+  return {
+    cantidadVentas: 0,
+    totalVentaBruta: 0,
+    cantidadPropinas: 0,
+    totalPropinas: 0,
+    diasTramoBajo: 0,
+    diasTramoAlto: 0,
+    totalComisionesPagar: 0
+  };
+}
+
+function construirResumenPagosMensuales_(ventasDiarias, comisionesDiarias, kpisDiarios, propinasPos) {
+  var resumen = crearResumenPagosMensualesVacio_();
+
+  resumen.cantidadVentas = (kpisDiarios || []).reduce(function(total, fila) {
+    return total + normalizarMontoImportacion_(fila.CantidadVentas);
+  }, 0);
+  resumen.totalVentaBruta = (ventasDiarias || []).reduce(function(total, fila) {
+    return total + normalizarMontoImportacion_(fila.VentaBrutaValida);
+  }, 0);
+  resumen.cantidadPropinas = (propinasPos || []).length;
+  resumen.totalPropinas = (ventasDiarias || []).reduce(function(total, fila) {
+    return total + normalizarMontoImportacion_(fila.PropinasValidas);
+  }, 0);
+  resumen.diasTramoBajo = (ventasDiarias || []).filter(function(fila) {
+    return normalizarTexto(fila.TramoComision) === "bajo";
+  }).length;
+  resumen.diasTramoAlto = (ventasDiarias || []).filter(function(fila) {
+    return normalizarTexto(fila.TramoComision) === "alto";
+  }).length;
+  resumen.totalComisionesPagar = (comisionesDiarias || []).reduce(function(total, fila) {
+    return total + normalizarMontoImportacion_(fila.ComisionDia);
+  }, 0);
+
+  Object.keys(resumen).forEach(function(key) {
+    resumen[key] = redondearMonto_(resumen[key]);
+  });
+
+  return resumen;
+}
+
+function construirResumenSemanalPagosMensuales_(ventasDiarias, comisionesDiarias, kpisDiarios, propinasPos) {
+  var grupos = {};
+  var propinasPorFecha = {};
+  var comisionesPorFecha = {};
+  var ventasPorFecha = {};
+  var ventaBrutaPorFecha = {};
+  var tramoPorFecha = {};
+
+  (propinasPos || []).forEach(function(fila) {
+    var fecha = normalizarFechaOperacionAIso_(fila.Fecha);
+    if (!fecha) return;
+    propinasPorFecha[fecha] = (propinasPorFecha[fecha] || 0) + 1;
+  });
+
+  (comisionesDiarias || []).forEach(function(fila) {
+    var fecha = normalizarFechaOperacionAIso_(fila.Fecha);
+    if (!fecha) return;
+    comisionesPorFecha[fecha] = (comisionesPorFecha[fecha] || 0) + normalizarMontoImportacion_(fila.ComisionDia);
+  });
+
+  (kpisDiarios || []).forEach(function(fila) {
+    var fecha = normalizarFechaOperacionAIso_(fila.Fecha);
+    if (!fecha) return;
+    ventasPorFecha[fecha] = (ventasPorFecha[fecha] || 0) + normalizarMontoImportacion_(fila.CantidadVentas);
+  });
+
+  (ventasDiarias || []).forEach(function(fila) {
+    var fecha = normalizarFechaOperacionAIso_(fila.Fecha);
+    if (!fecha) return;
+    ventaBrutaPorFecha[fecha] = (ventaBrutaPorFecha[fecha] || 0) + normalizarMontoImportacion_(fila.VentaBrutaValida);
+    tramoPorFecha[fecha] = normalizarTexto(fila.TramoComision);
+  });
+
+  Object.keys(ventaBrutaPorFecha).forEach(function(fecha) {
+    var semana = obtenerSemanaIsoDesdeFecha_(fecha);
+    if (!semana) return;
+    if (!grupos[semana]) {
+      grupos[semana] = {
+        semana: semana,
+        etiqueta: construirEtiquetaSemanaIso_(semana),
+        cantidadVentas: 0,
+        totalVentaBruta: 0,
+        cantidadPropinas: 0,
+        totalPropinas: 0,
+        diasTramoBajo: 0,
+        diasTramoAlto: 0,
+        totalComisionesPagar: 0
+      };
+    }
+
+    grupos[semana].cantidadVentas += ventasPorFecha[fecha] || 0;
+    grupos[semana].totalVentaBruta += ventaBrutaPorFecha[fecha] || 0;
+    grupos[semana].cantidadPropinas += propinasPorFecha[fecha] || 0;
+    grupos[semana].totalPropinas += normalizarMontoImportacion_(
+      (ventasDiarias || []).filter(function(fila) {
+        return normalizarFechaOperacionAIso_(fila.Fecha) === fecha;
+      }).reduce(function(total, fila) {
+        return total + normalizarMontoImportacion_(fila.PropinasValidas);
+      }, 0)
+    );
+    grupos[semana].totalComisionesPagar += comisionesPorFecha[fecha] || 0;
+
+    if (tramoPorFecha[fecha] === "bajo") {
+      grupos[semana].diasTramoBajo += 1;
+    } else if (tramoPorFecha[fecha] === "alto") {
+      grupos[semana].diasTramoAlto += 1;
+    }
+  });
+
+  return Object.keys(grupos).sort().map(function(key) {
+    var grupo = grupos[key];
+    Object.keys(grupo).forEach(function(campo) {
+      if (campo !== "semana" && campo !== "etiqueta") {
+        grupo[campo] = redondearMonto_(grupo[campo]);
+      }
+    });
+    return grupo;
+  });
+}
+
+function construirColaboradoresPagosMensuales_(periodo, resumenMensual, detalleMensual) {
+  var resumenPorKey = {};
+  var detallePorKey = {};
+
+  (resumenMensual || []).forEach(function(fila) {
+    var colaborador = limpiarTextoImportacion_(fila.Colaborador);
+    var local = limpiarTextoImportacion_(fila.Local);
+    if (!colaborador || !local) return;
+    resumenPorKey[local + "|" + colaborador] = {
+      colaborador: colaborador,
+      local: local,
+      totalHorasNormales: redondearMonto_(normalizarMontoImportacion_(fila.TotalHorasNormales)),
+      totalHorasExtras: redondearMonto_(normalizarMontoImportacion_(fila.TotalHorasExtras)),
+      totalDiasNormales: redondearMonto_(normalizarMontoImportacion_(fila.TotalDiasNormales)),
+      totalHorasFeriado: redondearMonto_(normalizarMontoImportacion_(fila.TotalHorasFeriado)),
+      totalHorasExtrasFeriado: redondearMonto_(normalizarMontoImportacion_(fila.TotalHorasExtrasFeriado)),
+      totalDiasFeriados: redondearMonto_(normalizarMontoImportacion_(fila.TotalDiasFeriados)),
+      totalDiasTrabajados: redondearMonto_(normalizarMontoImportacion_(fila.TotalDiasTrabajados)),
+      comisionTotal: redondearMonto_(normalizarMontoImportacion_(fila.ComisionTotal)),
+      propinaTotal: redondearMonto_(normalizarMontoImportacion_(fila.PropinaTotal)),
+      totalPagar: redondearMonto_(normalizarMontoImportacion_(fila.TotalPagar))
+    };
+  });
+
+  (detalleMensual || []).forEach(function(fila) {
+    var colaborador = limpiarTextoImportacion_(fila.Colaborador);
+    var local = limpiarTextoImportacion_(fila.Local);
+    if (!colaborador || !local) return;
+    var key = local + "|" + colaborador;
+    if (!detallePorKey[key]) {
+      detallePorKey[key] = [];
+    }
+    detallePorKey[key].push({
+      fecha: normalizarFechaOperacionAIso_(fila.Fecha),
+      fechaVisible: formatearFechaVisibleImportacion_(fila.Fecha),
+      tipoDia: inferirTipoDiaDesdeDetallePago_(fila),
+      pagoDiario: redondearMonto_(inferirPagoDiarioDesdeDetallePago_(fila)),
+      horasExtrasDiarias: redondearMonto_(inferirPagoHorasExtrasDesdeDetallePago_(fila)),
+      comision: redondearMonto_(normalizarMontoImportacion_(fila.ComisionDia)),
+      propina: redondearMonto_(normalizarMontoImportacion_(fila.PropinaDia)),
+      total: redondearMonto_(normalizarMontoImportacion_(fila.TotalPagarDia)),
+      observaciones: limpiarTextoImportacion_(fila.Observaciones)
+    });
+  });
+
+  return Object.keys(detallePorKey)
+    .sort()
+    .map(function(key) {
+      var partes = key.split("|");
+      var local = partes[0];
+      var colaborador = partes.slice(1).join("|");
+      var resumen = resumenPorKey[key] || {
+        colaborador: colaborador,
+        local: local,
+        totalHorasNormales: 0,
+        totalHorasExtras: 0,
+        totalDiasNormales: 0,
+        totalHorasFeriado: 0,
+        totalHorasExtrasFeriado: 0,
+        totalDiasFeriados: 0,
+        totalDiasTrabajados: 0,
+        comisionTotal: 0,
+        propinaTotal: 0,
+        totalPagar: 0
+      };
+
+      resumen.periodo = periodo;
+      resumen.detalle = detallePorKey[key].sort(function(a, b) {
+        return String(a.fecha || "").localeCompare(String(b.fecha || ""));
+      });
+      return resumen;
+    });
+}
+
+function inferirTipoDiaDesdeDetallePago_(fila) {
+  return normalizarMontoImportacion_(fila.PagoDiasFeriados) > 0 ||
+    normalizarMontoImportacion_(fila.PagoHorasFeriado) > 0 ||
+    normalizarMontoImportacion_(fila.PagoHorasExtrasFeriado) > 0
+    ? "Feriado"
+    : "Normal";
+}
+
+function inferirPagoDiarioDesdeDetallePago_(fila) {
+  return inferirTipoDiaDesdeDetallePago_(fila) === "Feriado"
+    ? normalizarMontoImportacion_(fila.PagoHorasFeriado)
+    : normalizarMontoImportacion_(fila.PagoHorasNormales);
+}
+
+function inferirPagoHorasExtrasDesdeDetallePago_(fila) {
+  return inferirTipoDiaDesdeDetallePago_(fila) === "Feriado"
+    ? normalizarMontoImportacion_(fila.PagoHorasExtrasFeriado)
+    : normalizarMontoImportacion_(fila.PagoHorasExtras);
+}
+
+function obtenerSemanaIsoDesdeFecha_(fechaIso) {
+  var match = String(fechaIso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return "";
+  }
+
+  var year = Number(match[1]);
+  var month = Number(match[2]) - 1;
+  var day = Number(match[3]);
+  var date = new Date(Date.UTC(year, month, day));
+  var dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  var weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+
+  return date.getUTCFullYear() + "-W" + ("0" + weekNo).slice(-2);
+}
+
+function construirEtiquetaSemanaIso_(semanaIso) {
+  var rango = obtenerRangoSemanaIso_(semanaIso);
+  if (!rango) {
+    return semanaIso;
+  }
+
+  return "Semana " + semanaIso.slice(-2) + " · " +
+    formatearFechaVisibleImportacion_(rango.desde) + " al " +
+    formatearFechaVisibleImportacion_(rango.hasta);
+}
+
+function obtenerRangoSemanaIso_(semanaIso) {
+  var match = String(semanaIso || "").match(/^(\d{4})-W(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  var year = Number(match[1]);
+  var week = Number(match[2]);
+  var jan4 = new Date(Date.UTC(year, 0, 4));
+  var day = jan4.getUTCDay() || 7;
+  var monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - day + 1 + (week - 1) * 7);
+  var sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+
+  return {
+    desde: Utilities.formatDate(monday, "UTC", "yyyy-MM-dd"),
+    hasta: Utilities.formatDate(sunday, "UTC", "yyyy-MM-dd")
   };
 }
 

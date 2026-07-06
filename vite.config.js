@@ -20,6 +20,7 @@ export default defineConfig({
         programadorTurnos: 'src/programadorTurnos.html',
         turnosAbiertos: 'src/TurnosAbiertos.html',
         ventasMensuales: 'src/ventasMensuales.html',
+        pagosMensuales: 'src/pagosMensuales.html',
       },
       output: {
         manualChunks: undefined,

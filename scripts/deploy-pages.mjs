@@ -20,6 +20,7 @@ const rootFileCopies = [
   'TurnosAbiertos.html',
   'programadorTurnos.html',
   'ventasMensuales.html',
+  'pagosMensuales.html',
   'design-system.html',
   'app-config.js',
   'app-config.prod.js',

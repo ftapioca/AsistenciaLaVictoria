@@ -33,7 +33,6 @@ const tools = [
     href: 'TurnosAbiertos.html',
     tone: 'highlight',
     actionLabel: 'Ir a operación',
-    className: 'md:col-span-2 xl:col-span-1',
   },
   {
     eyebrow: 'Planificación',
@@ -51,6 +50,14 @@ const tools = [
     tone: 'neutral',
     actionLabel: 'Abrir importador',
   },
+  {
+    eyebrow: 'Pagos',
+    title: 'Pagos Mensuales',
+    body: 'Resumen mensual por local y exportación ZIP con planillas individuales por colaborador.',
+    href: 'pagosMensuales.html',
+    tone: 'neutral',
+    actionLabel: 'Abrir pagos',
+  },
 ];
 
 function buildHeroHighlights(environmentLabel, accessLabel) {
@@ -67,15 +74,15 @@ function buildHeroHighlights(environmentLabel, accessLabel) {
     },
     {
       label: 'Cobertura',
-      value: '3 módulos clave',
-      detail: 'Turnos, planificación y ventas desde un solo punto.',
+      value: '4 módulos clave',
+      detail: 'Turnos, planificación, ventas y pagos desde un solo punto.',
     },
   ], { tone: 'dark' });
 }
 
 function createQuickAccessBar(onNavigate) {
   const bar = document.createElement('section');
-  bar.className = 'grid gap-sm md:grid-cols-3';
+  bar.className = 'grid gap-sm md:grid-cols-2';
 
   tools.forEach((tool) => {
     bar.appendChild(createButton(tool.title, {
@@ -147,7 +154,7 @@ export function createAdminPanelApp(options = {}) {
   quickAccess.append(quickAccessCopy, createQuickAccessBar(onNavigate));
 
   const toolsSection = document.createElement('section');
-  toolsSection.className = 'grid gap-lg md:grid-cols-2 xl:grid-cols-3';
+  toolsSection.className = 'grid gap-lg md:grid-cols-2';
 
   tools.forEach((tool) => {
     toolsSection.appendChild(

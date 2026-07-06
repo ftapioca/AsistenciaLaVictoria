@@ -118,6 +118,9 @@ Archivos relevantes:
 - `app-config.js`
 - `app-config.staging.js`
 - `src/scripts/ventas-mensuales.js`
+- `src/scripts/pagos-mensuales.js`
+- `src/pagosMensuales.html`
+- `src/scripts/admin-panel-app.js`
 
 Cambios relevantes:
 
@@ -131,6 +134,14 @@ Cambios relevantes:
 - exclusión visual y técnica de ventas inválidas
 - corrección de URL `staging` del Apps Script
 - cache busting del frontend publicado
+- nuevo módulo `Pagos Mensuales` en `AdminPanel`
+- layout del panel ajustado a 4 cards en 2 filas
+- nueva vista `pagosMensuales.html?env=staging`
+- consulta de locales RRHH desde `HorarioLocales`
+- validación de datos exportables por `local + periodo`
+- resumen semanal de ventas, propinas y comisiones
+- exportación `.zip` por local con un `.xlsx` por colaborador usando `DetalleMensualPagos`
+- soporte de descuentos y consumos solo en el archivo exportado
 
 ---
 
@@ -141,6 +152,8 @@ Cambios relevantes:
 - proyecto `staging` desplegado con versión validada sobre el deployment existente usado por el frontend
 - deployment URL correcta validada en frontend:
   - `https://script.google.com/macros/s/AKfycbzcfyIN11hOygphJChfCyPGsj4Th-CfL8ZqFOk7_N-afJZeKZphqFPUrPpBXsvtY-5nFA/exec`
+- versión actual de `staging` para módulo de pagos:
+  - `@49`
 
 Observación:
 
@@ -151,6 +164,8 @@ Observación:
 
 - página publicada usada en las pruebas:
   - `https://ftapioca.github.io/AsistenciaLaVictoria/ventasMensuales.html?env=staging`
+- nueva página publicada para pagos:
+  - `https://ftapioca.github.io/AsistenciaLaVictoria/pagosMensuales.html?env=staging`
 - commit de corrección de URL de Apps Script:
   - `5d99ee2` `Fix staging Apps Script deployment URL typo`
 - commit de cache busting del frontend:

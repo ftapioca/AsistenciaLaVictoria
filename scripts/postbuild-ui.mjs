@@ -10,6 +10,7 @@ const copyTargets = [
   'TurnosAbiertos.html',
   'programadorTurnos.html',
   'ventasMensuales.html',
+  'pagosMensuales.html',
   'misTurnos.html',
   'app-config.js',
   'app-config.prod.js',
@@ -27,6 +28,7 @@ const builtEntryCopies = [
   { from: 'src/programadorTurnos.html', to: 'programadorTurnos.html' },
   { from: 'src/TurnosAbiertos.html', to: 'TurnosAbiertos.html' },
   { from: 'src/ventasMensuales.html', to: 'ventasMensuales.html' },
+  { from: 'src/pagosMensuales.html', to: 'pagosMensuales.html' },
   { from: 'src/designSystem.html', to: 'design-system.html' },
 ];
 
