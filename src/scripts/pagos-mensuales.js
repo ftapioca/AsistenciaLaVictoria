@@ -733,7 +733,7 @@ function buildPage(shell) {
     initialValues: { monthly: state.periodo || previousPeriod() },
     showResolvedRange: true,
     onChange: (value) => {
-      state.periodo = value.periodo;
+      state.periodo = value.period;
     },
   });
 
