@@ -193,6 +193,79 @@ function createSectionCard(step, title, body) {
   });
 }
 
+function buildEmptyConsulta(local, periodo, message = '') {
+  return {
+    status: 'SUCCESS',
+    local: local || '',
+    periodo: periodo || '',
+    periodoLabel: formatMonthYearLabel(periodo || ''),
+    importacionActiva: null,
+    validacion: {
+      exportable: false,
+      motivo: message || 'No hay datos exportables para el local y período seleccionados.',
+      totalColaboradores: 0,
+      totalFilasDetalle: 0,
+    },
+    resumen: {
+      cantidadVentas: 0,
+      totalVentaBruta: 0,
+      cantidadPropinas: 0,
+      totalPropinas: 0,
+      diasTramoBajo: 0,
+      diasTramoAlto: 0,
+      totalComisionesPagar: 0,
+    },
+    semanas: [],
+    colaboradores: [],
+  };
+}
+
+function normalizeConsultaResponse(rawConsulta, local, periodo) {
+  if (!rawConsulta || typeof rawConsulta !== 'object') {
+    return buildEmptyConsulta(local, periodo, 'La respuesta del backend llegó vacía.');
+  }
+
+  if (rawConsulta.status && rawConsulta.status !== 'SUCCESS') {
+    return buildEmptyConsulta(local, periodo, rawConsulta.mensaje || 'El backend no pudo validar el período solicitado.');
+  }
+
+  const fallback = buildEmptyConsulta(local, periodo, 'El backend respondió sin estructura de validación exportable.');
+  const consulta = {
+    ...fallback,
+    ...rawConsulta,
+    local: rawConsulta.local || local || '',
+    periodo: rawConsulta.periodo || periodo || '',
+    periodoLabel: rawConsulta.periodoLabel || formatMonthYearLabel(rawConsulta.periodo || periodo || ''),
+    importacionActiva: rawConsulta.importacionActiva || null,
+    resumen: rawConsulta.resumen && typeof rawConsulta.resumen === 'object'
+      ? { ...fallback.resumen, ...rawConsulta.resumen }
+      : fallback.resumen,
+    semanas: Array.isArray(rawConsulta.semanas) ? rawConsulta.semanas : [],
+    colaboradores: Array.isArray(rawConsulta.colaboradores) ? rawConsulta.colaboradores : [],
+  };
+
+  if (!rawConsulta.validacion || typeof rawConsulta.validacion !== 'object') {
+    consulta.validacion = {
+      ...fallback.validacion,
+      exportable: consulta.colaboradores.length > 0,
+      motivo: fallback.validacion.motivo,
+      totalColaboradores: consulta.colaboradores.length,
+      totalFilasDetalle: consulta.colaboradores.reduce((total, collaborator) => total + (Array.isArray(collaborator.detalle) ? collaborator.detalle.length : 0), 0),
+    };
+    return consulta;
+  }
+
+  consulta.validacion = {
+    ...fallback.validacion,
+    ...rawConsulta.validacion,
+    exportable: Boolean(rawConsulta.validacion.exportable),
+    totalColaboradores: Number(rawConsulta.validacion.totalColaboradores || 0),
+    totalFilasDetalle: Number(rawConsulta.validacion.totalFilasDetalle || 0),
+  };
+
+  return consulta;
+}
+
 function createDataCell(value, className = '') {
   const cell = document.createElement('div');
   cell.className = `rounded-2xl border border-neutral-charcoal/8 bg-white/70 px-lg py-md text-sm font-semibold text-neutral-charcoal/78 ${className}`.trim();
@@ -993,11 +1066,12 @@ async function fetchPagosMensuales(step1Status, step2Status, step2Body, step3Bod
   await waitNextFrame();
 
   try {
-    const consulta = await window.LVAuth.apiGet({
+    const rawConsulta = await window.LVAuth.apiGet({
       accion: 'ConsultarPagosMensuales',
       local: state.local,
       periodo: state.periodo,
     });
+    const consulta = normalizeConsultaResponse(rawConsulta, state.local, state.periodo);
     renderConsulta(step2Body, step3Body, consulta, step1Status, step2Status);
   } catch (error) {
     console.error(error);
@@ -1099,8 +1173,11 @@ async function bootstrap() {
 
   try {
     const response = await window.LVAuth.apiGet({ accion: 'LocalesPagosMensuales' });
-    state.locales = Array.isArray(response.locales) ? response.locales : [];
-    state.periodo = response.periodoSugerido || previousPeriod();
+    state.locales = Array.isArray(response && response.locales) ? response.locales : [];
+    state.periodo = (response && response.periodoSugerido) || previousPeriod();
+    if (!response || response.status !== 'SUCCESS') {
+      throw new Error((response && response.mensaje) || 'No se pudieron cargar los locales disponibles desde RRHH.');
+    }
     page.localSelectField.setPlaceholder('Selecciona local');
     page.localSelectField.setOptions(state.locales.map((local) => ({ value: local, label: local })));
     if (state.locales.length) {
