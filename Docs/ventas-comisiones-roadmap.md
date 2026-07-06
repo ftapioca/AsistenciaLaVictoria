@@ -19,8 +19,11 @@ Estado observado al revisar `main`:
 - `ConsultarImportacionesVentas` implementado.
 - `ConsultarImportacionActivaVentas` implementado.
 - `RecalcularComisiones` implementado.
+- `ConsultarPagosMensuales` implementado.
+- `LocalesPagosMensuales` implementado.
 - Normalización de `periodo` a `YYYY-MM` implementada, con compatibilidad legacy al leer.
 - Frontend `ventasMensuales.html` implementado como importador técnico.
+- Frontend `pagosMensuales.html` implementado como flujo de consulta y exportación mensual.
 - Parser POS V1 bastante formalizado en frontend.
 
 Conclusión:
@@ -50,17 +53,23 @@ Conclusión:
 - Integración mensual de pagos base desde RRHH en:
   - `DetalleMensualPagos`
   - `ResumenMensualPagos`
+- Endpoint `LocalesPagosMensuales`.
+- Endpoint `ConsultarPagosMensuales`.
 
 ### Frontend
 
 - Configuración explícita por entorno `staging` / `prod`.
 - Badge visual del entorno activo.
 - Vista `ventasMensuales.html`.
+- Vista `pagosMensuales.html`.
 - Protección por sesión admin.
 - Preview técnico para carga de ventas/propinas.
 - Consulta de importaciones existentes por `Local + Periodo`.
 - Parser POS V1 con validaciones de estructura.
 - Derivación de `periodo`, `fechaDesde` y `fechaHasta` desde la hoja `Ventas`.
+- Exportación mensual `.zip` por local con un `.xlsx` por colaborador.
+- Soporte de descuentos y consumos solo en el archivo exportado.
+- Exportador `.xlsx` estilizado con jerarquía visual, resaltado de feriados y bloque final de pago.
 
 ---
 
@@ -71,12 +80,13 @@ Conclusión:
 - El parser POS V1 no está solo “pendiente”; ya existe una primera implementación bastante específica.
 - El backend de recálculo tampoco está pendiente como idea; ya existe y persiste en `VentasDiarias`.
 - El cierre mensual ya no depende solo de `ComisionesDiarias`; ahora combina pagos base desde `RegistroAsistencia` con comisión y propina por colaborador.
+- El flujo de pagos mensuales ya no es solo un backlog documental; existe una UI operativa para validar, resumir y exportar el mes por local.
 
 ### Pendiente real
 
 - Endpoint `AnularImportacionVentas`.
 - Endpoint `ConsultarResumenComisiones`.
-- UI administrativa mínima para recalcular y revisar resultados desde frontend.
+- UI administrativa mínima para recalcular y revisar resultados desde frontend de ventas.
 
 ---
 
@@ -90,7 +100,10 @@ Orden recomendado para retomar el desarrollo:
    - mostrar resumen del resultado
 2. Implementar `AnularImportacionVentas`.
 3. Implementar `ConsultarResumenComisiones`.
-4. Seguir con mejoras funcionales del flujo operativo ya desplegado.
+4. Seguir con mejoras funcionales del flujo operativo ya desplegado en pagos mensuales:
+   - filtros
+   - más formatos de salida
+   - controles de cierre mensual
 
 No se recomienda partir por:
 

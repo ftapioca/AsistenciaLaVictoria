@@ -142,6 +142,17 @@ Cambios relevantes:
 - resumen semanal de ventas, propinas y comisiones
 - exportación `.zip` por local con un `.xlsx` por colaborador usando `DetalleMensualPagos`
 - soporte de descuentos y consumos solo en el archivo exportado
+- inputs de descuento y consumo con formato monetario en vivo (`$` + miles)
+- acordeón exclusivo por colaborador para mantener legibilidad en listados largos
+- confirmación previa a la exportación del `.zip`
+- exportador `.xlsx` migrado a `xlsx-js-style` para respetar estilos reales en Excel
+- archivo individual con:
+  - título del período
+  - nombre de colaborador con espacio propio
+  - cabecera estilizada
+  - filas feriado resaltadas
+  - columna `Total` destacada
+  - bloque visual para `SubTotales`, `Descuento`, `Consumo` y `Total a pagar`
 
 ---
 
@@ -166,10 +177,15 @@ Observación:
   - `https://ftapioca.github.io/AsistenciaLaVictoria/ventasMensuales.html?env=staging`
 - nueva página publicada para pagos:
   - `https://ftapioca.github.io/AsistenciaLaVictoria/pagosMensuales.html?env=staging`
+- exportador estilizado validado en staging sobre el frontend publicado desde `main`
 - commit de corrección de URL de Apps Script:
   - `5d99ee2` `Fix staging Apps Script deployment URL typo`
 - commit de cache busting del frontend:
   - `05ca058` `Bust frontend cache for staging ventas deploy`
+- commit de cierre UX del flujo de pagos:
+  - `479c026` `feat: refine pagos monthly export accordion ux`
+- commit de estilos reales para Excel:
+  - `e207e32` `feat: style pagos excel exports`
 
 ---
 
@@ -210,6 +226,25 @@ El módulo queda operativo en producción para:
 - poblar `CuadraturaPagos`
 - poblar `KPIVentasDiarias`
 - calcular colaboradores presentes y reparto de propinas desde `RegistroAsistencia`
+- consultar pagos mensuales por `local + periodo` desde `pagosMensuales.html?env=prod`
+- exportar un `.zip` por local con una planilla `.xlsx` por colaborador
+- generar planillas con estilos reales para revisión y envío administrativo
+
+### Paso a producción para el frontend de pagos
+
+Para este cierre no fue necesario redeploy de Apps Script porque:
+
+- los endpoints `LocalesPagosMensuales` y `ConsultarPagosMensuales` ya estaban operativos
+- el cambio final fue exclusivamente de frontend y del writer Excel usado en exportación
+
+Checklist de paso a producción aplicado:
+
+1. validar exportación real en `staging`
+2. actualizar frontend estático con `npm run build`
+3. publicar root Pages con `npm run deploy:pages`
+4. commitear y pushear el frontend publicado
+5. esperar `pages build and deployment` en `success`
+6. validar en `pagosMensuales.html?env=prod` con sesión admin
 
 ---
 
