@@ -325,7 +325,7 @@ function bootstrapProgramadorTurnos(params) {
     });
   }
 
-  var sesion = requireAdminSession(params);
+  var sesion = requireProgramadorSession(params);
 
   var fechaInicio = convertirFechaTurnos(fechaInicioTexto);
   var fechaFin = convertirFechaTurnos(fechaFinTexto);

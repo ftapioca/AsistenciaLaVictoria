@@ -31,7 +31,7 @@ function doGet(e) {
 
   if (accion === "TurnosAbiertos") {
     try {
-      requireAdminSession(params);
+      requireTurnosAbiertosSession(params);
       return obtenerTurnosAbiertos(params);
     } catch (error) {
       return responderJSON({
@@ -47,7 +47,7 @@ function doGet(e) {
 
   if (accion === "EliminarTurno") {
     try {
-      requireAdminSession(params);
+      requireEliminarTurnosSession(params);
       return eliminarTurnoProgramado(params);
     } catch (error) {
       return responderJSON({
@@ -59,7 +59,7 @@ function doGet(e) {
 
   if (accion === "ColaboradoresPorLocal") {
     try {
-      requireAdminSession(params);
+      requireColaboradoresLocalSession(params);
       return obtenerColaboradoresPorLocalTurnos(params);
     } catch (error) {
       return responderJSON({
@@ -82,7 +82,7 @@ function doGet(e) {
 
   if (accion === "HorarioLocal") {
     try {
-      requireAdminSession(params);
+      requireProgramadorSession(params);
       return obtenerHorarioAplicable(params);
     } catch (error) {
       return responderJSON({
@@ -94,7 +94,7 @@ function doGet(e) {
 
   if (accion === "TurnosSemana") {
     try {
-      requireAdminSession(params);
+      requireProgramadorSession(params);
       return obtenerTurnosSemana(params);
     } catch (error) {
       return responderJSON({
@@ -118,7 +118,7 @@ function doGet(e) {
 
   if (accion === "CopiarSemana") {
     try {
-      requireAdminSession(params);
+      requireCopiarSemanasSession(params);
       return copiarSemanaAnterior(params);
     } catch (error) {
       return responderJSON({
@@ -134,7 +134,7 @@ function doGet(e) {
 
   if (accion === "PlantillasTurnos") {
     try {
-      requireAdminSession(params);
+      requirePlantillasTurnosSession(params);
       return obtenerPlantillasTurnos(params);
     } catch (error) {
       return responderJSON({
@@ -217,6 +217,14 @@ function doGet(e) {
     }
   }
 
+  if (accion === "BootstrapGestionUsuarios") {
+    try {
+      return bootstrapGestionUsuarios(params);
+    } catch (error) {
+      return responderErrorAccion_(error, "No se pudo cargar la gestión de usuarios.");
+    }
+  }
+
   return obtenerColaboradoresPorLocal(params);
 }
 
@@ -256,7 +264,7 @@ function doPost(e) {
 
   if (accion === "GuardarTurno") {
     try {
-      requireAdminSession(params);
+      requireProgramadorSession(params);
       return guardarTurnoProgramado(params);
     } catch (error) {
       return responderJSON({
@@ -268,7 +276,7 @@ function doPost(e) {
 
   if (accion === "CopiarSemanaAnterior") {
     try {
-      requireAdminSession(params);
+      requireCopiarSemanasSession(params);
       return copiarSemanaAnterior(params);
     } catch (error) {
       return responderJSON({
@@ -308,6 +316,39 @@ function doPost(e) {
       return responderJSON({
         status: error.code || "FORBIDDEN",
         mensaje: error.message || "Acceso no autorizado."
+      });
+    }
+  }
+
+  if (accion === "ActualizarRolUsuarioAdmin") {
+    try {
+      return actualizarRolUsuarioAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo actualizar el rol del usuario."
+      });
+    }
+  }
+
+  if (accion === "ActualizarUsuarioAdmin") {
+    try {
+      return actualizarUsuarioAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo actualizar el usuario."
+      });
+    }
+  }
+
+  if (accion === "ActualizarPermisosRolAdmin") {
+    try {
+      return actualizarPermisosRolAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudieron actualizar los permisos del rol."
       });
     }
   }

@@ -11,6 +11,7 @@ import { createCard } from '../components/Card.js';
 import { createInputField, createSelectField } from '../components/Input.js';
 import { createLoadingOverlay } from '../components/LoadingOverlay.js';
 import { createPageHero } from '../components/PageHero.js';
+import { createPageSkeleton } from '../components/PageSkeletons.js';
 import { createPeriodPicker } from '../components/PeriodPicker.js';
 import { createStatGrid } from '../components/StatGrid.js';
 import { createToast } from '../components/Toast.js';
@@ -485,6 +486,7 @@ function createExportConfirmationModal() {
 
 function createShell() {
   const app = document.getElementById('app');
+  app.innerHTML = '';
   app.className = 'mx-auto flex min-h-screen w-full max-w-[1320px] flex-col gap-lg px-lg py-lg md:px-2xl md:py-2xl';
 
   const sessionUser = document.createElement('div');
@@ -1163,12 +1165,20 @@ function buildPage(shell) {
 }
 
 async function bootstrap() {
-  const shell = createShell();
-  const page = buildPage(shell);
+  document.getElementById('app').innerHTML = '';
+  createPageSkeleton({ mountNode: document.getElementById('app'), variant: 'workspace' });
+  overlay.setLoading(
+    true,
+    'Validando sesión...',
+    'Estamos comprobando el acceso administrativo y preparando la consulta de pagos exportables.'
+  );
 
   const session = await window.LVAuth.protectPage(['Administrador']);
   if (!session) return;
   state.session = session;
+
+  const shell = createShell();
+  const page = buildPage(shell);
   shell.sessionUser.textContent = `${session.displayName || 'Administrador'} · ${session.role}`;
 
   try {

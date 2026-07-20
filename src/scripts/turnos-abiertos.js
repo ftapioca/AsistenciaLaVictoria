@@ -10,6 +10,7 @@ import { createCard } from '../components/Card.js';
 import { createSelectField } from '../components/Input.js';
 import { createLoadingOverlay } from '../components/LoadingOverlay.js';
 import { createPageHero } from '../components/PageHero.js';
+import { createPageSkeleton } from '../components/PageSkeletons.js';
 import { createToast } from '../components/Toast.js';
 
 const $ = (id) => document.getElementById(id);
@@ -18,6 +19,7 @@ const LOCALES = [
   { nombre: 'Paseo del Lago', id: 'PaseoDelLago' },
   { nombre: 'Segunda Faja', id: 'SegundaFaja' },
 ];
+let availableLocales = [...LOCALES];
 
 const REFRESCO_AUTOMATICO_MS = 30 * 60 * 1000;
 const MOBILE_BREAKPOINT = 980;
@@ -41,6 +43,15 @@ function withCurrentEnvironment(path) {
 
 function waitNextFrame() {
   return new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+function resolveSessionLocales(session) {
+  if (session.unrestrictedLocals) {
+    return [...LOCALES];
+  }
+
+  const allowedLocals = Array.isArray(session.allowedLocals) ? session.allowedLocals : [];
+  return LOCALES.filter((local) => allowedLocals.includes(local.nombre));
 }
 
 function escapeHtml(value) {
@@ -622,13 +633,29 @@ function getDashboardTimestamp() {
 
 async function bootstrap() {
   try {
+    $('app').innerHTML = '';
+    createPageSkeleton({ mountNode: $('app'), variant: 'dashboard' });
     overlay.setLoading(true, 'Validando sesión...');
-    const session = await window.LVAuth.protectPage(['Administrador']);
+    overlay.setLoading(
+      true,
+      'Validando sesión...',
+      'Estamos comprobando tus permisos y los locales habilitados antes de cargar el tablero operativo.'
+    );
+    const session = await window.LVAuth.protectPage([
+      window.LVAuth.roles.ADMINISTRADOR,
+      window.LVAuth.roles.SUPERVISOR,
+    ]);
     if (!session) return;
+
+    availableLocales = resolveSessionLocales(session);
 
     overlay.setLoading(true, 'Cargando dashboard...');
     await waitNextFrame();
     const app = createTurnosAbiertosApp(session);
+    if (!availableLocales.length) {
+      app.renderNoLocalsState();
+      return;
+    }
     await app.cargarDashboard();
     window.setInterval(app.cargarDashboard, REFRESCO_AUTOMATICO_MS);
   } finally {
@@ -770,7 +797,7 @@ function createTurnosAbiertosApp(session) {
   const localGrid = document.createElement('section');
   localGrid.className = 'grid gap-lg xl:grid-cols-2';
 
-  const localSections = LOCALES.map((local) => {
+  const localSections = availableLocales.map((local) => {
     const section = createAccordionSection({
       id: local.id,
       title: local.nombre,
@@ -816,7 +843,7 @@ function createTurnosAbiertosApp(session) {
   footer.textContent = 'Actualización automática cada 30 minutos · Revisión recomendada en ?env=staging';
 
   shell.append(hero, localGrid, adminSection.element, mobileSessionCard, footer);
-  app.appendChild(shell);
+  app.replaceChildren(shell);
 
   const refreshLabels = shell.querySelectorAll('[data-refresh-label]');
   const actionButtons = shell.querySelectorAll('[data-role="refresh-button"]');
@@ -926,6 +953,12 @@ function createTurnosAbiertosApp(session) {
     });
   }
 
+  function renderNoLocalsState() {
+    localGrid.replaceChildren(
+      createStateMessage('error', 'Tu sesión no tiene locales habilitados para turnos abiertos.'),
+    );
+  }
+
   actionButtons.forEach((button) => button.addEventListener('click', cargarDashboard));
   window.addEventListener('resize', syncAccordionMode);
 
@@ -936,7 +969,7 @@ function createTurnosAbiertosApp(session) {
     adminSection.setOpen(false);
   }
 
-  return { cargarDashboard };
+  return { cargarDashboard, renderNoLocalsState };
 }
 
 bootstrap();

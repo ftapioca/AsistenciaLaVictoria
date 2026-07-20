@@ -18,6 +18,7 @@ export default defineConfig({
         misTurnos: 'src/misTurnos.html',
         misTurnosPreview: 'src/misTurnos-preview.html',
         programadorTurnos: 'src/programadorTurnos.html',
+        usuariosPermisos: 'src/usuariosPermisos.html',
         turnosAbiertos: 'src/TurnosAbiertos.html',
         ventasMensuales: 'src/ventasMensuales.html',
         pagosMensuales: 'src/pagosMensuales.html',

@@ -11,11 +11,13 @@ import { createCard } from '../components/Card.js';
 import { createSelectField } from '../components/Input.js';
 import { createLoadingOverlay } from '../components/LoadingOverlay.js';
 import { createPageHero } from '../components/PageHero.js';
+import { createPageSkeleton } from '../components/PageSkeletons.js';
 import { createToast } from '../components/Toast.js';
 
 const $ = (id) => document.getElementById(id);
 const dias = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
 const LOCALES = ['Paseo del Lago', 'Segunda Faja'];
+let availableLocales = [...LOCALES];
 
 let localActivo = LOCALES[0];
 let semana = [];
@@ -49,6 +51,15 @@ function withCurrentEnvironment(path) {
 
 function waitNextFrame() {
   return new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+function resolveSessionLocales(session) {
+  if (session.unrestrictedLocals) {
+    return [...LOCALES];
+  }
+
+  const allowedLocals = Array.isArray(session.allowedLocals) ? session.allowedLocals : [];
+  return LOCALES.filter((local) => allowedLocals.includes(local));
 }
 
 function setStatus(tipo, mensaje) {
@@ -138,7 +149,7 @@ async function apiPost(params) {
 function renderLocalTabs() {
   const tabs = $('localTabs');
   tabs.innerHTML = '';
-  LOCALES.forEach((local) => {
+  availableLocales.forEach((local) => {
     const button = createButton(local, {
       variant: local === localActivo ? 'primary' : 'secondary',
       className: local === localActivo
@@ -769,6 +780,9 @@ function copiarSemanaSiguiente() {
 }
 
 function buildApp(session) {
+  availableLocales = resolveSessionLocales(session);
+  localActivo = availableLocales[0] || '';
+
   const app = $('app');
   const shell = document.createElement('div');
   shell.className = 'mx-auto flex min-h-screen w-full max-w-[1500px] flex-col gap-lg px-lg py-lg md:px-2xl md:py-2xl';
@@ -779,15 +793,22 @@ function buildApp(session) {
   const sessionUser = document.createElement('div');
   sessionUser.id = 'authUser';
   sessionUser.className = 'text-sm font-black text-neutral-cream';
-  sessionUser.textContent = `${session.displayName || 'Administrador'} · ${session.role}`;
+  sessionUser.textContent = `${session.displayName || session.role} · ${session.role}`;
+
+  const backLabel = session.role === window.LVAuth.roles.SUPERVISOR
+    ? 'Ver mis turnos'
+    : 'Volver al panel';
+  const backTarget = session.role === window.LVAuth.roles.SUPERVISOR
+    ? 'misTurnos.html'
+    : 'adminPanel.html';
 
   const heroActions = document.createElement('div');
   heroActions.className = 'flex flex-col gap-md sm:flex-row';
   heroActions.append(
-    createButton('Volver al panel', {
+    createButton(backLabel, {
       variant: 'secondary',
       className: 'bg-white/88 text-neutral-charcoal hover:bg-white',
-      onClick: () => { window.location.href = withCurrentEnvironment('adminPanel.html'); },
+      onClick: () => { window.location.href = withCurrentEnvironment(backTarget); },
     }),
     createButton('Cerrar sesión', {
       onClick: async () => {
@@ -968,7 +989,7 @@ function buildApp(session) {
 
   shell.append(statusBox, gridWrap);
   document.body.appendChild(modalBackdrop);
-  app.appendChild(shell);
+  app.replaceChildren(shell);
 
   actualizarReloj();
   window.setInterval(actualizarReloj, 10000);
@@ -991,15 +1012,33 @@ function buildApp(session) {
   $('modalBackdrop').addEventListener('click', (e) => { if (e.target.id === 'modalBackdrop') cerrarModal(); });
   $('btnCopiarSemanaAnterior').addEventListener('click', copiarSemanaAnterior);
   $('btnCopiarSemanaSiguiente').addEventListener('click', copiarSemanaSiguiente);
+
+  if (!availableLocales.length) {
+    setStatus('error', 'Tu sesión no tiene locales habilitados para programar turnos.');
+    renderTabla();
+    return;
+  }
+
   generarSemana();
   renderTabla();
 }
 
 async function bootstrap() {
   try {
-    const session = await window.LVAuth.protectPage(['Administrador']);
+    $('app').innerHTML = '';
+    createPageSkeleton({ mountNode: $('app'), variant: 'workspace' });
+    overlay.setLoading(
+      true,
+      'Validando sesión...',
+      'Estamos comprobando tus permisos y preparando la programación semanal disponible para tu cuenta.'
+    );
+    const session = await window.LVAuth.protectPage([
+      window.LVAuth.roles.ADMINISTRADOR,
+      window.LVAuth.roles.SUPERVISOR,
+    ]);
     if (!session) return;
     buildApp(session);
+    if (!availableLocales.length) return;
     await cargarSemana();
   } finally {
     overlay.setLoading(false);

@@ -1,0 +1,705 @@
+import '../styles/globals.css';
+import '../../app-config.prod.js';
+import '../../app-config.staging.js';
+import '../../app-config.js';
+import '../../env-badge.js';
+import '../../auth.js';
+
+import { createButton } from '../components/Button.js';
+import { createCard } from '../components/Card.js';
+import { createLoadingOverlay } from '../components/LoadingOverlay.js';
+import { createPageHero } from '../components/PageHero.js';
+import { createPageSkeleton } from '../components/PageSkeletons.js';
+import { createStatGrid } from '../components/StatGrid.js';
+import { createToast } from '../components/Toast.js';
+
+const $ = (id) => document.getElementById(id);
+const MOBILE_BREAKPOINT = 980;
+const ROLE_ORDER = ['Administrador', 'Supervisor', 'Colaborador'];
+
+const PERMISSION_DEFS = [
+  { key: 'puede_ingresar_panel_admin', label: 'Panel administrativo' },
+  { key: 'puede_ver_mis_turnos', label: 'Ver mis turnos' },
+  { key: 'puede_programar_turnos', label: 'Programar turnos' },
+  { key: 'puede_ver_turnos_abiertos', label: 'Ver turnos abiertos' },
+  { key: 'puede_registrar_asistencia_admin', label: 'Registrar asistencia admin' },
+  { key: 'puede_ver_colaboradores_local', label: 'Ver colaboradores por local' },
+  { key: 'puede_importar_ventas', label: 'Importar ventas' },
+  { key: 'puede_ver_pagos', label: 'Ver pagos' },
+  { key: 'puede_gestionar_plantillas_turnos', label: 'Gestionar plantillas' },
+  { key: 'puede_copiar_semanas', label: 'Copiar semanas' },
+  { key: 'puede_eliminar_turnos', label: 'Eliminar turnos' },
+];
+
+const state = {
+  session: null,
+  users: [],
+  roles: [],
+  search: '',
+};
+
+const overlay = createLoadingOverlay('Procesando...');
+document.body.appendChild(overlay.element);
+overlay.setLoading(true, 'Validando sesión...');
+
+const toast = createToast();
+document.body.appendChild(toast.element);
+
+function withCurrentEnvironment(path) {
+  const target = new URL(path, window.location.href);
+  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
+  if (env) target.searchParams.set('env', env);
+  return target.toString();
+}
+
+function waitNextFrame() {
+  return new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function parseLocalList(localValue) {
+  return String(localValue || '')
+    .split(/[;,|/]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function isMobileView() {
+  return window.innerWidth <= MOBILE_BREAKPOINT;
+}
+
+function buildHighlights() {
+  const activeUsers = state.users.filter((user) => user.activo).length;
+  const localCount = [...new Set(state.users.flatMap((user) => parseLocalList(user.local)).filter(Boolean))].length;
+  const grid = createStatGrid([
+    {
+      label: 'Usuarios',
+      value: String(state.users.length),
+      detail: `${activeUsers} activos en la hoja Usuarios.`,
+    },
+    {
+      label: 'Locales',
+      value: String(localCount || 2),
+      detail: 'La vista separa operación por local y administración global.',
+    },
+    {
+      label: 'Entorno',
+      value: (window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT || 'prod').toUpperCase(),
+      detail: 'Cada edición impacta el entorno activo.',
+    },
+  ], { tone: 'dark' });
+
+  grid.id = 'summaryHighlights';
+  return grid;
+}
+
+function updateHighlights() {
+  const current = $('summaryHighlights');
+  const next = buildHighlights();
+  if (current && current.parentNode) {
+    current.parentNode.replaceChild(next, current);
+  }
+}
+
+function createAccordionSection({ id, title, subtitle, badgeText = '', open = false }) {
+  const card = createCard({ className: 'overflow-hidden rounded-3xl p-0' });
+  const wrapper = document.createElement('section');
+  wrapper.dataset.accordionId = id;
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'flex w-full items-center justify-between gap-lg px-xl py-xl text-left';
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.setAttribute('aria-controls', `${id}-panel`);
+
+  const heading = document.createElement('div');
+  heading.className = 'min-w-0';
+  heading.innerHTML = `
+    <h2 class="text-[26px] font-black leading-none tracking-[-0.04em] text-neutral-charcoal">${escapeHtml(title)}</h2>
+    <p class="mt-sm text-sm font-bold text-neutral-muted">${escapeHtml(subtitle)}</p>
+  `;
+
+  const meta = document.createElement('div');
+  meta.className = 'flex items-center gap-md';
+
+  const badge = document.createElement('div');
+  badge.id = `${id}-badge`;
+  badge.className = 'grid min-h-[46px] min-w-[46px] place-items-center rounded-2xl bg-gradient-to-r from-brand-cheese to-brand-bun px-md text-xl font-black text-neutral-charcoal';
+  badge.textContent = badgeText;
+
+  const chevron = document.createElement('span');
+  chevron.className = 'grid size-8 place-items-center rounded-full border border-neutral-charcoal/10 bg-white/70 text-sm text-neutral-charcoal transition-transform';
+  chevron.textContent = '▾';
+
+  meta.append(badge, chevron);
+  toggle.append(heading, meta);
+
+  const panel = document.createElement('div');
+  panel.id = `${id}-panel`;
+  panel.className = 'p-lg';
+
+  wrapper.append(toggle, panel);
+  card.appendChild(wrapper);
+
+  function setOpen(nextOpen) {
+    const active = Boolean(nextOpen);
+    panel.hidden = !active;
+    panel.classList.toggle('hidden', !active);
+    chevron.style.transform = active ? 'rotate(180deg)' : 'rotate(0deg)';
+    toggle.setAttribute('aria-expanded', active ? 'true' : 'false');
+  }
+
+  setOpen(open);
+
+  return {
+    element: card,
+    panel,
+    badge,
+    setOpen,
+    isOpen: () => toggle.getAttribute('aria-expanded') === 'true',
+    bindToggle(handler) {
+      toggle.addEventListener('click', handler);
+    },
+  };
+}
+
+function createEditModal() {
+  const root = document.createElement('div');
+  root.id = 'editUserModal';
+  root.className = 'fixed inset-0 z-[140] hidden items-center justify-center bg-neutral-charcoal/68 px-lg py-lg backdrop-blur';
+  root.innerHTML = `
+    <div class="absolute inset-0" data-modal-backdrop></div>
+    <div class="modal-shell relative z-[1] max-h-[92vh] w-full max-w-[980px] overflow-auto rounded-[32px] border border-neutral-charcoal/12 bg-[#fff8ee] p-xl shadow-brand md:p-2xl">
+      <div class="flex items-start justify-between gap-lg">
+        <div>
+          <p class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Editar usuario</p>
+          <h2 id="editUserTitle" class="mt-sm text-[clamp(30px,4vw,46px)] font-black tracking-[-0.05em] text-neutral-charcoal">Usuario</h2>
+          <p id="editUserSubtitle" class="mt-sm text-sm font-bold leading-7 text-neutral-muted">Actualiza los campos operativos y de acceso.</p>
+        </div>
+        <button type="button" id="btnCloseEditUser" class="grid size-11 place-items-center rounded-2xl border border-neutral-charcoal/10 bg-white/92 text-xl font-black text-neutral-charcoal">×</button>
+      </div>
+      <form id="editUserForm" class="mt-xl grid gap-lg">
+        <div class="grid gap-lg md:grid-cols-2">
+          ${createInputGroup('idUsuario', 'ID usuario', true)}
+          ${createInputGroup('nombreCompleto', 'Nombre completo')}
+          ${createInputGroup('usuarioLogin', 'Usuario login')}
+          ${createInputGroup('pin', 'PIN')}
+          ${createSelectGroup('rol', 'Rol', ROLE_ORDER)}
+          ${createInputGroup('local', 'Local')}
+          ${createInputGroup('cargo', 'Cargo')}
+          ${createSelectGroup('activo', 'Activo', ['SI', 'NO'])}
+          ${createInputGroup('email', 'Email')}
+          ${createInputGroup('telefono', 'Telefono')}
+          ${createInputGroup('fechaCreacion', 'Fecha creacion')}
+        </div>
+        <label class="grid gap-sm">
+          <span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Observaciones</span>
+          <textarea id="fieldObservaciones" rows="5" class="rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/70 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30"></textarea>
+        </label>
+        <div class="grid gap-sm md:flex md:justify-end">
+          <button type="button" id="btnCancelEditUser" class="inline-flex min-h-[52px] items-center justify-center rounded-2xl border border-neutral-charcoal/12 bg-white/92 px-xl py-md text-base font-black text-neutral-charcoal">Cancelar</button>
+          <button type="submit" id="btnSaveEditUser" class="inline-flex min-h-[52px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-base font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(root);
+
+  const form = root.querySelector('#editUserForm');
+  const backdrop = root.querySelector('[data-modal-backdrop]');
+  const title = root.querySelector('#editUserTitle');
+  const subtitle = root.querySelector('#editUserSubtitle');
+  const saveButton = root.querySelector('#btnSaveEditUser');
+  let currentUserId = '';
+
+  function close() {
+    root.classList.add('hidden');
+    root.classList.remove('grid');
+    currentUserId = '';
+  }
+
+  function setLoading(loading) {
+    saveButton.disabled = loading;
+  }
+
+  function setFieldValue(fieldId, value) {
+    const field = root.querySelector(`#${fieldId}`);
+    if (field) field.value = value || '';
+  }
+
+  function open(user) {
+    currentUserId = user.idUsuario;
+    title.textContent = user.nombreCompleto || 'Usuario';
+    subtitle.textContent = `${user.local || 'Sin local'} · ${user.rol || 'Sin rol'}`;
+    setFieldValue('fieldIdUsuario', user.idUsuario);
+    setFieldValue('fieldNombreCompleto', user.nombreCompleto);
+    setFieldValue('fieldUsuarioLogin', user.usuarioLogin);
+    setFieldValue('fieldPin', user.pin);
+    setFieldValue('fieldRol', user.rol);
+    setFieldValue('fieldLocal', user.local);
+    setFieldValue('fieldCargo', user.cargo);
+    setFieldValue('fieldActivo', user.activo ? 'SI' : 'NO');
+    setFieldValue('fieldEmail', user.email);
+    setFieldValue('fieldTelefono', user.telefono);
+    setFieldValue('fieldFechaCreacion', user.fechaCreacion);
+    setFieldValue('fieldObservaciones', user.observaciones);
+    root.classList.remove('hidden');
+    root.classList.add('grid');
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      const response = await window.LVAuth.apiPost({
+        accion: 'ActualizarUsuarioAdmin',
+        idUsuario: currentUserId,
+        nombreCompleto: root.querySelector('#fieldNombreCompleto').value.trim(),
+        usuarioLogin: root.querySelector('#fieldUsuarioLogin').value.trim(),
+        pin: root.querySelector('#fieldPin').value.trim(),
+        rol: root.querySelector('#fieldRol').value.trim(),
+        local: root.querySelector('#fieldLocal').value.trim(),
+        cargo: root.querySelector('#fieldCargo').value.trim(),
+        activo: root.querySelector('#fieldActivo').value.trim(),
+        email: root.querySelector('#fieldEmail').value.trim(),
+        telefono: root.querySelector('#fieldTelefono').value.trim(),
+        fechaCreacion: root.querySelector('#fieldFechaCreacion').value.trim(),
+        observaciones: root.querySelector('#fieldObservaciones').value.trim(),
+      });
+
+      if (response.status !== 'SUCCESS') {
+        throw new Error(response.mensaje || 'No se pudo actualizar el usuario.');
+      }
+
+      state.users = state.users.map((entry) => (
+        entry.idUsuario === response.user.idUsuario ? response.user : entry
+      ));
+      updateHighlights();
+      renderUserAccordions();
+      toast.show('success', `${response.user.nombreCompleto} actualizado correctamente.`);
+      close();
+    } catch (error) {
+      toast.show('error', error.message || 'No se pudo actualizar el usuario.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  form.addEventListener('submit', handleSubmit);
+  root.querySelector('#btnCloseEditUser').addEventListener('click', close);
+  root.querySelector('#btnCancelEditUser').addEventListener('click', close);
+  backdrop.addEventListener('click', close);
+
+  return { open, close };
+}
+
+function createInputGroup(id, label, disabled = false) {
+  return `
+    <label class="grid gap-sm">
+      <span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">${label}</span>
+      <input id="field${id.charAt(0).toUpperCase()}${id.slice(1)}" ${disabled ? 'disabled' : ''} class="min-h-[52px] rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/70 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30 ${disabled ? 'opacity-60' : ''}">
+    </label>
+  `;
+}
+
+function createSelectGroup(id, label, options) {
+  return `
+    <label class="grid gap-sm">
+      <span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">${label}</span>
+      <select id="field${id.charAt(0).toUpperCase()}${id.slice(1)}" class="min-h-[52px] rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30">
+        ${options.map((option) => `<option value="${option}">${option}</option>`).join('')}
+      </select>
+    </label>
+  `;
+}
+
+function buildShell() {
+  const app = $('app');
+  const shell = document.createElement('div');
+  shell.className = 'mx-auto flex min-h-screen w-full max-w-[1380px] flex-col gap-lg px-lg py-lg md:px-2xl md:py-2xl';
+
+  const sessionStatus = document.createElement('div');
+  sessionStatus.id = 'sessionStatus';
+  sessionStatus.className = 'rounded-2xl border border-neutral-cream/14 bg-neutral-cream/12 px-lg py-lg text-sm font-black leading-relaxed text-neutral-cream';
+  sessionStatus.textContent = 'Validando sesión...';
+
+  const sideActions = document.createElement('div');
+  sideActions.className = 'grid gap-md';
+  sideActions.append(
+    createButton('Volver al panel', {
+      variant: 'secondary',
+      className: 'bg-white/88 text-neutral-charcoal hover:bg-white',
+      onClick: () => { window.location.href = withCurrentEnvironment('adminPanel.html'); },
+    }),
+    createButton('Cerrar sesión', {
+      onClick: async () => {
+        overlay.setLoading(true, 'Cerrando sesión...');
+        await waitNextFrame();
+        await window.LVAuth.logout();
+        window.LVAuth.redirectToIndex();
+      },
+    }),
+  );
+
+  const hero = createPageHero({
+    badge: 'La Victoria · Seguridad',
+    title: 'Usuarios y permisos',
+    lead: 'Gestiona usuarios por local con acordeones dedicados y edita cada ficha desde un modal completo. La matriz inferior resume permisos por rol en formato comparativo.',
+    highlights: buildHighlights(),
+    sideTitle: 'Sesión y control',
+    sideStatus: sessionStatus,
+    sideCopy: 'Los supervisores se asignan por fila y por local. Eso permite que una misma persona tenga alcance distinto según el local donde opere.',
+    sideActions,
+    titleClassName: 'max-w-[12ch] text-[clamp(40px,5vw,68px)]',
+    leadClassName: 'max-w-[68ch]',
+    sideClassName: 'lg:w-[340px]',
+  });
+
+  const filters = createCard({
+    eyebrow: 'Filtro',
+    title: 'Buscar usuarios',
+    body: 'Filtra por nombre, usuario, local, cargo o rol. Los acordeones se actualizan con el subconjunto visible.',
+    className: 'rounded-3xl md:p-2xl',
+  });
+
+  const searchLabel = document.createElement('label');
+  searchLabel.className = 'mt-xl grid gap-sm';
+  searchLabel.innerHTML = `
+    <span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Buscar</span>
+    <input id="userSearchInput" type="search" placeholder="Ej: Ana, supervisor, Paseo del Lago" class="min-h-[54px] rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/80 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30">
+  `;
+  filters.appendChild(searchLabel);
+
+  const usersCard = createCard({
+    eyebrow: 'Usuarios',
+    title: 'Roles por persona',
+    body: 'Separamos la operación por acordeón: cada local muestra sus propios usuarios y el bloque de administradores queda aparte.',
+    className: 'rounded-3xl md:p-2xl',
+  });
+
+  const usersMeta = document.createElement('div');
+  usersMeta.id = 'usersMeta';
+  usersMeta.className = 'mt-lg text-sm font-bold text-neutral-muted';
+
+  const accordions = document.createElement('div');
+  accordions.id = 'usersAccordions';
+  accordions.className = 'mt-xl grid gap-lg';
+  usersCard.append(usersMeta, accordions);
+
+  const rolesCard = createCard({
+    eyebrow: 'Permisos',
+    title: 'Matriz por tipo de usuario',
+    body: 'Comparación compacta por permiso y por rol. El orden fijo es Administrador, Supervisor, Colaborador.',
+    className: 'rounded-3xl md:p-2xl',
+  });
+
+  const matrix = document.createElement('div');
+  matrix.id = 'permissionsMatrix';
+  matrix.className = 'mt-xl overflow-hidden rounded-3xl border border-neutral-charcoal/10 bg-white/88 shadow-brand-sm';
+  rolesCard.appendChild(matrix);
+
+  shell.append(hero, filters, usersCard, rolesCard);
+  app.replaceChildren(shell);
+}
+
+function getRoleMap() {
+  const map = {};
+  state.roles.forEach((role) => {
+    map[role.role] = role.permissions || {};
+  });
+  return map;
+}
+
+function getVisibleUsers() {
+  const search = normalizeText(state.search);
+  return state.users.filter((user) => {
+    if (!search) return true;
+    const haystack = normalizeText([
+      user.nombreCompleto,
+      user.usuarioLogin,
+      user.local,
+      user.cargo,
+      user.rol,
+      user.email,
+      user.telefono,
+    ].join(' '));
+    return haystack.includes(search);
+  });
+}
+
+function getLocalSections() {
+  const visibleUsers = getVisibleUsers();
+  const locals = [...new Set(
+    visibleUsers
+      .filter((user) => user.rol !== 'Administrador')
+      .flatMap((user) => parseLocalList(user.local))
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'es'));
+
+  const sections = locals.map((local) => ({
+    id: `local-${normalizeText(local)}`,
+    title: local,
+    subtitle: 'Usuarios operativos asignados a este local',
+    users: visibleUsers.filter((user) => user.rol !== 'Administrador' && parseLocalList(user.local).includes(local)),
+  }));
+
+  sections.push({
+    id: 'administradores',
+    title: 'Administradores',
+    subtitle: 'Usuarios con control global del sistema',
+    users: visibleUsers.filter((user) => user.rol === 'Administrador'),
+  });
+
+  return sections;
+}
+
+function createUserTable(users, openEditModal) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'overflow-x-auto';
+  wrapper.innerHTML = `
+    <table class="min-w-[1080px] w-full border-collapse">
+      <thead class="bg-[#fff5e8]">
+        <tr>
+          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Nombre</th>
+          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Usuario</th>
+          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Rol</th>
+          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Local</th>
+          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Cargo</th>
+          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Estado</th>
+          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Acción</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  `;
+
+  const tbody = wrapper.querySelector('tbody');
+
+  users.forEach((user) => {
+    const row = document.createElement('tr');
+    row.className = 'border-t border-neutral-charcoal/8 align-top';
+    row.innerHTML = `
+      <td class="px-lg py-lg">
+        <div class="text-base font-black text-neutral-charcoal">${escapeHtml(user.nombreCompleto)}</div>
+        <div class="mt-xs text-xs font-bold uppercase tracking-[0.14em] text-neutral-muted">${escapeHtml(user.idUsuario || 'Sin ID')}</div>
+      </td>
+      <td class="px-lg py-lg text-sm font-bold text-neutral-charcoal">${escapeHtml(user.usuarioLogin || 'Sin usuario')}</td>
+      <td class="px-lg py-lg">
+        <span class="rounded-full border border-brand-bun/14 bg-brand-cheese/16 px-sm py-xs text-xs font-black text-brand-bun-dark">${escapeHtml(user.rol)}</span>
+      </td>
+      <td class="px-lg py-lg text-sm font-bold text-neutral-charcoal">${escapeHtml(user.local || 'Sin local')}</td>
+      <td class="px-lg py-lg text-sm font-bold text-neutral-charcoal">${escapeHtml(user.cargo || 'Sin cargo')}</td>
+      <td class="px-lg py-lg">
+        <span class="rounded-full border px-md py-sm text-xs font-black uppercase tracking-[0.16em] ${user.activo ? 'border-brand-lettuce/18 bg-brand-lettuce/10 text-brand-lettuce' : 'border-brand-ketchup/18 bg-brand-ketchup/10 text-brand-ketchup'}">
+          ${user.activo ? 'Activo' : 'Inactivo'}
+        </span>
+      </td>
+      <td class="px-lg py-lg">
+        <button type="button" class="edit-user inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-brand-bun px-lg py-sm text-sm font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Editar</button>
+      </td>
+    `;
+
+    row.querySelector('.edit-user').addEventListener('click', () => openEditModal(user));
+    tbody.appendChild(row);
+  });
+
+  return wrapper;
+}
+
+function renderUserAccordions() {
+  const accordionsRoot = $('usersAccordions');
+  const modal = window.__lvEditUserModal;
+  const sections = getLocalSections();
+  $('usersMeta').textContent = `${getVisibleUsers().length} usuario(s) visibles distribuidos por acordeón.`;
+  accordionsRoot.innerHTML = '';
+
+  const accordionSections = [];
+  sections.forEach((sectionData) => {
+    const section = createAccordionSection({
+      id: sectionData.id,
+      title: sectionData.title,
+      subtitle: sectionData.subtitle,
+      badgeText: String(sectionData.users.length),
+      open: !isMobileView(),
+    });
+
+    if (!sectionData.users.length) {
+      section.panel.innerHTML = '<div class="rounded-2xl border border-neutral-charcoal/10 bg-white/84 px-lg py-lg text-sm font-bold text-neutral-muted">No hay usuarios visibles en este grupo.</div>';
+    } else {
+      section.panel.appendChild(createUserTable(sectionData.users, modal.open));
+    }
+
+    accordionsRoot.appendChild(section.element);
+    accordionSections.push(section);
+  });
+
+  function setExclusiveOpen(sectionToToggle) {
+    const shouldOpen = !sectionToToggle.isOpen();
+    accordionSections.forEach((section) => {
+      section.setOpen(section === sectionToToggle ? shouldOpen : false);
+    });
+  }
+
+  accordionSections.forEach((section) => {
+    section.bindToggle(() => {
+      if (isMobileView()) {
+        setExclusiveOpen(section);
+        return;
+      }
+      section.setOpen(!section.isOpen());
+    });
+  });
+}
+
+function renderPermissionsMatrix() {
+  const matrix = $('permissionsMatrix');
+  const roleMap = getRoleMap();
+
+  matrix.innerHTML = `
+    <table class="w-full min-w-[760px] border-collapse">
+      <thead class="bg-gradient-to-r from-brand-bun to-brand-bun-dark text-neutral-cream">
+        <tr>
+          <th class="px-lg py-lg text-left text-sm font-black uppercase tracking-[0.16em]">Permisos</th>
+          <th class="px-lg py-lg text-center text-sm font-black uppercase tracking-[0.16em]">Administrador</th>
+          <th class="px-lg py-lg text-center text-sm font-black uppercase tracking-[0.16em]">Supervisor</th>
+          <th class="px-lg py-lg text-center text-sm font-black uppercase tracking-[0.16em]">Colaborador</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${PERMISSION_DEFS.map((permission) => `
+          <tr class="border-t border-neutral-charcoal/8">
+            <td class="px-lg py-lg text-sm font-bold text-neutral-charcoal">${permission.label}</td>
+            ${ROLE_ORDER.map((role) => {
+              const active = Boolean(roleMap[role] && roleMap[role][permission.key]);
+              return `
+                <td class="px-lg py-lg text-center">
+                  <button
+                    type="button"
+                    data-role="${role}"
+                    data-permission="${permission.key}"
+                    data-active="${active ? 'true' : 'false'}"
+                    class="permission-toggle inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl border text-2xl font-black transition-fast ${active ? 'border-brand-lettuce/18 bg-brand-lettuce/12 text-brand-lettuce' : 'border-brand-ketchup/18 bg-brand-ketchup/10 text-brand-ketchup'}"
+                  >
+                    ${active ? '✓' : '×'}
+                  </button>
+                </td>
+              `;
+            }).join('')}
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <div class="flex justify-end border-t border-neutral-charcoal/8 bg-[#fffaf1] px-lg py-lg">
+      <button type="button" id="btnSavePermissionsMatrix" class="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-sm font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Guardar permisos</button>
+    </div>
+  `;
+
+  matrix.querySelectorAll('.permission-toggle').forEach((button) => {
+    button.addEventListener('click', () => {
+      const active = button.dataset.active === 'true';
+      button.dataset.active = active ? 'false' : 'true';
+      button.textContent = active ? '×' : '✓';
+      button.className = `permission-toggle inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl border text-2xl font-black transition-fast ${
+        active
+          ? 'border-brand-ketchup/18 bg-brand-ketchup/10 text-brand-ketchup'
+          : 'border-brand-lettuce/18 bg-brand-lettuce/12 text-brand-lettuce'
+      }`;
+    });
+  });
+
+  matrix.querySelector('#btnSavePermissionsMatrix').addEventListener('click', async () => {
+    const saveButton = matrix.querySelector('#btnSavePermissionsMatrix');
+    saveButton.disabled = true;
+    try {
+      for (const role of ROLE_ORDER) {
+        const payload = { accion: 'ActualizarPermisosRolAdmin', role };
+        matrix.querySelectorAll(`.permission-toggle[data-role="${role}"]`).forEach((button) => {
+          payload[button.dataset.permission] = button.dataset.active === 'true' ? 'SI' : 'NO';
+        });
+
+        const response = await window.LVAuth.apiPost(payload);
+        if (response.status !== 'SUCCESS') {
+          throw new Error(response.mensaje || `No se pudieron guardar los permisos de ${role}.`);
+        }
+
+        state.roles = state.roles.map((entry) => (
+          entry.role === role ? response.role : entry
+        ));
+      }
+
+      toast.show('success', 'Matriz de permisos actualizada.');
+      renderPermissionsMatrix();
+    } catch (error) {
+      toast.show('error', error.message || 'No se pudieron guardar los permisos.');
+    } finally {
+      saveButton.disabled = false;
+    }
+  });
+}
+
+async function loadData() {
+  overlay.setLoading(true, 'Cargando usuarios y permisos...');
+  await waitNextFrame();
+  const response = await window.LVAuth.apiGet({ accion: 'BootstrapGestionUsuarios' });
+  if (response.status !== 'SUCCESS') {
+    throw new Error(response.mensaje || 'No se pudieron cargar los usuarios.');
+  }
+  state.users = Array.isArray(response.users) ? response.users : [];
+  state.roles = Array.isArray(response.roles) ? response.roles : [];
+}
+
+function bindFilters() {
+  $('userSearchInput').addEventListener('input', (event) => {
+    state.search = event.target.value || '';
+    renderUserAccordions();
+  });
+}
+
+async function bootstrap() {
+  $('app').innerHTML = '';
+  createPageSkeleton({ mountNode: $('app'), variant: 'table' });
+  overlay.setLoading(
+    true,
+    'Validando sesión...',
+    'Estamos comprobando el acceso administrativo y preparando la carga de usuarios y permisos.'
+  );
+
+  state.session = await window.LVAuth.protectPage([window.LVAuth.roles.ADMINISTRADOR]);
+  if (!state.session) return;
+
+  buildShell();
+  bindFilters();
+  window.__lvEditUserModal = createEditModal();
+  $('sessionStatus').textContent = `${state.session.displayName || 'Administrador'} · ${state.session.role}`;
+
+  try {
+    await loadData();
+    updateHighlights();
+    renderUserAccordions();
+    renderPermissionsMatrix();
+  } finally {
+    overlay.setLoading(false);
+  }
+}
+
+bootstrap().catch((error) => {
+  overlay.setLoading(false);
+  toast.show('error', error.message || 'No se pudo cargar la gestión de usuarios.');
+});

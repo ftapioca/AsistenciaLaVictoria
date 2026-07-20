@@ -2,6 +2,43 @@
   const config = window.APP_CONFIG || {};
   const WEB_APP_URL = config.WEB_APP_URL || "";
   const SESSION_KEY = config.SESSION_KEY || "lavictoria.auth.session";
+  const USER_TYPES = Object.freeze({
+    ADMINISTRADOR: Object.freeze({
+      id: "Administrador",
+      label: "Administrador",
+      landingPage: "adminPanel.html",
+      credentialMode: "username",
+      usesDirectory: false,
+      fallbackDisplayName: "Administrador"
+    }),
+    SUPERVISOR: Object.freeze({
+      id: "Supervisor",
+      label: "Supervisor",
+      landingPage: "adminPanel.html",
+      credentialMode: "username",
+      usesDirectory: false,
+      fallbackDisplayName: "Supervisor"
+    }),
+    COLABORADOR: Object.freeze({
+      id: "Colaborador",
+      label: "Colaborador",
+      landingPage: "misTurnos.html",
+      credentialMode: "directory",
+      usesDirectory: true,
+      fallbackDisplayName: "Colaborador"
+    })
+  });
+
+  const USER_TYPE_LIST = Object.freeze(Object.values(USER_TYPES));
+
+  function getUserType(role) {
+    const normalizedRole = String(role || "").trim();
+    return USER_TYPE_LIST.find((userType) => userType.id === normalizedRole) || null;
+  }
+
+  function isRole(role, expectedRole) {
+    return String(role || "").trim() === String(expectedRole || "").trim();
+  }
 
   function getSession() {
     try {
@@ -58,7 +95,10 @@
       role: data.role,
       displayName: data.displayName || "",
       userKey: data.userKey || "",
-      sessionToken: data.sessionToken
+      sessionToken: data.sessionToken,
+      permissions: data.permissions || {},
+      allowedLocals: Array.isArray(data.allowedLocals) ? data.allowedLocals : [],
+      unrestrictedLocals: Boolean(data.unrestrictedLocals)
     };
 
     setSession(session);
@@ -85,7 +125,12 @@
       role: data.role,
       displayName: data.displayName || session.displayName || "",
       userKey: data.userKey || session.userKey || "",
-      sessionToken: session.sessionToken
+      sessionToken: session.sessionToken,
+      permissions: data.permissions || session.permissions || {},
+      allowedLocals: Array.isArray(data.allowedLocals) ? data.allowedLocals : (session.allowedLocals || []),
+      unrestrictedLocals: typeof data.unrestrictedLocals === "boolean"
+        ? data.unrestrictedLocals
+        : Boolean(session.unrestrictedLocals)
     };
 
     setSession(refreshed);
@@ -174,12 +219,20 @@
   }
 
   function getDefaultLandingPage(role) {
-    if (role === "Administrador") return "adminPanel.html";
-    if (role === "Colaborador") return "misTurnos.html";
-    return "index.html";
+    const userType = getUserType(role);
+    return userType ? userType.landingPage : "index.html";
   }
 
   window.LVAuth = {
+    roles: Object.freeze({
+      ADMINISTRADOR: USER_TYPES.ADMINISTRADOR.id,
+      SUPERVISOR: USER_TYPES.SUPERVISOR.id,
+      COLABORADOR: USER_TYPES.COLABORADOR.id
+    }),
+    userTypes: USER_TYPES,
+    getUserTypes: () => USER_TYPE_LIST.slice(),
+    getUserType,
+    isRole,
     getSession,
     setSession,
     clearSession,

@@ -4,11 +4,12 @@ import { cn } from '../utils/cn.js';
 function createResourceAction(resource) {
   return createButton(resource.type === 'link' ? 'Abrir' : 'Descargar', {
     as: 'a',
+    variant: 'primary',
     href: resource.href,
     target: resource.type === 'link' ? '_blank' : '',
     rel: resource.type === 'link' ? 'noopener noreferrer' : '',
     download: resource.type !== 'link' ? (resource.fileName || '') : '',
-    className: 'text-sm font-black',
+    className: 'min-h-[48px] rounded-full px-xl text-sm font-black md:min-w-[150px]',
   });
 }
 

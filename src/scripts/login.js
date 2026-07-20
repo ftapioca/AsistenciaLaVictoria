@@ -89,7 +89,7 @@ async function cargarUsuariosPorRol(role) {
   nameSelectFieldRef.setPlaceholder('Cargando nombres...');
 
   if (!role) {
-    nameSelectFieldRef.setPlaceholder('Selecciona primero un rol');
+    nameSelectFieldRef.setPlaceholder('Selecciona primero un perfil');
     return;
   }
 
@@ -118,19 +118,19 @@ async function cargarUsuariosPorRol(role) {
 }
 
 function syncCredentialMode(role) {
-  const isAdmin = role === 'Administrador';
-  $('nameSelectField').classList.toggle('hidden', isAdmin);
-  $('adminUserField').classList.toggle('hidden', !isAdmin);
+  const usesUsername = role === 'Administrador' || role === 'Supervisor';
+  $('nameSelectField').classList.toggle('hidden', usesUsername);
+  $('adminUserField').classList.toggle('hidden', !usesUsername);
 
-  if (isAdmin) {
+  if (usesUsername) {
     nameSelectFieldRef.setValue('', false);
     nameSelectFieldRef.setOptions([]);
-    nameSelectFieldRef.setPlaceholder('No aplica para administradores');
+    nameSelectFieldRef.setPlaceholder('No aplica para este perfil');
     nameSelectFieldRef.setDisabled(true);
   } else if (!role) {
     nameSelectFieldRef.setValue('', false);
     nameSelectFieldRef.setOptions([]);
-    nameSelectFieldRef.setPlaceholder('Selecciona primero un rol');
+    nameSelectFieldRef.setPlaceholder('Selecciona primero un perfil');
     nameSelectFieldRef.setDisabled(true);
   }
 }
@@ -208,7 +208,7 @@ function buildApp() {
 
   const heroTitle = document.createElement('h1');
   heroTitle.className = 'mt-xl max-w-[7ch] text-[clamp(54px,7vw,88px)] font-black leading-[0.92] tracking-[-0.08em] text-neutral-cream';
-  heroTitle.textContent = 'Ingreso por rol.';
+  heroTitle.textContent = 'Ingreso por perfil.';
 
   const heroLead = document.createElement('p');
   heroLead.className = 'mt-lg max-w-[30ch] text-base font-semibold leading-8 text-neutral-cream/82 md:mt-xl md:text-lg md:leading-9';
@@ -228,7 +228,7 @@ function buildApp() {
   const card = createCard({
     eyebrow: 'Autenticación',
     title: 'Ingresa tus credenciales',
-    body: 'Selecciona tu rol. Si eres colaborador, elige tu nombre de la lista; si eres administrador, ingresa tu usuario y tu PIN.',
+    body: 'Selecciona tu perfil. Si eres colaborador, elige tu nombre de la lista; si eres administrador o supervisor, ingresa tu usuario y tu PIN.',
     className: 'rounded-[32px] bg-[#fff8ee] px-xl py-xl shadow-none md:px-2xl md:py-2xl',
   });
 
@@ -252,6 +252,7 @@ function buildApp() {
     name: 'role',
     options: [
       { value: 'Administrador', label: 'Administrador' },
+      { value: 'Supervisor', label: 'Supervisor' },
       { value: 'Colaborador', label: 'Colaborador' },
     ],
     placeholder: 'Selecciona un rol',
@@ -265,12 +266,12 @@ function buildApp() {
     name: 'nombre',
     disabled: true,
     options: [],
-    placeholder: 'Selecciona primero un rol',
+    placeholder: 'Selecciona primero un perfil',
   });
   nameField.wrapper.id = 'nameSelectField';
   nameSelectFieldRef = nameField;
 
-  const adminField = createFieldLabel('Usuario administrador');
+  const adminField = createFieldLabel('Usuario');
   adminField.id = 'adminUserField';
   adminField.classList.add('hidden');
   adminField.appendChild(createTextInput({
@@ -345,7 +346,7 @@ async function bootstrap() {
     clearStatus();
 
     const role = roleSelectFieldRef.getValue().trim();
-    const nombre = role === 'Administrador'
+    const nombre = role === 'Administrador' || role === 'Supervisor'
       ? $('adminUserInput').value.trim()
       : nameSelectFieldRef.getValue().trim();
     const pin = $('pinInput').value.trim();
@@ -356,7 +357,9 @@ async function bootstrap() {
     }
 
     if (!nombre) {
-      setStatus('error', role === 'Administrador' ? 'Debes ingresar tu usuario.' : 'Debes seleccionar un nombre.');
+      setStatus('error', role === 'Administrador' || role === 'Supervisor'
+        ? 'Debes ingresar tu usuario.'
+        : 'Debes seleccionar un nombre.');
       return;
     }
 

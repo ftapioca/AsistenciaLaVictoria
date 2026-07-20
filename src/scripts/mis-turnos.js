@@ -9,6 +9,7 @@ import { createButton } from '../components/Button.js';
 import { createCard } from '../components/Card.js';
 import { createLoadingOverlay } from '../components/LoadingOverlay.js';
 import { createPageHero } from '../components/PageHero.js';
+import { createPageSkeleton } from '../components/PageSkeletons.js';
 import { createPeriodPicker } from '../components/PeriodPicker.js';
 import { createStatGrid } from '../components/StatGrid.js';
 import { createToast } from '../components/Toast.js';
@@ -404,7 +405,7 @@ function buildAppShell() {
   `;
 
   shell.append(hero, controlsCard, calendarCard);
-  app.appendChild(shell);
+  app.replaceChildren(shell);
 
   createMonthControls();
   return { sessionUser };
@@ -439,13 +440,22 @@ async function cargarMes() {
   }
 }
 
-const { sessionUser } = buildAppShell();
-
 document.addEventListener('DOMContentLoaded', async () => {
-  session = await window.LVAuth.protectPage(['Colaborador']);
+  $('app').innerHTML = '';
+  createPageSkeleton({ mountNode: $('app'), variant: 'calendar' });
+  overlay.setLoading(
+    true,
+    'Validando sesión...',
+    'Estamos cargando tu calendario personal y verificando qué turnos puedes consultar.'
+  );
+  session = await window.LVAuth.protectPage([
+    window.LVAuth.roles.COLABORADOR,
+    window.LVAuth.roles.SUPERVISOR,
+  ]);
   if (!session) return;
 
-  sessionUser.textContent = `${session.displayName || 'Colaborador'} · ${session.role}`;
+  const { sessionUser } = buildAppShell();
+  sessionUser.textContent = `${session.displayName || session.role} · ${session.role}`;
   const actual = new Date();
   syncMonthPicker(actual.getFullYear(), actual.getMonth());
 });

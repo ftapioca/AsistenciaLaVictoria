@@ -10,6 +10,7 @@ import { createCard } from '../components/Card.js';
 import { createSelectField } from '../components/Input.js';
 import { createLoadingOverlay } from '../components/LoadingOverlay.js';
 import { createPageHero } from '../components/PageHero.js';
+import { createPageSkeleton } from '../components/PageSkeletons.js';
 import { createPeriodPicker } from '../components/PeriodPicker.js';
 import { createToast } from '../components/Toast.js';
 
@@ -1007,7 +1008,7 @@ function renderApp(session) {
 
   layout.append(leftStack, rightStack);
   shell.append(hero, layout);
-  app.appendChild(shell);
+  app.replaceChildren(shell);
 
   const btnCheckExisting = shell.querySelector('#btnCheckExisting');
 
@@ -1241,7 +1242,13 @@ function renderApp(session) {
 
 async function bootstrap() {
   try {
-    overlay.setLoading(true, 'Validando sesión...');
+    $('app').innerHTML = '';
+    createPageSkeleton({ mountNode: $('app'), variant: 'workspace' });
+    overlay.setLoading(
+      true,
+      'Validando sesión...',
+      'Estamos validando el acceso administrativo y preparando el importador con el entorno activo.'
+    );
     const session = await window.LVAuth.protectPage(['Administrador']);
     if (!session) return;
 

@@ -61,10 +61,11 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
 ### Frontend Principal
 - `index.html`: Selector de ingreso por PIN con detección automática de rol.
 - `adminPanel.html`: Panel administrativo protegido con accesos internos y caja de archivos adjuntos.
+- `usuariosPermisos.html`: Gestión administrativa de usuarios, roles y permisos desde Google Sheets.
 - `ventasMensuales.html`: Importador técnico de ventas para probar `ImportarVentas` con JSON normalizado.
 - `TurnosAbiertos.html`: Dashboard administrativo protegido para revisar turnos abiertos por local.
-- `programadorTurnos.html`: Programador semanal protegido para administradores.
-- `misTurnos.html`: Vista semanal de solo lectura para colaboradores.
+- `programadorTurnos.html`: Programador semanal protegido para administradores y supervisores según local.
+- `misTurnos.html`: Vista mensual de solo lectura para colaboradores y supervisores.
 
 ### Assets y Configuración
 - `descargablesLocales/`: Archivos adjuntos descargables para administradores y HTML de registro por local.
@@ -112,12 +113,38 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
 `adminPanel.html` concentra la navegación administrativa.
 
 - La información de sesión y las acciones de cerrar sesión y volver al ingreso están integradas en el `hero`.
-- La caja `Archivos adjuntos` lista recursos administrativos.
+- La caja `Archivos adjuntos` lista recursos administrativos solo para administradores.
+- Los módulos principales se renderizan como tabla operativa con CTA homogéneos según el design system.
+- La carga inicial ahora usa `skeleton loading` + `blur` + contexto textual antes de mostrar la UI real.
 - Actualmente incluye:
   - Un enlace externo a `Reporte y registro de asistencia` en Google Sheets
   - Archivos HTML descargables contenidos en `descargablesLocales/`
 
 Nota: este proyecto es estático, por lo que el navegador no puede enumerar carpetas automáticamente. La lista de adjuntos del panel se mantiene en el arreglo `attachedResources` dentro de `adminPanel.html`.
+
+## Patrón de carga protegida
+
+Las vistas protegidas del frontend siguen ahora el mismo flujo:
+
+1. renderizar un `skeleton` específico de página
+2. superponer `LoadingOverlay` con contexto de carga
+3. validar sesión y permisos con `protectPage(...)`
+4. reemplazar el skeleton por la UI real solo cuando la sesión queda aprobada
+
+Componentes base:
+
+- `src/components/PageSkeletons.js`: variantes reutilizables de skeleton para panel, tabla, calendario, dashboard y workspace
+- `src/components/LoadingOverlay.js`: overlay contextual con título y texto auxiliar
+
+Vistas cubiertas actualmente:
+
+- `adminPanel.html`
+- `misTurnos.html`
+- `TurnosAbiertos.html`
+- `programadorTurnos.html`
+- `usuariosPermisos.html`
+- `ventasMensuales.html`
+- `pagosMensuales.html`
 
 ## Registro Por Local
 
@@ -163,7 +190,7 @@ Los archivos `*.gs` dejaron de usarse para evitar drift entre el código trackea
 
 ## Acciones Protegidas
 
-Requieren sesión válida y rol `Administrador`:
+Requieren sesión válida y permiso asociado por rol:
 
 - `BootstrapProgramadorTurnos`
 - `TurnosAbiertos`
@@ -176,9 +203,16 @@ Requieren sesión válida y rol `Administrador`:
 - `PlantillasTurnos`
 - `HorarioLocal`
 
-Requieren sesión válida y rol `Colaborador`:
+Requieren sesión válida y rol `Colaborador` o `Supervisor` según corresponda:
 
 - `TurnosSemanaColaborador`
+
+El backend moderno usa `AppsScript/AuthRoles.js` para resolver:
+
+- permisos por rol desde `RolesPermisos`
+- usuarios desde `Usuarios`
+- alcance por local para `Supervisor`
+- validación `fail closed` cuando una sesión no trae locales habilitados
 
 ## Programador de turnos
 
@@ -211,6 +245,23 @@ Próximo paso documentado:
 Referencia de desarrollo:
 
 - [Docs/programador-turnos-roadmap.md](/Users/ftapioca/Projects/AsistenciaLaVictoria/Docs/programador-turnos-roadmap.md:1)
+
+## Paso a producción
+
+Flujo recomendado para promover cambios ya validados en `staging`:
+
+1. validar frontend local con `npm run build`
+2. sincronizar backend productivo con `npm run gas:prod:push`
+3. revisar deployments productivos con `npm run gas:prod:deployments`
+4. actualizar el deployment productivo existente con `npx clasp deploy --project .clasp.prod.json --deploymentId DEPLOYMENT_ID_PROD --description "mensaje"`
+5. publicar frontend con `npm run deploy:pages`
+6. verificar en producción login, navegación y al menos un flujo crítico del módulo afectado
+
+Regla operativa:
+
+- no crear una nueva URL de Apps Script si el frontend ya depende de un `deploymentId` fijo
+- actualizar el deployment productivo existente
+- publicar frontend solo después de confirmar que el backend productivo quedó actualizado
 
 ## Turnos Abiertos
 

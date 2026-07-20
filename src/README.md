@@ -20,6 +20,7 @@ src/
 │   ├── Badge.js        # Etiquetas y status pills
 │   ├── ActionCard.js   # Tarjetas con CTA integrada
 │   ├── LoadingOverlay.js # Overlay de espera reutilizable
+│   ├── PageSkeletons.js # Skeletons reutilizables para vistas protegidas
 │   ├── PageHero.js     # Hero reusable para vistas internas
 │   ├── StatGrid.js     # Grid de highlights o métricas
 │   ├── ResourceList.js # Lista de recursos/descargas
@@ -56,9 +57,11 @@ Cada componente debe tener:
 **Estado actual**:
 - `Button.js`, `Input.js` y `Card.js` ya están implementados como factories DOM.
 - `Badge.js`, `ActionCard.js` y `LoadingOverlay.js` amplían el set inicial de primitives.
+- `PageSkeletons.js` define estados de carga inicial para páginas protegidas antes de montar la UI real.
 - `PageHero.js`, `StatGrid.js` y `ResourceList.js` formalizan patrones de layout del panel.
 - `PeriodPicker.js` formaliza el patrón legado de alcance diario, semanal y mensual usado en ventas.
 - `PeriodPicker.js` también puede funcionar en modo standalone para `mensual`, `semanal` o `diario`.
+- Las vistas protegidas deben renderizar primero un `skeleton` y luego reemplazarlo por la UI real una vez que `protectPage(...)` confirme sesión y permisos.
 - `main.js` renderiza una demo real usando esos primitives.
 - `adminPanel.html` en `src/` es el primer piloto migrado a este sistema.
 - `adminPanel-preview.html`, `misTurnos.html` y `misTurnos-preview.html` amplían la cobertura del sistema con rutas de revisión visual y pilotos reales.
