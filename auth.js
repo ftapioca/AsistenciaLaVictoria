@@ -2,6 +2,7 @@
   const config = window.APP_CONFIG || {};
   const WEB_APP_URL = config.WEB_APP_URL || "";
   const SESSION_KEY = config.SESSION_KEY || "lavictoria.auth.session";
+  const SESSION_VALIDATION_TTL_MS = Number(config.SESSION_VALIDATION_TTL_MS || 120000);
   const USER_TYPES = Object.freeze({
     ADMINISTRADOR: Object.freeze({
       id: "Administrador",
@@ -98,7 +99,8 @@
       sessionToken: data.sessionToken,
       permissions: data.permissions || {},
       allowedLocals: Array.isArray(data.allowedLocals) ? data.allowedLocals : [],
-      unrestrictedLocals: Boolean(data.unrestrictedLocals)
+      unrestrictedLocals: Boolean(data.unrestrictedLocals),
+      validatedAt: Date.now()
     };
 
     setSession(session);
@@ -109,6 +111,14 @@
     const session = getSession();
     if (!session || !session.sessionToken) {
       return null;
+    }
+
+    if (
+      session.validatedAt &&
+      Number.isFinite(session.validatedAt) &&
+      Date.now() - session.validatedAt < SESSION_VALIDATION_TTL_MS
+    ) {
+      return session;
     }
 
     const data = await request(
@@ -130,7 +140,8 @@
       allowedLocals: Array.isArray(data.allowedLocals) ? data.allowedLocals : (session.allowedLocals || []),
       unrestrictedLocals: typeof data.unrestrictedLocals === "boolean"
         ? data.unrestrictedLocals
-        : Boolean(session.unrestrictedLocals)
+        : Boolean(session.unrestrictedLocals),
+      validatedAt: Date.now()
     };
 
     setSession(refreshed);

@@ -20,6 +20,15 @@ const state = {
   feriados: [],
 };
 
+const modalRuntime = {
+  config: null,
+  batchEnabled: false,
+};
+
+const WEEKDAY_ORDER = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const TIPO_ESPECIAL_OPTIONS = ['Feriado', 'Evento', 'Cerrado', 'Mantención', 'Horario Extendido', 'Horario Reducido'];
+const TIPO_FERIADO_OPTIONS = ['Irrenunciable', 'Civil', 'Religioso'];
+
 const overlay = createLoadingOverlay('Procesando...');
 document.body.appendChild(overlay.element);
 
@@ -56,11 +65,153 @@ function boolLabel(value) {
     : '<span class="inline-flex rounded-full bg-brand-ketchup/12 px-md py-xs text-xs font-black uppercase tracking-[0.16em] text-brand-ketchup">No</span>';
 }
 
+function getStatusBadge(isOpen) {
+  return isOpen
+    ? '<span class="inline-flex items-center gap-xs rounded-full bg-brand-lettuce/14 px-md py-xs text-sm font-black text-brand-lettuce"><span class="size-2 rounded-full bg-brand-lettuce"></span>Abierto</span>'
+    : '<span class="inline-flex items-center gap-xs rounded-full bg-neutral-charcoal/8 px-md py-xs text-sm font-black text-neutral-charcoal/70"><span class="size-2 rounded-full bg-neutral-charcoal/45"></span>Cerrado</span>';
+}
+
+function isDayOpen(day) {
+  return Boolean(day.activo) && Boolean(day.horaApertura) && Boolean(day.horaCierre);
+}
+
+function getHorarioDisplay(day) {
+  if (!isDayOpen(day)) {
+    return {
+      value: '—',
+      helper: 'Sin atención',
+    };
+  }
+
+  return {
+    value: `${day.horaApertura} – ${day.horaCierre}`,
+    helper: 'Horario de atención',
+  };
+}
+
+function getTrasnocheDisplay(day) {
+  if (!isDayOpen(day)) {
+    return {
+      value: '—',
+      helper: 'No aplica',
+      badge: '',
+    };
+  }
+
+  return {
+    value: day.permiteTrasnoche ? 'Sí' : 'No',
+    helper: day.permiteTrasnoche ? 'Cierra al día siguiente' : '',
+    badge: day.permiteTrasnoche
+      ? '<span class="inline-flex rounded-full bg-brand-lettuce/14 px-md py-xs text-xs font-black text-brand-lettuce">Cierra al día siguiente</span>'
+      : '',
+  };
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function getWeekdayRank(dayLabel) {
+  const normalized = normalizeText(dayLabel);
+  const index = WEEKDAY_ORDER.findIndex((day) => normalizeText(day) === normalized);
+  return index === -1 ? WEEKDAY_ORDER.length : index;
+}
+
+function sortHorarioLocales(items) {
+  return items.slice().sort((a, b) => {
+    if (a.local !== b.local) return a.local.localeCompare(b.local, 'es');
+    return getWeekdayRank(a.diaSemana) - getWeekdayRank(b.diaSemana);
+  });
+}
+
+function groupHorarioLocalesByLocal(items) {
+  const groups = new Map();
+
+  sortHorarioLocales(items).forEach((item) => {
+    if (!groups.has(item.local)) {
+      groups.set(item.local, {
+        local: item.local,
+        days: [],
+      });
+    }
+
+    groups.get(item.local).days.push(item);
+  });
+
+  return [...groups.values()];
+}
+
 function normalizeLocalOptions() {
   return state.locals.length ? state.locals : ['Paseo del Lago', 'Segunda Faja'];
 }
 
-function createTableSection({ eyebrow, title, body, addLabel, tableId, countId, onAdd }) {
+function createAccordionSection({ id, title, subtitle, badgeText = '', open = false }) {
+  const card = createCard({ className: 'overflow-hidden rounded-3xl p-0' });
+  const wrapper = document.createElement('section');
+  wrapper.dataset.accordionId = id;
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'flex w-full items-center justify-between gap-lg px-xl py-xl text-left';
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.setAttribute('aria-controls', `${id}-panel`);
+
+  const heading = document.createElement('div');
+  heading.className = 'min-w-0';
+  heading.innerHTML = `
+    <h2 class="text-[26px] font-black leading-none tracking-[-0.04em] text-neutral-charcoal">${escapeHtml(title)}</h2>
+    <p class="mt-sm text-sm font-bold text-neutral-muted">${escapeHtml(subtitle)}</p>
+  `;
+
+  const meta = document.createElement('div');
+  meta.className = 'flex items-center gap-md';
+
+  const badge = document.createElement('div');
+  badge.id = `${id}-badge`;
+  badge.className = 'grid min-h-[46px] min-w-[46px] place-items-center rounded-2xl bg-gradient-to-r from-brand-cheese to-brand-bun px-md text-xl font-black text-neutral-charcoal';
+  badge.textContent = badgeText;
+
+  const chevron = document.createElement('span');
+  chevron.className = 'grid size-8 place-items-center rounded-full border border-neutral-charcoal/10 bg-white/70 text-sm text-neutral-charcoal transition-transform';
+  chevron.textContent = '▾';
+
+  meta.append(badge, chevron);
+  toggle.append(heading, meta);
+
+  const panel = document.createElement('div');
+  panel.id = `${id}-panel`;
+  panel.className = 'p-lg';
+
+  wrapper.append(toggle, panel);
+  card.appendChild(wrapper);
+
+  function setOpen(nextOpen) {
+    const active = Boolean(nextOpen);
+    panel.hidden = !active;
+    panel.classList.toggle('hidden', !active);
+    chevron.style.transform = active ? 'rotate(180deg)' : 'rotate(0deg)';
+    toggle.setAttribute('aria-expanded', active ? 'true' : 'false');
+  }
+
+  setOpen(open);
+
+  return {
+    element: card,
+    panel,
+    badge,
+    setOpen,
+    isOpen: () => toggle.getAttribute('aria-expanded') === 'true',
+    bindToggle(handler) {
+      toggle.addEventListener('click', handler);
+    },
+  };
+}
+
+function createTableSection({ eyebrow, title, body, addLabel, tableId, countId, onAdd, showAddAction = true }) {
   const card = createCard({
     eyebrow,
     title,
@@ -75,11 +226,14 @@ function createTableSection({ eyebrow, title, body, addLabel, tableId, countId, 
   count.id = countId;
   count.className = 'text-sm font-bold text-neutral-muted';
 
-  header.append(count, createButton(addLabel, {
-    variant: 'primary',
-    className: 'min-h-[48px] rounded-full px-xl',
-    onClick: onAdd,
-  }));
+  header.appendChild(count);
+  if (showAddAction) {
+    header.appendChild(createButton(addLabel, {
+      variant: 'primary',
+      className: 'min-h-[48px] rounded-full px-xl',
+      onClick: onAdd,
+    }));
+  }
 
   const tableWrap = document.createElement('div');
   tableWrap.id = tableId;
@@ -95,29 +249,62 @@ function createModal() {
   root.className = 'fixed inset-0 z-[140] hidden items-center justify-center bg-neutral-charcoal/68 px-lg py-lg backdrop-blur';
   root.innerHTML = `
     <div class="absolute inset-0" data-modal-backdrop></div>
-    <div class="relative z-[1] max-h-[92vh] w-full max-w-[860px] overflow-auto rounded-[32px] border border-neutral-charcoal/12 bg-[#fff8ee] p-xl shadow-brand md:p-2xl">
-      <div class="flex items-start justify-between gap-lg">
-        <div>
+    <div id="scheduleModalShell" class="relative z-[1] flex max-h-[92vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-[32px] border border-neutral-charcoal/12 bg-[#fff8ee] shadow-brand">
+      <div id="scheduleModalLoading" class="absolute inset-0 z-[4] hidden items-center justify-center rounded-[32px] bg-neutral-charcoal/18 px-xl backdrop-blur-md">
+        <div class="grid w-full max-w-[420px] gap-md rounded-3xl border border-brand-bun/18 bg-white/96 px-xl py-xl text-center shadow-brand">
+          <div class="mx-auto size-10 rounded-full border-[3px] border-neutral-charcoal/18 border-t-brand-bun animate-spin"></div>
+          <p id="scheduleModalLoadingTitle" class="text-lg font-black tracking-[-0.03em] text-neutral-charcoal">Guardando cambios...</p>
+          <p id="scheduleModalLoadingMessage" class="text-sm font-semibold leading-7 text-neutral-muted">Estamos aplicando la actualización en la hoja correspondiente.</p>
+        </div>
+      </div>
+      <div id="scheduleModalBackdropBlur" class="flex min-h-0 flex-1 flex-col transition-[filter,opacity] duration-200">
+        <div class="sticky top-0 z-[2] flex items-start justify-between gap-lg border-b border-neutral-charcoal/8 bg-[#fff8ee] px-xl py-xl md:px-2xl">
+          <div>
           <p id="modalEyebrow" class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Administración</p>
           <h2 id="modalTitle" class="mt-sm text-[clamp(30px,4vw,46px)] font-black tracking-[-0.05em] text-neutral-charcoal">Editar registro</h2>
           <p id="modalSubtitle" class="mt-sm text-sm font-bold leading-7 text-neutral-muted">Actualiza los parámetros y guarda los cambios.</p>
-        </div>
-        <button type="button" id="btnCloseScheduleModal" class="grid size-11 place-items-center rounded-2xl border border-neutral-charcoal/10 bg-white/92 text-xl font-black text-neutral-charcoal">×</button>
-      </div>
-      <form id="scheduleForm" class="mt-xl grid gap-lg">
-        <div id="scheduleFormGrid" class="grid gap-lg md:grid-cols-2"></div>
-        <div class="grid gap-sm md:flex md:justify-between">
-          <button type="button" id="btnDeleteSchedule" class="hidden min-h-[52px] items-center justify-center rounded-2xl bg-brand-ketchup px-xl py-md text-base font-black text-white">Eliminar</button>
-          <div class="grid gap-sm md:flex md:justify-end">
-            <button type="button" id="btnCancelSchedule" class="inline-flex min-h-[52px] items-center justify-center rounded-2xl border border-neutral-charcoal/12 bg-white/92 px-xl py-md text-base font-black text-neutral-charcoal">Cancelar</button>
-            <button type="submit" id="btnSaveSchedule" class="inline-flex min-h-[52px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-base font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Guardar cambios</button>
           </div>
+          <button type="button" id="btnCloseScheduleModal" class="grid size-11 place-items-center rounded-2xl border border-neutral-charcoal/10 bg-white/92 text-xl font-black text-neutral-charcoal">×</button>
         </div>
-      </form>
+        <form id="scheduleForm" class="flex min-h-0 flex-1 flex-col">
+          <div class="min-h-0 flex-1 overflow-y-auto px-xl py-xl md:px-2xl">
+            <div id="scheduleFormGrid" class="grid gap-lg"></div>
+          </div>
+          <div class="sticky bottom-0 z-[2] border-t border-neutral-charcoal/8 bg-[#fff8ee] px-xl py-lg md:px-2xl">
+            <div class="grid gap-sm md:flex md:items-center md:justify-between">
+              <button type="button" id="btnDeleteSchedule" class="hidden min-h-[52px] items-center justify-center rounded-2xl bg-brand-ketchup px-xl py-md text-base font-black text-white">Eliminar</button>
+              <div class="grid gap-sm md:flex md:justify-end">
+                <button type="button" id="btnCancelSchedule" class="inline-flex min-h-[52px] items-center justify-center rounded-2xl border border-neutral-charcoal/12 bg-white/92 px-xl py-md text-base font-black text-neutral-charcoal">Cancelar</button>
+                <button type="submit" id="btnSaveSchedule" class="inline-flex min-h-[52px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-base font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Guardar cambios</button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
   `;
 
   document.body.appendChild(root);
+}
+
+function setModalLoading(loading, title = 'Procesando...', message = 'Estamos actualizando la información.') {
+  const modal = $('scheduleModal');
+  const blurShell = $('scheduleModalBackdropBlur');
+  const layer = $('scheduleModalLoading');
+  if (!modal || !blurShell || !layer) return;
+
+  $('scheduleModalLoadingTitle').textContent = title;
+  $('scheduleModalLoadingMessage').textContent = message;
+
+  blurShell.style.filter = loading ? 'blur(6px)' : 'none';
+  blurShell.style.opacity = loading ? '0.55' : '1';
+  layer.classList.toggle('hidden', !loading);
+  layer.classList.toggle('flex', loading);
+  modal.dataset.loading = loading ? 'true' : 'false';
+}
+
+function isBatchCreateMode(type, mode) {
+  return mode === 'create' && (type === 'horariosEspeciales' || type === 'feriados');
 }
 
 function getModalConfig(type, mode, record = {}) {
@@ -127,16 +314,16 @@ function getModalConfig(type, mode, record = {}) {
     return {
       eyebrow: 'Horario base',
       title: mode === 'create' ? 'Nuevo horario base' : 'Editar horario base',
-      subtitle: 'Define la apertura y cierre habitual por local y día.',
+      subtitle: 'Define la apertura y cierre habitual por local y día. Si el día no atiende, márcalo como cerrado.',
       saveAction: 'GuardarHorarioLocalAdmin',
       deleteAction: 'EliminarHorarioLocalAdmin',
       fields: [
         { id: 'local', label: 'Local', type: 'select', options: localOptions, value: record.local || localOptions[0] || '' },
         { id: 'diaSemana', label: 'Día semana', type: 'select', options: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'], value: record.diaSemana || 'Lunes' },
+        { id: 'activo', label: 'Estado', type: 'select', options: ['SI', 'NO'], value: record.activo === false ? 'NO' : 'SI' },
         { id: 'horaApertura', label: 'Hora apertura', type: 'time', value: record.horaApertura || '' },
         { id: 'horaCierre', label: 'Hora cierre', type: 'time', value: record.horaCierre || '' },
         { id: 'permiteTrasnoche', label: 'Permite trasnoche', type: 'select', options: ['SI', 'NO'], value: record.permiteTrasnoche ? 'SI' : 'NO' },
-        { id: 'activo', label: 'Activo', type: 'select', options: ['SI', 'NO'], value: record.activo === false ? 'NO' : 'SI' },
       ],
     };
   }
@@ -152,7 +339,7 @@ function getModalConfig(type, mode, record = {}) {
         { id: 'fecha', label: 'Fecha', type: 'date', value: record.fecha || '' },
         { id: 'local', label: 'Local', type: 'select', options: localOptions, value: record.local || localOptions[0] || '' },
         { id: 'nombreEvento', label: 'Nombre evento', type: 'text', value: record.nombreEvento || '' },
-        { id: 'tipoEspecial', label: 'Tipo especial', type: 'text', value: record.tipoEspecial || '' },
+        { id: 'tipoEspecial', label: 'Tipo especial', type: 'select', options: TIPO_ESPECIAL_OPTIONS, value: record.tipoEspecial || 'Evento' },
         { id: 'horaApertura', label: 'Hora apertura', type: 'time', value: record.horaApertura || '' },
         { id: 'horaCierre', label: 'Hora cierre', type: 'time', value: record.horaCierre || '' },
         { id: 'permiteTrasnoche', label: 'Permite trasnoche', type: 'select', options: ['SI', 'NO'], value: record.permiteTrasnoche ? 'SI' : 'NO' },
@@ -165,25 +352,30 @@ function getModalConfig(type, mode, record = {}) {
   return {
     eyebrow: 'Feriados',
     title: mode === 'create' ? 'Nuevo feriado' : 'Editar feriado',
-    subtitle: 'Mantén visible la fecha especial y su alcance por local o global.',
+    subtitle: 'Mantén visible la fecha especial y clasifícala según su tipo de feriado.',
     saveAction: 'GuardarFeriadoAdmin',
     deleteAction: 'EliminarFeriadoAdmin',
     fields: [
       { id: 'fecha', label: 'Fecha', type: 'date', value: record.fecha || '' },
-      { id: 'nombre', label: 'Nombre feriado', type: 'text', value: record.nombre || '' },
-      { id: 'local', label: 'Local', type: 'select', options: ['Todos', ...localOptions], value: record.local || 'Todos' },
-      { id: 'activo', label: 'Activo', type: 'select', options: ['SI', 'NO'], value: record.activo === false ? 'NO' : 'SI' },
-      { id: 'observaciones', label: 'Observaciones', type: 'textarea', value: record.observaciones || '', span: 2 },
+      { id: 'festividad', label: 'Festividad', type: 'text', value: record.festividad || '' },
+      { id: 'tipoFeriado', label: 'Tipo de feriado', type: 'select', options: TIPO_FERIADO_OPTIONS, value: record.tipoFeriado || TIPO_FERIADO_OPTIONS[0] },
     ],
   };
 }
 
 function renderField(field) {
+  const defaultSpanClass = field.span === 2 ? 'md:col-span-2' : '';
+  return renderFieldWithPrefix(field, 'scheduleField_', {
+    wrapperClassName: `grid gap-sm ${defaultSpanClass}`.trim(),
+  });
+}
+
+function renderFieldWithPrefix(field, prefix, options = {}) {
   const wrapper = document.createElement('label');
-  wrapper.className = `grid gap-sm ${field.span === 2 ? 'md:col-span-2' : ''}`;
+  wrapper.className = options.wrapperClassName || `grid gap-sm ${field.span === 2 ? 'md:col-span-2' : ''}`;
 
   const label = document.createElement('span');
-  label.className = 'text-sm font-black uppercase tracking-[0.16em] text-neutral-muted';
+  label.className = options.labelClassName || 'text-sm font-black uppercase tracking-[0.16em] text-neutral-muted';
   label.textContent = field.label;
 
   let control;
@@ -206,11 +398,159 @@ function renderField(field) {
     control.value = field.value;
   }
 
-  control.id = `scheduleField_${field.id}`;
-  control.className = 'min-h-[52px] rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/80 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30';
+  control.id = `${prefix}${field.id}`;
+  control.dataset.fieldId = field.id;
+  control.className = options.controlClassName || 'min-h-[52px] rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/80 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30';
 
   wrapper.append(label, control);
   return wrapper;
+}
+
+function getBatchFieldLayoutClass(config, field) {
+  const fieldIds = config.fields.map((item) => item.id);
+  const isFeriado = fieldIds.includes('festividad') && fieldIds.includes('tipoFeriado');
+  const isHorarioEspecial = fieldIds.includes('nombreEvento') && fieldIds.includes('tipoEspecial');
+
+  if (isFeriado) {
+    const map = {
+      fecha: 'md:col-span-3 xl:col-span-3',
+      festividad: 'md:col-span-5 xl:col-span-5',
+      tipoFeriado: 'md:col-span-4 xl:col-span-4',
+    };
+    return map[field.id] || 'md:col-span-6 xl:col-span-4';
+  }
+
+  if (isHorarioEspecial) {
+    const map = {
+      fecha: 'md:col-span-3 xl:col-span-3',
+      local: 'md:col-span-3 xl:col-span-3',
+      nombreEvento: 'md:col-span-6 xl:col-span-6',
+      tipoEspecial: 'md:col-span-4 xl:col-span-4',
+      horaApertura: 'md:col-span-2 xl:col-span-2',
+      horaCierre: 'md:col-span-2 xl:col-span-2',
+      permiteTrasnoche: 'md:col-span-2 xl:col-span-2',
+      activo: 'md:col-span-2 xl:col-span-2',
+      observaciones: 'md:col-span-12 xl:col-span-12',
+    };
+    return map[field.id] || 'md:col-span-4 xl:col-span-2';
+  }
+
+  return field.span === 2 ? 'md:col-span-12 xl:col-span-12' : 'md:col-span-6 xl:col-span-4';
+}
+
+function createBatchEntryCard(config, index, seed = {}) {
+  const card = document.createElement('section');
+  card.className = 'rounded-3xl border border-neutral-charcoal/10 bg-white/82 p-lg md:p-xl';
+  card.dataset.entryIndex = String(index);
+
+  const header = document.createElement('div');
+  header.className = 'mb-lg flex items-center justify-between gap-md border-b border-neutral-charcoal/8 pb-md';
+  header.innerHTML = `
+    <div>
+      <p class="text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Registro ${index + 1}</p>
+      <p class="mt-xs text-sm font-semibold text-neutral-charcoal/70">Completa esta fila antes de guardar.</p>
+    </div>
+  `;
+
+  const removeButton = createButton('Quitar', {
+    variant: 'secondary',
+    className: 'min-h-[42px] rounded-2xl border-brand-bun/35 bg-white/92 px-lg text-neutral-charcoal hover:border-brand-bun hover:bg-brand-bun/10',
+    onClick: () => {
+      const container = $('scheduleBatchEntries');
+      if (!container) return;
+      if (container.children.length <= 1) return;
+      card.remove();
+      refreshBatchEntryHeaders();
+    },
+  });
+  removeButton.dataset.removeEntry = 'true';
+  header.appendChild(removeButton);
+
+  const grid = document.createElement('div');
+  grid.className = 'grid gap-md md:grid-cols-12 md:items-end';
+
+  config.fields.forEach((field) => {
+    const fieldValue = Object.prototype.hasOwnProperty.call(seed, field.id) ? seed[field.id] : field.value;
+    const layoutClass = getBatchFieldLayoutClass(config, field);
+    grid.appendChild(renderFieldWithPrefix(
+      { ...field, value: fieldValue },
+      `scheduleEntry_${index}_`,
+      {
+        wrapperClassName: `grid gap-xs ${layoutClass}`,
+        labelClassName: 'text-[11px] font-black uppercase tracking-[0.18em] text-neutral-muted',
+        controlClassName: field.type === 'textarea'
+          ? 'min-h-[52px] rounded-2xl border border-neutral-charcoal/10 bg-white/94 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/80 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30'
+          : 'min-h-[52px] rounded-2xl border border-neutral-charcoal/10 bg-white/94 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/80 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30',
+      },
+    ));
+  });
+
+  card.append(header, grid);
+  return card;
+}
+
+function refreshBatchEntryHeaders() {
+  const container = $('scheduleBatchEntries');
+  if (!container) return;
+  [...container.children].forEach((entry, index) => {
+    entry.dataset.entryIndex = String(index);
+    const eyebrow = entry.querySelector('p');
+    if (eyebrow) {
+      eyebrow.textContent = `Registro ${index + 1}`;
+    }
+    const removeButton = entry.querySelector('[data-remove-entry="true"]');
+    if (removeButton) {
+      removeButton.classList.toggle('hidden', index === 0);
+      removeButton.classList.toggle('inline-flex', index > 0);
+    }
+  });
+}
+
+function renderBatchEntryContainer(config, seedEntries = [{}]) {
+  const formGrid = $('scheduleFormGrid');
+  formGrid.innerHTML = '';
+  formGrid.className = 'grid gap-lg';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'grid w-full gap-lg';
+
+  const container = document.createElement('div');
+  container.id = 'scheduleBatchEntries';
+  container.className = 'grid gap-lg';
+  seedEntries.forEach((entry, index) => {
+    container.appendChild(createBatchEntryCard(config, index, entry));
+  });
+  refreshBatchEntryHeaders();
+
+  const addButtonWrap = document.createElement('div');
+  addButtonWrap.className = 'flex justify-start';
+  addButtonWrap.appendChild(createButton('Agregar otro', {
+    variant: 'secondary',
+    className: 'min-h-[46px] rounded-2xl border-brand-bun/35 bg-white/92 px-xl text-neutral-charcoal hover:border-brand-bun hover:bg-brand-bun/10',
+    onClick: () => {
+      const nextIndex = container.children.length;
+      container.appendChild(createBatchEntryCard(config, nextIndex));
+      refreshBatchEntryHeaders();
+      syncScheduleModalFields();
+    },
+  }));
+
+  wrapper.append(container, addButtonWrap);
+  formGrid.appendChild(wrapper);
+}
+
+function collectBatchEntries() {
+  const container = $('scheduleBatchEntries');
+  if (!container) return [];
+
+  return [...container.children].map((entry, index) => {
+    const payload = {};
+    modalRuntime.config.fields.forEach((field) => {
+      const node = entry.querySelector(`#scheduleEntry_${index}_${field.id}`);
+      if (node) payload[field.id] = node.value;
+    });
+    return payload;
+  });
 }
 
 function openModal(type, mode, record = null) {
@@ -218,14 +558,23 @@ function openModal(type, mode, record = null) {
   const config = getModalConfig(type, mode, record || {});
   const formGrid = $('scheduleFormGrid');
   formGrid.innerHTML = '';
+  formGrid.className = modalRuntime.batchEnabled ? 'grid gap-lg' : 'grid gap-lg md:grid-cols-2';
+  modalRuntime.config = config;
+  modalRuntime.batchEnabled = isBatchCreateMode(type, mode);
 
   $('modalEyebrow').textContent = config.eyebrow;
   $('modalTitle').textContent = config.title;
   $('modalSubtitle').textContent = config.subtitle;
 
-  config.fields.forEach((field) => {
-    formGrid.appendChild(renderField(field));
-  });
+  formGrid.className = modalRuntime.batchEnabled ? 'grid gap-lg' : 'grid gap-lg md:grid-cols-2';
+
+  if (modalRuntime.batchEnabled) {
+    renderBatchEntryContainer(config);
+  } else {
+    config.fields.forEach((field) => {
+      formGrid.appendChild(renderField(field));
+    });
+  }
 
   const deleteButton = $('btnDeleteSchedule');
   deleteButton.classList.toggle('hidden', mode === 'create');
@@ -238,15 +587,19 @@ function openModal(type, mode, record = null) {
   modal.dataset.deleteAction = config.deleteAction;
   modal.classList.remove('hidden');
   modal.classList.add('flex');
+  syncScheduleModalFields();
 }
 
 function closeModal() {
   const modal = $('scheduleModal');
+  setModalLoading(false);
   modal.classList.add('hidden');
   modal.classList.remove('flex');
   modal.dataset.type = '';
   modal.dataset.mode = '';
   modal.dataset.rowNumber = '';
+  modalRuntime.config = null;
+  modalRuntime.batchEnabled = false;
 }
 
 function createDataTable(columns, rows) {
@@ -309,25 +662,176 @@ function createActionCell(type, record) {
     createButton('Editar', {
       variant: 'secondary',
       size: 'sm',
-      className: 'rounded-full px-lg',
+      className: 'rounded-full border-brand-bun/45 bg-white/92 px-lg text-neutral-charcoal hover:border-brand-bun hover:bg-brand-bun/10',
       onClick: () => openModal(type, 'edit', record),
     }),
   );
   return wrap;
 }
 
-function renderHorarioLocales() {
+function renderIconCircle(symbol, tone = 'violet') {
+  const tones = {
+    violet: 'bg-indigo-500/10 text-indigo-600',
+    green: 'bg-brand-lettuce/10 text-brand-lettuce',
+    neutral: 'bg-neutral-charcoal/6 text-neutral-charcoal/60',
+  };
+  return `<span class="grid size-11 place-items-center rounded-full ${tones[tone] || tones.violet} text-lg font-black">${symbol}</span>`;
+}
+
+function createHorarioRow(day, local) {
+  const horario = getHorarioDisplay(day);
+  const trasnoche = getTrasnocheDisplay(day);
+  const isOpen = isDayOpen(day);
+  const tr = document.createElement('tr');
+  tr.className = 'align-middle';
+  tr.innerHTML = `
+    <td class="px-lg py-lg text-lg font-black text-neutral-charcoal">${escapeHtml(day.diaSemana)}</td>
+    <td class="px-lg py-lg">${getStatusBadge(isOpen)}</td>
+    <td class="px-lg py-lg">
+      <div class="flex items-center gap-md">
+        ${renderIconCircle('◷', isOpen ? 'violet' : 'neutral')}
+        <div>
+          <p class="text-lg font-black tracking-[-0.03em] text-neutral-charcoal">${escapeHtml(horario.value)}</p>
+          <p class="text-sm font-semibold text-neutral-muted">${escapeHtml(horario.helper)}</p>
+        </div>
+      </div>
+    </td>
+    <td class="px-lg py-lg">
+      <div class="flex items-center gap-md">
+        ${renderIconCircle('☾', isOpen && day.permiteTrasnoche ? 'green' : 'neutral')}
+        <div>
+          <p class="text-lg font-black tracking-[-0.03em] text-neutral-charcoal">${escapeHtml(trasnoche.value)}</p>
+          <div class="mt-xs text-sm font-semibold text-neutral-muted">${trasnoche.badge || escapeHtml(trasnoche.helper || ' ')}</div>
+        </div>
+      </div>
+    </td>
+    <td class="px-lg py-lg">
+      <div class="flex justify-end">
+        <div data-action-slot></div>
+      </div>
+    </td>
+  `;
+
+  const actionSlot = tr.querySelector('[data-action-slot]');
+  actionSlot.appendChild(createButton('Editar', {
+    variant: 'secondary',
+    className: 'min-h-[46px] rounded-2xl border-brand-bun/45 bg-white/92 px-xl text-neutral-charcoal hover:border-brand-bun hover:bg-brand-bun/10',
+    onClick: () => openModal('horarioLocales', 'edit', day),
+  }));
+  return tr;
+}
+
+function renderHorarioLocalesAccordion() {
   const target = $('horarioLocalesTable');
   target.innerHTML = '';
-  target.appendChild(createDataTable([
-    { label: 'Local', key: 'local' },
-    { label: 'Día', key: 'diaSemana' },
-    { label: 'Apertura', key: 'horaApertura' },
-    { label: 'Cierre', key: 'horaCierre' },
-    { label: 'Trasnoche', render: (row) => boolLabel(row.permiteTrasnoche) },
-    { label: 'Activo', render: (row) => boolLabel(row.activo) },
-    { label: 'Acción', render: (row) => createActionCell('horarioLocales', row) },
-  ], state.horarioLocales));
+  target.className = 'mt-xl grid gap-lg';
+  const groupedRows = groupHorarioLocalesByLocal(state.horarioLocales);
+  const sections = [];
+
+  groupedRows.forEach((group) => {
+    const section = createAccordionSection({
+      id: `horario-local-${normalizeText(group.local).replace(/\s+/g, '-')}`,
+      title: group.local,
+      subtitle: 'Configuración de horarios semanales',
+      badgeText: String(group.days.length),
+      open: false,
+    });
+
+    const panelLayout = document.createElement('div');
+    panelLayout.className = 'grid gap-lg';
+    const tableWrap = document.createElement('div');
+    tableWrap.className = 'overflow-hidden rounded-3xl border border-neutral-charcoal/10 bg-white/92 shadow-brand-sm';
+
+    const table = document.createElement('table');
+    table.className = 'min-w-full divide-y divide-neutral-charcoal/8';
+    table.innerHTML = `
+      <thead class="bg-brand-cheese/10">
+        <tr>
+          <th class="px-lg py-lg text-left text-sm font-black text-neutral-muted">Días</th>
+          <th class="px-lg py-lg text-left text-sm font-black text-neutral-muted">Estado</th>
+          <th class="px-lg py-lg text-left text-sm font-black text-neutral-muted">Horario de atención</th>
+          <th class="px-lg py-lg text-left text-sm font-black text-neutral-muted">Permite trasnoche</th>
+          <th class="px-lg py-lg text-right text-sm font-black text-neutral-muted">Acciones</th>
+        </tr>
+      </thead>
+    `;
+
+    const tbody = document.createElement('tbody');
+    tbody.className = 'divide-y divide-neutral-charcoal/8 bg-white/88';
+    group.days.forEach((day) => {
+      tbody.appendChild(createHorarioRow(day, group.local));
+    });
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+
+    panelLayout.appendChild(tableWrap);
+    section.panel.appendChild(panelLayout);
+    target.appendChild(section.element);
+    sections.push(section);
+  });
+
+  sections.forEach((section) => {
+    section.bindToggle(() => {
+      const nextOpen = !section.isOpen();
+      sections.forEach((candidate) => candidate.setOpen(false));
+      section.setOpen(nextOpen);
+    });
+  });
+
+  if (!sections.length) {
+    const empty = document.createElement('div');
+    empty.className = 'rounded-3xl border border-neutral-charcoal/10 bg-white/90 px-xl py-xl text-sm font-bold text-neutral-muted';
+    empty.textContent = 'No hay registros cargados todavía.';
+    target.appendChild(empty);
+  }
+}
+
+function syncScheduleModalFields() {
+  const modal = $('scheduleModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+
+  const entryRoots = modalRuntime.batchEnabled
+    ? [...(($('scheduleBatchEntries') && $('scheduleBatchEntries').children) || [])]
+    : [modal];
+
+  entryRoots.forEach((root, index) => {
+    const prefix = modalRuntime.batchEnabled ? `scheduleEntry_${index}_` : 'scheduleField_';
+    const activoField = root.querySelector ? root.querySelector(`#${prefix}activo`) : null;
+    const horaAperturaField = root.querySelector ? root.querySelector(`#${prefix}horaApertura`) : null;
+    const horaCierreField = root.querySelector ? root.querySelector(`#${prefix}horaCierre`) : null;
+    const trasnocheField = root.querySelector ? root.querySelector(`#${prefix}permiteTrasnoche`) : null;
+    const tipoEspecialField = root.querySelector ? root.querySelector(`#${prefix}tipoEspecial`) : null;
+
+    if (modal.dataset.type === 'horarioLocales' && activoField) {
+      const isClosed = activoField.value === 'NO';
+      [horaAperturaField, horaCierreField].forEach((field) => {
+        if (!field) return;
+        field.disabled = isClosed;
+        if (isClosed) field.value = '';
+      });
+      if (trasnocheField) {
+        trasnocheField.disabled = isClosed;
+        if (isClosed) trasnocheField.value = 'NO';
+      }
+    }
+
+    if (modal.dataset.type === 'horariosEspeciales' && tipoEspecialField) {
+      const isClosure = tipoEspecialField.value === 'Cerrado';
+      [horaAperturaField, horaCierreField].forEach((field) => {
+        if (!field) return;
+        field.disabled = isClosure;
+        if (isClosure) field.value = '';
+      });
+      if (trasnocheField) {
+        trasnocheField.disabled = isClosure;
+        if (isClosure) trasnocheField.value = 'NO';
+      }
+    }
+  });
+}
+
+function renderHorarioLocales() {
+  renderHorarioLocalesAccordion();
   $('horarioLocalesCount').textContent = `${state.horarioLocales.length} registros en la hoja HorarioLocales.`;
 }
 
@@ -352,10 +856,8 @@ function renderFeriados() {
   target.innerHTML = '';
   target.appendChild(createDataTable([
     { label: 'Fecha', key: 'fecha' },
-    { label: 'Nombre', key: 'nombre' },
-    { label: 'Local', render: (row) => escapeHtml(row.local || 'Todos') },
-    { label: 'Activo', render: (row) => boolLabel(row.activo) },
-    { label: 'Observaciones', render: (row) => escapeHtml(row.observaciones || '-') },
+    { label: 'Festividad', key: 'festividad' },
+    { label: 'Tipo de feriado', key: 'tipoFeriado' },
     { label: 'Acción', render: (row) => createActionCell('feriados', row) },
   ], state.feriados));
   $('feriadosCount').textContent = `${state.feriados.length} registros en la hoja Feriados.`;
@@ -407,10 +909,9 @@ function renderShell() {
     eyebrow: 'HorarioLocales',
     title: 'Horario base por local',
     body: 'Define la franja habitual por día de la semana. Esta configuración alimenta la referencia operativa normal.',
-    addLabel: 'Nuevo horario base',
     tableId: 'horarioLocalesTable',
     countId: 'horarioLocalesCount',
-    onAdd: () => openModal('horarioLocales', 'create'),
+    showAddAction: false,
   });
 
   const horariosEspecialesSection = createTableSection({
@@ -426,7 +927,7 @@ function renderShell() {
   const feriadosSection = createTableSection({
     eyebrow: 'Feriados',
     title: 'Calendario de feriados',
-    body: 'Registra feriados globales o acotados por local para mantener visible el contexto operativo.',
+    body: 'Registra festividades y clasifícalas por tipo para mantener el calendario operativo al día.',
     addLabel: 'Nuevo feriado',
     tableId: 'feriadosTable',
     countId: 'feriadosCount',
@@ -444,7 +945,7 @@ async function loadData() {
   }
 
   state.locals = Array.isArray(response.meta && response.meta.locals) ? response.meta.locals : [];
-  state.horarioLocales = Array.isArray(response.horarioLocales) ? response.horarioLocales : [];
+  state.horarioLocales = Array.isArray(response.horarioLocales) ? sortHorarioLocales(response.horarioLocales) : [];
   state.horariosEspeciales = Array.isArray(response.horariosEspeciales) ? response.horariosEspeciales : [];
   state.feriados = Array.isArray(response.feriados) ? response.feriados : [];
 }
@@ -459,31 +960,39 @@ async function saveModalData(event) {
   event.preventDefault();
 
   const modal = $('scheduleModal');
-  const payload = { accion: modal.dataset.saveAction };
   const rowNumber = Number(modal.dataset.rowNumber || 0);
-  if (rowNumber) payload.rowNumber = rowNumber;
+  const payloads = modalRuntime.batchEnabled
+    ? collectBatchEntries().map((entry) => ({ accion: modal.dataset.saveAction, ...entry }))
+    : [(() => {
+        const payload = { accion: modal.dataset.saveAction };
+        if (rowNumber) payload.rowNumber = rowNumber;
+        ['local', 'diaSemana', 'horaApertura', 'horaCierre', 'permiteTrasnoche', 'activo', 'fecha', 'nombreEvento', 'tipoEspecial', 'observaciones', 'nombre', 'festividad', 'tipoFeriado']
+          .forEach((fieldId) => {
+            const node = document.getElementById(`scheduleField_${fieldId}`);
+            if (node) payload[fieldId] = node.value;
+          });
+        return payload;
+      })()];
 
-  ['local', 'diaSemana', 'horaApertura', 'horaCierre', 'permiteTrasnoche', 'activo', 'fecha', 'nombreEvento', 'tipoEspecial', 'observaciones', 'nombre']
-    .forEach((fieldId) => {
-      const node = document.getElementById(`scheduleField_${fieldId}`);
-      if (node) payload[fieldId] = node.value;
-    });
-
+  setModalLoading(true, 'Guardando cambios...', 'Estamos aplicando la actualización en la hoja correspondiente. Este proceso puede tardar unos segundos.');
   overlay.setLoading(true, 'Guardando cambios...', 'Estamos actualizando la hoja correspondiente en el entorno activo.');
   await waitNextFrame();
 
   try {
-    const response = await window.LVAuth.apiPost(payload);
-    if (response.status !== 'SUCCESS') {
-      throw new Error(response.mensaje || 'No se pudo guardar el registro.');
+    for (const payload of payloads) {
+      const response = await window.LVAuth.apiPost(payload);
+      if (response.status !== 'SUCCESS') {
+        throw new Error(response.mensaje || 'No se pudo guardar el registro.');
+      }
     }
     await loadData();
     renderData();
     closeModal();
-    toast.show('success', response.mensaje || 'Cambios guardados correctamente.');
+    toast.show('success', payloads.length > 1 ? 'Registros guardados correctamente.' : 'Cambios guardados correctamente.');
   } catch (error) {
     toast.show('error', error.message || 'No se pudo guardar el registro.');
   } finally {
+    setModalLoading(false);
     overlay.setLoading(false);
   }
 }
@@ -493,6 +1002,7 @@ async function deleteModalData() {
   const rowNumber = Number(modal.dataset.rowNumber || 0);
   if (!rowNumber) return;
 
+  setModalLoading(true, 'Eliminando registro...', 'Estamos aplicando el cambio en la hoja correspondiente. Espera a que el sistema confirme la eliminación.');
   overlay.setLoading(true, 'Eliminando registro...', 'Estamos aplicando el cambio en la hoja correspondiente.');
   await waitNextFrame();
 
@@ -511,16 +1021,34 @@ async function deleteModalData() {
   } catch (error) {
     toast.show('error', error.message || 'No se pudo eliminar el registro.');
   } finally {
+    setModalLoading(false);
     overlay.setLoading(false);
   }
 }
 
 function bindModal() {
-  $('btnCloseScheduleModal').addEventListener('click', closeModal);
-  $('btnCancelSchedule').addEventListener('click', closeModal);
+  $('btnCloseScheduleModal').addEventListener('click', () => {
+    if ($('scheduleModal').dataset.loading === 'true') return;
+    closeModal();
+  });
+  $('btnCancelSchedule').addEventListener('click', () => {
+    if ($('scheduleModal').dataset.loading === 'true') return;
+    closeModal();
+  });
   $('btnDeleteSchedule').addEventListener('click', deleteModalData);
   $('scheduleForm').addEventListener('submit', saveModalData);
-  $('scheduleModal').querySelector('[data-modal-backdrop]').addEventListener('click', closeModal);
+  $('scheduleModal').querySelector('[data-modal-backdrop]').addEventListener('click', () => {
+    if ($('scheduleModal').dataset.loading === 'true') return;
+    closeModal();
+  });
+  document.addEventListener('change', (event) => {
+    if (
+      event.target &&
+      (event.target.id === 'scheduleField_activo' || event.target.id === 'scheduleField_tipoEspecial')
+    ) {
+      syncScheduleModalFields();
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

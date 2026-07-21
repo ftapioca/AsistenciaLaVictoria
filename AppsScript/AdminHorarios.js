@@ -1,33 +1,37 @@
 const HOJA_FERIADOS = "Feriados";
 
 const HORARIO_LOCALES_HEADERS = [
-  "local",
-  "dia_semana",
-  "hora_apertura",
-  "hora_cierre",
-  "permite_trasnoche",
-  "activo"
+  "Local",
+  "DiaSemana",
+  "HoraApertura",
+  "HoraCierre",
+  "PermiteTrasnoche",
+  "Activo"
 ];
 
 const HORARIO_ESPECIAL_HEADERS = [
-  "fecha",
-  "local",
-  "nombre_evento",
-  "hora_apertura",
-  "hora_cierre",
-  "permite_trasnoche",
-  "tipo_especial",
-  "activo",
-  "observaciones"
+  "Fecha",
+  "Local",
+  "NombreEvento",
+  "HoraApertura",
+  "HoraCierre",
+  "PermiteTrasnoche",
+  "TipoEspecial",
+  "Activo",
+  "Observaciones"
 ];
 
 const FERIADOS_HEADERS = [
-  "fecha",
-  "nombre",
-  "local",
-  "activo",
-  "observaciones"
+  "Fecha",
+  "Festividad",
+  "Tipo de Feriado"
 ];
+
+function getRowValueByHeaderOrder_(row, headers, headerName) {
+  var index = headers.indexOf(headerName);
+  if (index === -1) return "";
+  return row[index];
+}
 
 function bootstrapAdministracionHorarios(params) {
   requireAdminSession(params);
@@ -60,10 +64,16 @@ function guardarHorarioLocalAdmin(params) {
     activo: parseBooleanCell_(params.activo) ? "SI" : "NO"
   };
 
-  if (!values.local || !values.diaSemana || !values.horaApertura || !values.horaCierre) {
+  if (values.activo === "NO") {
+    values.horaApertura = "";
+    values.horaCierre = "";
+    values.permiteTrasnoche = "NO";
+  }
+
+  if (!values.local || !values.diaSemana || (values.activo !== "NO" && (!values.horaApertura || !values.horaCierre))) {
     return responderJSON({
       status: "ERROR_DATOS",
-      mensaje: "Debes indicar local, día, hora de apertura y hora de cierre."
+      mensaje: "Debes indicar local, día y, si el día está abierto, hora de apertura y hora de cierre."
     });
   }
 
@@ -71,12 +81,12 @@ function guardarHorarioLocalAdmin(params) {
     HOJA_HORARIO_LOCALES,
     HORARIO_LOCALES_HEADERS,
     {
-      local: ["local"],
-      diaSemana: ["dia_semana", "dia", "diasemana"],
-      horaApertura: ["hora_apertura", "apertura"],
-      horaCierre: ["hora_cierre", "cierre"],
-      permiteTrasnoche: ["permite_trasnoche", "trasnoche"],
-      activo: ["activo"]
+      local: ["Local"],
+      diaSemana: ["DiaSemana"],
+      horaApertura: ["HoraApertura"],
+      horaCierre: ["HoraCierre"],
+      permiteTrasnoche: ["PermiteTrasnoche"],
+      activo: ["Activo"]
     },
     rowNumber,
     values
@@ -110,6 +120,12 @@ function guardarHorarioEspecialLocalAdmin(params) {
     observaciones: String(params.observaciones || "").trim()
   };
 
+  if (values.tipoEspecial === "Cerrado") {
+    values.horaApertura = "";
+    values.horaCierre = "";
+    values.permiteTrasnoche = "NO";
+  }
+
   if (!values.fecha || !values.local || !values.nombreEvento) {
     return responderJSON({
       status: "ERROR_DATOS",
@@ -121,15 +137,15 @@ function guardarHorarioEspecialLocalAdmin(params) {
     HOJA_HORARIO_ESPECIAL_LOCALES,
     HORARIO_ESPECIAL_HEADERS,
     {
-      fecha: ["fecha"],
-      local: ["local"],
-      nombreEvento: ["nombre_evento", "evento", "nombre"],
-      horaApertura: ["hora_apertura", "apertura"],
-      horaCierre: ["hora_cierre", "cierre"],
-      permiteTrasnoche: ["permite_trasnoche", "trasnoche"],
-      tipoEspecial: ["tipo_especial", "tipo"],
-      activo: ["activo"],
-      observaciones: ["observaciones", "observacion"]
+      fecha: ["Fecha"],
+      local: ["Local"],
+      nombreEvento: ["NombreEvento"],
+      horaApertura: ["HoraApertura"],
+      horaCierre: ["HoraCierre"],
+      permiteTrasnoche: ["PermiteTrasnoche"],
+      tipoEspecial: ["TipoEspecial"],
+      activo: ["Activo"],
+      observaciones: ["Observaciones"]
     },
     rowNumber,
     values
@@ -153,16 +169,14 @@ function guardarFeriadoAdmin(params) {
   var rowNumber = Number(params.rowNumber || 0);
   var values = {
     fecha: normalizarFechaSheetAdmin_(params.fecha),
-    nombre: String(params.nombre || "").trim(),
-    local: String(params.local || "").trim(),
-    activo: parseBooleanCell_(params.activo) ? "SI" : "NO",
-    observaciones: String(params.observaciones || "").trim()
+    festividad: String(params.festividad || params.nombre || "").trim(),
+    tipoFeriado: String(params.tipoFeriado || params.tipo_de_feriado || "").trim()
   };
 
-  if (!values.fecha || !values.nombre) {
+  if (!values.fecha || !values.festividad || !values.tipoFeriado) {
     return responderJSON({
       status: "ERROR_DATOS",
-      mensaje: "Debes indicar fecha y nombre del feriado."
+      mensaje: "Debes indicar fecha, festividad y tipo de feriado."
     });
   }
 
@@ -170,11 +184,9 @@ function guardarFeriadoAdmin(params) {
     HOJA_FERIADOS,
     FERIADOS_HEADERS,
     {
-      fecha: ["fecha"],
-      nombre: ["nombre", "feriado", "nombre_feriado"],
-      local: ["local"],
-      activo: ["activo"],
-      observaciones: ["observaciones", "observacion"]
+      fecha: ["Fecha"],
+      festividad: ["Festividad"],
+      tipoFeriado: ["Tipo de Feriado"]
     },
     rowNumber,
     values
@@ -198,17 +210,17 @@ function listarHorarioLocalesAdmin_() {
 
   for (var i = 1; i < context.data.length; i++) {
     var row = context.data[i];
-    var local = getCellFromSheetMap_(row, context.headerMap, ["local"]);
+    var local = getCellFromSheetMap_(row, context.headerMap, ["Local"]);
     if (!String(local || "").trim()) continue;
 
     items.push({
       rowNumber: i + 1,
       local: String(local || "").trim(),
-      diaSemana: String(getCellFromSheetMap_(row, context.headerMap, ["dia_semana", "dia", "diasemana"]) || "").trim(),
-      horaApertura: formatearHoraTurnos(getCellFromSheetMap_(row, context.headerMap, ["hora_apertura", "apertura"])),
-      horaCierre: formatearHoraTurnos(getCellFromSheetMap_(row, context.headerMap, ["hora_cierre", "cierre"])),
-      permiteTrasnoche: parseBooleanCell_(getCellFromSheetMap_(row, context.headerMap, ["permite_trasnoche", "trasnoche"])),
-      activo: parseBooleanCell_(getCellFromSheetMap_(row, context.headerMap, ["activo"]))
+      diaSemana: String(getCellFromSheetMap_(row, context.headerMap, ["DiaSemana"]) || "").trim(),
+      horaApertura: formatearHoraTurnos(getCellFromSheetMap_(row, context.headerMap, ["HoraApertura"])),
+      horaCierre: formatearHoraTurnos(getCellFromSheetMap_(row, context.headerMap, ["HoraCierre"])),
+      permiteTrasnoche: parseBooleanCell_(getCellFromSheetMap_(row, context.headerMap, ["PermiteTrasnoche"])),
+      activo: parseBooleanCell_(getCellFromSheetMap_(row, context.headerMap, ["Activo"]))
     });
   }
 
@@ -226,21 +238,21 @@ function listarHorariosEspecialesAdmin_() {
 
   for (var i = 1; i < context.data.length; i++) {
     var row = context.data[i];
-    var fecha = getCellFromSheetMap_(row, context.headerMap, ["fecha"]);
-    var local = getCellFromSheetMap_(row, context.headerMap, ["local"]);
+    var fecha = getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "Fecha");
+    var local = getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "Local");
     if (!fecha || !String(local || "").trim()) continue;
 
     items.push({
       rowNumber: i + 1,
       fecha: normalizarFechaSheetAdmin_(fecha),
       local: String(local || "").trim(),
-      nombreEvento: String(getCellFromSheetMap_(row, context.headerMap, ["nombre_evento", "evento", "nombre"]) || "").trim(),
-      horaApertura: formatearHoraTurnos(getCellFromSheetMap_(row, context.headerMap, ["hora_apertura", "apertura"])),
-      horaCierre: formatearHoraTurnos(getCellFromSheetMap_(row, context.headerMap, ["hora_cierre", "cierre"])),
-      permiteTrasnoche: parseBooleanCell_(getCellFromSheetMap_(row, context.headerMap, ["permite_trasnoche", "trasnoche"])),
-      tipoEspecial: String(getCellFromSheetMap_(row, context.headerMap, ["tipo_especial", "tipo"]) || "").trim(),
-      activo: parseBooleanCell_(getCellFromSheetMap_(row, context.headerMap, ["activo"])),
-      observaciones: String(getCellFromSheetMap_(row, context.headerMap, ["observaciones", "observacion"]) || "").trim()
+      nombreEvento: String(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "NombreEvento") || "").trim(),
+      horaApertura: formatearHoraTurnos(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "HoraApertura")),
+      horaCierre: formatearHoraTurnos(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "HoraCierre")),
+      permiteTrasnoche: parseBooleanCell_(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "PermiteTrasnoche")),
+      tipoEspecial: String(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "TipoEspecial") || "").trim(),
+      activo: parseBooleanCell_(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "Activo")),
+      observaciones: String(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "Observaciones") || "").trim()
     });
   }
 
@@ -258,17 +270,15 @@ function listarFeriadosAdmin_() {
 
   for (var i = 1; i < context.data.length; i++) {
     var row = context.data[i];
-    var fecha = getCellFromSheetMap_(row, context.headerMap, ["fecha"]);
-    var nombre = getCellFromSheetMap_(row, context.headerMap, ["nombre", "feriado", "nombre_feriado"]);
-    if (!fecha || !String(nombre || "").trim()) continue;
+    var fecha = getRowValueByHeaderOrder_(row, FERIADOS_HEADERS, "Fecha");
+    var festividad = getRowValueByHeaderOrder_(row, FERIADOS_HEADERS, "Festividad");
+    if (!fecha || !String(festividad || "").trim()) continue;
 
     items.push({
       rowNumber: i + 1,
       fecha: normalizarFechaSheetAdmin_(fecha),
-      nombre: String(nombre || "").trim(),
-      local: String(getCellFromSheetMap_(row, context.headerMap, ["local"]) || "").trim(),
-      activo: parseBooleanCell_(getCellFromSheetMap_(row, context.headerMap, ["activo"])),
-      observaciones: String(getCellFromSheetMap_(row, context.headerMap, ["observaciones", "observacion"]) || "").trim()
+      festividad: String(festividad || "").trim(),
+      tipoFeriado: String(getRowValueByHeaderOrder_(row, FERIADOS_HEADERS, "Tipo de Feriado") || "").trim()
     });
   }
 
@@ -290,7 +300,6 @@ function listarLocalesDisponiblesHorarios_(horarioLocales, horariosEspeciales, f
 
   horarioLocales.forEach(function(item) { addLocal(item.local); });
   horariosEspeciales.forEach(function(item) { addLocal(item.local); });
-  feriados.forEach(function(item) { addLocal(item.local); });
 
   return Object.keys(map).map(function(key) { return map[key]; }).sort(function(a, b) {
     return a.localeCompare(b, "es");
@@ -371,37 +380,35 @@ function buildAdminRecordFromSheetRow_(sheetName, row, headerMap, rowNumber) {
   if (sheetName === HOJA_HORARIO_LOCALES) {
     return {
       rowNumber: rowNumber,
-      local: String(getCellFromSheetMap_(row, headerMap, ["local"]) || "").trim(),
-      diaSemana: String(getCellFromSheetMap_(row, headerMap, ["dia_semana", "dia", "diasemana"]) || "").trim(),
-      horaApertura: formatearHoraTurnos(getCellFromSheetMap_(row, headerMap, ["hora_apertura", "apertura"])),
-      horaCierre: formatearHoraTurnos(getCellFromSheetMap_(row, headerMap, ["hora_cierre", "cierre"])),
-      permiteTrasnoche: parseBooleanCell_(getCellFromSheetMap_(row, headerMap, ["permite_trasnoche", "trasnoche"])),
-      activo: parseBooleanCell_(getCellFromSheetMap_(row, headerMap, ["activo"]))
+      local: String(getCellFromSheetMap_(row, headerMap, ["Local"]) || "").trim(),
+      diaSemana: String(getCellFromSheetMap_(row, headerMap, ["DiaSemana"]) || "").trim(),
+      horaApertura: formatearHoraTurnos(getCellFromSheetMap_(row, headerMap, ["HoraApertura"])),
+      horaCierre: formatearHoraTurnos(getCellFromSheetMap_(row, headerMap, ["HoraCierre"])),
+      permiteTrasnoche: parseBooleanCell_(getCellFromSheetMap_(row, headerMap, ["PermiteTrasnoche"])),
+      activo: parseBooleanCell_(getCellFromSheetMap_(row, headerMap, ["Activo"]))
     };
   }
 
   if (sheetName === HOJA_HORARIO_ESPECIAL_LOCALES) {
     return {
       rowNumber: rowNumber,
-      fecha: normalizarFechaSheetAdmin_(getCellFromSheetMap_(row, headerMap, ["fecha"])),
-      local: String(getCellFromSheetMap_(row, headerMap, ["local"]) || "").trim(),
-      nombreEvento: String(getCellFromSheetMap_(row, headerMap, ["nombre_evento", "evento", "nombre"]) || "").trim(),
-      horaApertura: formatearHoraTurnos(getCellFromSheetMap_(row, headerMap, ["hora_apertura", "apertura"])),
-      horaCierre: formatearHoraTurnos(getCellFromSheetMap_(row, headerMap, ["hora_cierre", "cierre"])),
-      permiteTrasnoche: parseBooleanCell_(getCellFromSheetMap_(row, headerMap, ["permite_trasnoche", "trasnoche"])),
-      tipoEspecial: String(getCellFromSheetMap_(row, headerMap, ["tipo_especial", "tipo"]) || "").trim(),
-      activo: parseBooleanCell_(getCellFromSheetMap_(row, headerMap, ["activo"])),
-      observaciones: String(getCellFromSheetMap_(row, headerMap, ["observaciones", "observacion"]) || "").trim()
+      fecha: normalizarFechaSheetAdmin_(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "Fecha")),
+      local: String(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "Local") || "").trim(),
+      nombreEvento: String(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "NombreEvento") || "").trim(),
+      horaApertura: formatearHoraTurnos(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "HoraApertura")),
+      horaCierre: formatearHoraTurnos(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "HoraCierre")),
+      permiteTrasnoche: parseBooleanCell_(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "PermiteTrasnoche")),
+      tipoEspecial: String(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "TipoEspecial") || "").trim(),
+      activo: parseBooleanCell_(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "Activo")),
+      observaciones: String(getRowValueByHeaderOrder_(row, HORARIO_ESPECIAL_HEADERS, "Observaciones") || "").trim()
     };
   }
 
   return {
     rowNumber: rowNumber,
-    fecha: normalizarFechaSheetAdmin_(getCellFromSheetMap_(row, headerMap, ["fecha"])),
-    nombre: String(getCellFromSheetMap_(row, headerMap, ["nombre", "feriado", "nombre_feriado"]) || "").trim(),
-    local: String(getCellFromSheetMap_(row, headerMap, ["local"]) || "").trim(),
-    activo: parseBooleanCell_(getCellFromSheetMap_(row, headerMap, ["activo"])),
-    observaciones: String(getCellFromSheetMap_(row, headerMap, ["observaciones", "observacion"]) || "").trim()
+    fecha: normalizarFechaSheetAdmin_(getRowValueByHeaderOrder_(row, FERIADOS_HEADERS, "Fecha")),
+    festividad: String(getRowValueByHeaderOrder_(row, FERIADOS_HEADERS, "Festividad") || "").trim(),
+    tipoFeriado: String(getRowValueByHeaderOrder_(row, FERIADOS_HEADERS, "Tipo de Feriado") || "").trim()
   };
 }
 
