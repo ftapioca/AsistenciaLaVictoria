@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isSupervisor = session.role === window.LVAuth.roles.SUPERVISOR;
     const visibleToolTitles = isSupervisor
       ? ['Turnos Abiertos', 'Programador']
-      : [];
+      : ['Turnos Abiertos', 'Programador', 'Administración'];
 
     $('app').innerHTML = '';
     createAdminPanelApp({

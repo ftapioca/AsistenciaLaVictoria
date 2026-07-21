@@ -225,6 +225,14 @@ function doGet(e) {
     }
   }
 
+  if (accion === "BootstrapAdministracionHorarios") {
+    try {
+      return bootstrapAdministracionHorarios(params);
+    } catch (error) {
+      return responderErrorAccion_(error, "No se pudo cargar la administración de horarios.");
+    }
+  }
+
   return obtenerColaboradoresPorLocal(params);
 }
 
@@ -349,6 +357,72 @@ function doPost(e) {
       return responderJSON({
         status: error.code || "FORBIDDEN",
         mensaje: error.message || "No se pudieron actualizar los permisos del rol."
+      });
+    }
+  }
+
+  if (accion === "GuardarHorarioLocalAdmin") {
+    try {
+      return guardarHorarioLocalAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo guardar el horario local."
+      });
+    }
+  }
+
+  if (accion === "EliminarHorarioLocalAdmin") {
+    try {
+      return eliminarHorarioLocalAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo eliminar el horario local."
+      });
+    }
+  }
+
+  if (accion === "GuardarHorarioEspecialLocalAdmin") {
+    try {
+      return guardarHorarioEspecialLocalAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo guardar el horario especial."
+      });
+    }
+  }
+
+  if (accion === "EliminarHorarioEspecialLocalAdmin") {
+    try {
+      return eliminarHorarioEspecialLocalAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo eliminar el horario especial."
+      });
+    }
+  }
+
+  if (accion === "GuardarFeriadoAdmin") {
+    try {
+      return guardarFeriadoAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo guardar el feriado."
+      });
+    }
+  }
+
+  if (accion === "EliminarFeriadoAdmin") {
+    try {
+      return eliminarFeriadoAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo eliminar el feriado."
       });
     }
   }

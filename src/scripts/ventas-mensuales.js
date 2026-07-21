@@ -963,7 +963,7 @@ function renderApp(session) {
       fullWidth: true,
       className: 'bg-white/88 text-neutral-charcoal shadow-none hover:bg-white',
       onClick: () => {
-        window.location.href = withCurrentEnvironment('adminPanel.html');
+        window.location.href = withCurrentEnvironment('administracion.html');
       },
     }),
     createButton('Cerrar sesión', {

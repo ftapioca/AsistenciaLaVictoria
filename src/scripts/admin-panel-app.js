@@ -41,28 +41,12 @@ const tools = [
     actionLabel: 'Abrir agenda',
   },
   {
-    eyebrow: 'Seguridad',
-    title: 'Usuarios y Permisos',
-    body: 'Edita roles de usuarios y la matriz de permisos por tipo desde una vista administrativa dedicada.',
-    href: 'usuariosPermisos.html',
+    eyebrow: 'Administración',
+    title: 'Administración',
+    body: 'Centraliza accesos, importaciones, pagos y configuración operativa de locales desde un único módulo.',
+    href: 'administracion.html',
     tone: 'neutral',
-    actionLabel: 'Gestionar accesos',
-  },
-  {
-    eyebrow: 'Ventas',
-    title: 'Importador Ventas',
-    body: 'Harness técnico para probar ImportarVentas con JSON normalizado antes del parser POS final.',
-    href: 'ventasMensuales.html',
-    tone: 'neutral',
-    actionLabel: 'Abrir importador',
-  },
-  {
-    eyebrow: 'Pagos',
-    title: 'Pagos Mensuales',
-    body: 'Resumen mensual por local y exportación ZIP con planillas individuales por colaborador.',
-    href: 'pagosMensuales.html',
-    tone: 'neutral',
-    actionLabel: 'Abrir pagos',
+    actionLabel: 'Abrir módulo',
   },
 ];
 

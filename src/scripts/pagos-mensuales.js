@@ -499,7 +499,7 @@ function createShell() {
     createButton('Volver al panel', {
       variant: 'secondary',
       fullWidth: true,
-      onClick: () => { window.location.href = withCurrentEnvironment('adminPanel.html'); },
+      onClick: () => { window.location.href = withCurrentEnvironment('administracion.html'); },
     }),
     createButton('Cerrar sesión', {
       variant: 'primary',

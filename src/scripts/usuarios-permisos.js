@@ -471,7 +471,7 @@ function buildShell() {
     createButton('Volver al panel', {
       variant: 'secondary',
       className: 'bg-white/88 text-neutral-charcoal hover:bg-white',
-      onClick: () => { window.location.href = withCurrentEnvironment('adminPanel.html'); },
+      onClick: () => { window.location.href = withCurrentEnvironment('administracion.html'); },
     }),
     createButton('Cerrar sesión', {
       onClick: async () => {

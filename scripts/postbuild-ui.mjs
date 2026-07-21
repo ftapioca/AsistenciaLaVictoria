@@ -22,7 +22,9 @@ const copyTargets = [
 const builtEntryCopies = [
   { from: 'src/index.html', to: 'index.html' },
   { from: 'src/adminPanel.html', to: 'adminPanel.html' },
+  { from: 'src/administracion.html', to: 'administracion.html' },
   { from: 'src/adminPanel-preview.html', to: 'adminPanel-preview.html' },
+  { from: 'src/horariosLocales.html', to: 'horariosLocales.html' },
   { from: 'src/misTurnos.html', to: 'misTurnos-design-system.html' },
   { from: 'src/misTurnos-preview.html', to: 'misTurnos-preview.html' },
   { from: 'src/programadorTurnos.html', to: 'programadorTurnos.html' },
