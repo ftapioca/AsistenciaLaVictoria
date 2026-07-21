@@ -430,7 +430,7 @@ async function cargarMes() {
     toast.show('success', 'Calendario cargado correctamente.');
   } catch (error) {
     $('calendarGrid').innerHTML = '<div class="rounded-2xl border border-neutral-charcoal/10 bg-white/72 p-xl text-base font-bold text-neutral-muted">No se pudo cargar el calendario.</div>';
-    if (error.code === 'UNAUTHORIZED' || error.code === 'FORBIDDEN') {
+    if (error.code === 'UNAUTHORIZED') {
       window.LVAuth.redirectToIndex('session');
       return;
     }
