@@ -27,6 +27,7 @@ const builtEntryCopies = [
   { from: 'src/misTurnos-preview.html', to: 'misTurnos-preview.html' },
   { from: 'src/programadorTurnos.html', to: 'programadorTurnos.html' },
   { from: 'src/TurnosAbiertos.html', to: 'TurnosAbiertos.html' },
+  { from: 'src/usuariosPermisos.html', to: 'usuariosPermisos.html' },
   { from: 'src/ventasMensuales.html', to: 'ventasMensuales.html' },
   { from: 'src/pagosMensuales.html', to: 'pagosMensuales.html' },
   { from: 'src/designSystem.html', to: 'design-system.html' },

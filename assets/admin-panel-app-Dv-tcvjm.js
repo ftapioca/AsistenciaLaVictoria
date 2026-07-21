@@ -1,0 +1,49 @@
+import{i as e,n as t,t as n}from"./Card-CaVi7Iaf.js";import{t as r}from"./PageHero-Dz09WTDW.js";function i(e){return t(e.type===`link`?`Abrir`:`Descargar`,{as:`a`,variant:`primary`,href:e.href,target:e.type===`link`?`_blank`:``,rel:e.type===`link`?`noopener noreferrer`:``,download:e.type===`link`?``:e.fileName||``,className:`min-h-[48px] rounded-full px-xl text-sm font-black md:min-w-[150px]`})}function a(t=[],n={}){let{className:r=``}=n,a=document.createElement(`div`);return a.className=e(`grid gap-md`,r),t.forEach(t=>{let n=document.createElement(`div`);n.className=e(`flex flex-col gap-md rounded-2xl border border-neutral-charcoal/10`,`bg-white/72 p-lg md:flex-row md:items-center md:justify-between`);let r=document.createElement(`div`);r.className=`min-w-0`;let o=document.createElement(`p`);o.className=`text-sm font-black text-neutral-charcoal`,o.textContent=t.label,r.appendChild(o),n.append(r,i(t)),a.appendChild(n)}),a}var o=[{type:`link`,label:`Reporte y registro de asistencia`,href:`https://docs.google.com/spreadsheets/d/1gVYjLSWMK7kkTJycXfOGkysvc4zyBBk8U9Jp4HK9V74/edit?usp=sharing`},{type:`file`,label:`Registro Asistencia · Local Paseo del Lago`,href:new URL(`/AsistenciaLaVictoria/assets/Registro%20Asistencia%20_%20Local%20Paseo%20del%20Lago-CevHy-ub.html`,``+import.meta.url).href,fileName:`Registro Asistencia _ Local Paseo del Lago.html`},{type:`file`,label:`Registro Asistencia · Local Segunda Faja`,href:new URL(`/AsistenciaLaVictoria/assets/Registro%20Asistencia%20_%20Local%20Segunda%20Faja-DwWiM_Q5.html`,``+import.meta.url).href,fileName:`Registro Asistencia _ Local Segunda Faja.html`}],s=[{eyebrow:`Operación`,title:`Turnos Abiertos`,body:`Vista simultánea por local y acceso directo para registrar asistencia administrativa cuando haga falta.`,href:`TurnosAbiertos.html`,tone:`highlight`,actionLabel:`Ir a operación`},{eyebrow:`Planificación`,title:`Programador`,body:`Programación semanal por local y colaborador, con edición y plantillas.`,href:`programadorTurnos.html`,tone:`neutral`,actionLabel:`Abrir agenda`},{eyebrow:`Seguridad`,title:`Usuarios y Permisos`,body:`Edita roles de usuarios y la matriz de permisos por tipo desde una vista administrativa dedicada.`,href:`usuariosPermisos.html`,tone:`neutral`,actionLabel:`Gestionar accesos`},{eyebrow:`Ventas`,title:`Importador Ventas`,body:`Harness técnico para probar ImportarVentas con JSON normalizado antes del parser POS final.`,href:`ventasMensuales.html`,tone:`neutral`,actionLabel:`Abrir importador`},{eyebrow:`Pagos`,title:`Pagos Mensuales`,body:`Resumen mensual por local y exportación ZIP con planillas individuales por colaborador.`,href:`pagosMensuales.html`,tone:`neutral`,actionLabel:`Abrir pagos`}];function c(e,n){let r=document.createElement(`section`);return r.className=`grid gap-sm md:grid-cols-2`,n.forEach(n=>{r.appendChild(t(n.title,{variant:`primary`,className:`min-h-[54px] w-full justify-between rounded-2xl px-lg text-left text-sm font-black`,onClick:()=>e(n.href)}))}),r}function l(e,n){let r=document.createElement(`section`);r.className=`overflow-hidden rounded-3xl border border-neutral-charcoal/10 bg-white/90 shadow-brand backdrop-blur`;let i=document.createElement(`div`);i.className=`hidden grid-cols-[160px_minmax(0,1.1fr)_minmax(0,1.8fr)_180px] items-center gap-lg border-b border-neutral-charcoal/8 bg-brand-cheese/22 px-xl py-lg md:grid`,i.innerHTML=`
+    <span class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Área</span>
+    <span class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Módulo</span>
+    <span class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Descripción</span>
+    <span class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Acción</span>
+  `;let a=document.createElement(`div`);return a.className=`divide-y divide-neutral-charcoal/8`,n.forEach(n=>{let r=document.createElement(`article`);r.className=`grid gap-lg px-lg py-lg md:grid-cols-[160px_minmax(0,1.1fr)_minmax(0,1.8fr)_180px] md:items-center md:px-xl`;let i=document.createElement(`div`);i.className=`text-xs font-black uppercase tracking-[0.2em] text-brand-bun/70`,i.textContent=n.eyebrow;let o=document.createElement(`div`);o.className=`min-w-0`,o.innerHTML=`
+      <h3 class="text-[28px] font-black leading-none tracking-[-0.04em] text-neutral-charcoal">${n.title}</h3>
+      <p class="mt-sm text-sm font-bold text-neutral-muted md:hidden">${n.eyebrow}</p>
+    `;let s=document.createElement(`p`);s.className=`text-base leading-7 text-neutral-charcoal/78`,s.textContent=n.body;let c=document.createElement(`div`);c.className=`flex md:justify-end`,c.appendChild(t(n.actionLabel||`Abrir ${n.title}`,{variant:`primary`,className:`min-h-[48px] w-full rounded-full px-xl md:w-auto md:min-w-[150px]`,onClick:()=>e(n.href)})),r.append(i,o,s,c),a.appendChild(r)}),r.append(i,a),r}function u(e={}){let{mountNode:t}=e,n=document.createElement(`div`);n.className=`mx-auto flex min-h-screen w-full max-w-[1200px] flex-col gap-lg px-lg py-lg md:px-2xl md:py-2xl`;let r=`animate-pulse rounded-2xl bg-white/12`,i=document.createElement(`section`);i.className=`rounded-3xl border border-neutral-cream/15 bg-[linear-gradient(145deg,rgba(20,16,13,0.96),rgba(42,23,16,0.90))] p-xl shadow-brand backdrop-blur md:p-2xl`,i.innerHTML=`
+    <div class="flex flex-col gap-2xl lg:flex-row lg:items-start">
+      <div class="min-w-0 flex-1">
+        <div class="${r} h-8 w-[180px]"></div>
+        <div class="${r} mt-lg h-16 max-w-[420px]"></div>
+        <div class="${r} mt-md h-16 max-w-[360px]"></div>
+        <div class="${r} mt-2xl h-5 max-w-[620px]"></div>
+        <div class="${r} mt-md h-5 max-w-[560px]"></div>
+      </div>
+      <div class="w-full rounded-3xl border border-neutral-cream/14 bg-neutral-cream/8 p-xl lg:w-[300px]">
+        <div class="${r} h-4 w-[140px]"></div>
+        <div class="${r} mt-lg h-14 w-full"></div>
+        <div class="${r} mt-lg h-4 w-full"></div>
+        <div class="${r} mt-sm h-4 w-[86%]"></div>
+        <div class="${r} mt-xl h-12 w-full rounded-full"></div>
+      </div>
+    </div>
+  `;let a=document.createElement(`section`);a.className=`overflow-hidden rounded-3xl border border-white/10 bg-white/90 shadow-brand backdrop-blur`,a.innerHTML=`
+    <div class="hidden grid-cols-[160px_minmax(0,1.1fr)_minmax(0,1.8fr)_180px] gap-lg border-b border-neutral-charcoal/8 bg-brand-cheese/22 px-xl py-lg md:grid">
+      <div class="${r} h-4 w-[70px] bg-neutral-charcoal/8"></div>
+      <div class="${r} h-4 w-[90px] bg-neutral-charcoal/8"></div>
+      <div class="${r} h-4 w-[120px] bg-neutral-charcoal/8"></div>
+      <div class="${r} h-4 w-[70px] bg-neutral-charcoal/8"></div>
+    </div>
+  `;let o=document.createElement(`div`);o.className=`divide-y divide-neutral-charcoal/8`;for(let e=0;e<4;e+=1){let e=document.createElement(`div`);e.className=`grid gap-lg px-lg py-lg md:grid-cols-[160px_minmax(0,1.1fr)_minmax(0,1.8fr)_180px] md:items-center md:px-xl`,e.innerHTML=`
+      <div class="${r} h-4 w-[90px] bg-neutral-charcoal/8"></div>
+      <div>
+        <div class="${r} h-8 w-[220px] bg-neutral-charcoal/8"></div>
+        <div class="${r} mt-sm h-4 w-[110px] bg-neutral-charcoal/8 md:hidden"></div>
+      </div>
+      <div>
+        <div class="${r} h-4 w-full bg-neutral-charcoal/8"></div>
+        <div class="${r} mt-sm h-4 w-[88%] bg-neutral-charcoal/8"></div>
+      </div>
+      <div class="flex md:justify-end">
+        <div class="${r} h-12 w-full rounded-full bg-neutral-charcoal/8 md:w-[150px]"></div>
+      </div>
+    `,o.appendChild(e)}return a.appendChild(o),n.append(i,a),t&&t.appendChild(n),{shell:n}}function d(e={}){let{mountNode:i,sessionLabel:u=`Validando sesión...`,sideCopy:d=`Usa este panel como hub de navegación para las herramientas administrativas. El siguiente paso es replicar esta calidad visual en las demás vistas.`,onBack:f,onLogout:p,onNavigate:m,visibleToolTitles:h=[],showResources:g=!0}=e,_=h.length?s.filter(e=>h.includes(e.title)):s,v=document.createElement(`div`);v.className=`mx-auto flex min-h-screen w-full max-w-[1200px] flex-col gap-lg px-lg py-lg md:px-2xl md:py-2xl`;let y=document.createElement(`div`);y.className=`rounded-2xl border border-neutral-cream/14 bg-neutral-cream/12 px-lg py-lg text-sm font-black leading-relaxed text-neutral-cream md:text-base`,y.textContent=u;let b=document.createElement(`div`);b.className=`flex flex-col gap-md`;let x=t(`Cerrar sesión`,{variant:`primary`,fullWidth:!0,onClick:p});b.append(x);let S=r({badge:`La Victoria · Administración`,title:`Panel interno`,lead:`Accede desde aquí a las vistas administrativas disponibles. El panel ahora prioriza accesos rápidos, lectura móvil más clara y rutas directas hacia operación diaria.`,sideTitle:`Sesión y acciones`,sideStatus:y,sideCopy:d,sideActions:b,layoutClassName:`lg:gap-4xl`,contentClassName:`lg:basis-[68%]`,titleClassName:`max-w-[11ch] text-[clamp(44px,6vw,72px)]`,leadClassName:`max-w-[64ch]`,sideClassName:`lg:w-[300px]`}),C=document.createElement(`section`);C.className=`grid gap-md md:hidden`;let w=document.createElement(`div`);w.className=`flex flex-col gap-xs px-sm`,w.innerHTML=`
+    <p class="text-xs font-black uppercase tracking-[0.18em] text-neutral-cream/60">Accesos rápidos</p>
+    <p class="text-sm font-semibold leading-7 text-neutral-cream/72">En móvil, cada acción principal queda disponible en un tap sin tener que recorrer toda la grilla.</p>
+  `,C.append(w,c(m,_));let T=l(m,_);if(v.append(C,S,T),g){let e=n({eyebrow:`otros`,title:`Recursos`,body:`Documentos disponibles para descarga y revisión operativa desde esta misma vista.`,className:`rounded-3xl md:p-2xl`,footer:a(o)});v.appendChild(e)}return i&&i.appendChild(v),{shell:v,setSessionLabel(e){y.textContent=e}}}export{u as n,d as t};

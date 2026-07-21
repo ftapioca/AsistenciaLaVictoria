@@ -19,6 +19,7 @@ const rootFileCopies = [
   'misTurnos-preview.html',
   'TurnosAbiertos.html',
   'programadorTurnos.html',
+  'usuariosPermisos.html',
   'ventasMensuales.html',
   'pagosMensuales.html',
   'design-system.html',
