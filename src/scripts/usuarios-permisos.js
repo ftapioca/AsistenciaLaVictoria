@@ -36,6 +36,8 @@ const state = {
   users: [],
   roles: [],
   search: '',
+  editingPermissions: false,
+  draftPermissions: null,
 };
 
 const overlay = createLoadingOverlay('Procesando...');
@@ -213,12 +215,13 @@ function createEditModal() {
               <p class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Acceso</p>
               <p class="mt-sm text-sm font-bold leading-7 text-neutral-charcoal/72">El PIN actual no se muestra. Usa esta sección solo si necesitas definir un nuevo PIN.</p>
             </div>
-            <button type="button" id="btnTogglePinChange" class="inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-neutral-charcoal/12 bg-white/92 px-lg py-sm text-sm font-black text-neutral-charcoal">Nuevo PIN</button>
+            <button type="button" id="btnTogglePinChange" class="inline-flex min-h-[52px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-base font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Nuevo PIN</button>
           </div>
           <div id="pinChangePanel" class="mt-lg hidden grid gap-lg md:grid-cols-2">
             ${createInputGroup('newPin', 'Nuevo PIN', false, 'password')}
             ${createInputGroup('confirmNewPin', 'Confirmar nuevo PIN', false, 'password')}
           </div>
+          <div id="pinMatchStatus" class="mt-md hidden rounded-2xl border px-lg py-md text-sm font-bold"></div>
         </section>
         <label class="grid gap-sm">
           <span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Observaciones</span>
@@ -244,7 +247,10 @@ function createEditModal() {
   const closeButton = root.querySelector('#btnCloseEditUser');
   const togglePinButton = root.querySelector('#btnTogglePinChange');
   const pinChangePanel = root.querySelector('#pinChangePanel');
+  const pinMatchStatus = root.querySelector('#pinMatchStatus');
   const feedback = root.querySelector('#editUserFeedback');
+  const newPinField = root.querySelector('#fieldNewPin');
+  const confirmPinField = root.querySelector('#fieldConfirmNewPin');
   let currentUserId = '';
   let changingPin = false;
 
@@ -257,6 +263,7 @@ function createEditModal() {
     togglePinButton.textContent = 'Nuevo PIN';
     setFieldValue('fieldNewPin', '');
     setFieldValue('fieldConfirmNewPin', '');
+    setPinValidationState();
     setFeedback('');
   }
 
@@ -281,6 +288,52 @@ function createEditModal() {
     }
     feedback.textContent = message;
     feedback.classList.remove('hidden');
+  }
+
+  function setFieldTone(field, tone) {
+    if (!field) return;
+    const base = 'min-h-[52px] rounded-2xl bg-white/90 px-lg py-md text-base font-semibold placeholder:text-neutral-muted/70 focus:outline-none focus:ring-2';
+    if (tone === 'error') {
+      field.className = `${base} border border-brand-ketchup bg-brand-ketchup/10 text-neutral-charcoal focus:border-brand-ketchup focus:ring-brand-ketchup/30`;
+      return;
+    }
+    if (tone === 'success') {
+      field.className = `${base} border border-brand-lettuce bg-brand-lettuce/10 text-neutral-charcoal focus:border-brand-lettuce focus:ring-brand-lettuce/30`;
+      return;
+    }
+    field.className = `${base} border border-neutral-charcoal/10 text-neutral-charcoal focus:border-brand-bun focus:ring-brand-bun/30`;
+  }
+
+  function setPinValidationState() {
+    if (!changingPin) {
+      pinMatchStatus.textContent = '';
+      pinMatchStatus.className = 'mt-md hidden rounded-2xl border px-lg py-md text-sm font-bold';
+      setFieldTone(newPinField);
+      setFieldTone(confirmPinField);
+      return true;
+    }
+
+    const newPin = newPinField.value.trim();
+    const confirmPin = confirmPinField.value.trim();
+
+    if (!confirmPin) {
+      pinMatchStatus.textContent = '';
+      pinMatchStatus.className = 'mt-md hidden rounded-2xl border px-lg py-md text-sm font-bold';
+      setFieldTone(newPinField);
+      setFieldTone(confirmPinField);
+      return false;
+    }
+
+    const matches = newPin && newPin === confirmPin;
+    pinMatchStatus.textContent = matches ? 'Los PIN coinciden.' : 'Los PIN no coinciden.';
+    pinMatchStatus.className = `mt-md rounded-2xl border px-lg py-md text-sm font-bold ${
+      matches
+        ? 'border-brand-lettuce bg-brand-lettuce/10 text-brand-lettuce'
+        : 'border-brand-ketchup bg-brand-ketchup/10 text-brand-ketchup'
+    }`;
+    setFieldTone(newPinField, matches ? 'success' : 'error');
+    setFieldTone(confirmPinField, matches ? 'success' : 'error');
+    return matches;
   }
 
   function open(user) {
@@ -318,7 +371,7 @@ function createEditModal() {
         toast.show('error', 'Debes ingresar el nuevo PIN.');
         return;
       }
-      if (newPin !== confirmNewPin) {
+      if (!setPinValidationState()) {
         toast.show('error', 'La confirmación del nuevo PIN no coincide.');
         return;
       }
@@ -371,7 +424,10 @@ function createEditModal() {
       setFieldValue('fieldNewPin', '');
       setFieldValue('fieldConfirmNewPin', '');
     }
+    setPinValidationState();
   });
+  newPinField.addEventListener('input', setPinValidationState);
+  confirmPinField.addEventListener('input', setPinValidationState);
   root.querySelector('#btnCloseEditUser').addEventListener('click', close);
   root.querySelector('#btnCancelEditUser').addEventListener('click', close);
   backdrop.addEventListener('click', close);
@@ -639,9 +695,18 @@ function renderUserAccordions() {
 
 function renderPermissionsMatrix() {
   const matrix = $('permissionsMatrix');
-  const roleMap = getRoleMap();
+  const roleMap = state.editingPermissions && state.draftPermissions
+    ? state.draftPermissions
+    : getRoleMap();
 
   matrix.innerHTML = `
+    <div class="relative">
+      <div id="permissionsOverlay" class="pointer-events-none absolute inset-0 z-[1] hidden place-items-center bg-white/40 backdrop-blur-sm">
+        <div class="inline-flex items-center gap-md rounded-full bg-gradient-to-r from-brand-cheese to-brand-bun px-xl py-md text-sm font-black text-neutral-charcoal shadow-brand">
+          <span class="size-[18px] animate-spin rounded-full border-[3px] border-neutral-charcoal/20 border-t-neutral-charcoal"></span>
+          <span>Guardando permisos...</span>
+        </div>
+      </div>
     <table class="w-full min-w-[760px] border-collapse">
       <thead class="bg-gradient-to-r from-brand-bun to-brand-bun-dark text-neutral-cream">
         <tr>
@@ -657,17 +722,33 @@ function renderPermissionsMatrix() {
             <td class="px-lg py-lg text-sm font-bold text-neutral-charcoal">${permission.label}</td>
             ${ROLE_ORDER.map((role) => {
               const active = Boolean(roleMap[role] && roleMap[role][permission.key]);
+              if (state.editingPermissions) {
+                const changed = Boolean(
+                  state.draftPermissions
+                  && getRoleMap()[role]
+                  && state.draftPermissions[role][permission.key] !== getRoleMap()[role][permission.key]
+                );
+                return `
+                  <td class="px-lg py-lg text-center">
+                    <label class="mx-auto inline-flex min-h-[48px] min-w-[48px] cursor-pointer items-center justify-center rounded-2xl border ${
+                      changed ? 'border-sky-500 bg-sky-500/14 text-sky-700' : 'border-neutral-charcoal/12 bg-white text-neutral-charcoal'
+                    }">
+                      <input
+                        type="checkbox"
+                        data-role="${role}"
+                        data-permission="${permission.key}"
+                        ${active ? 'checked' : ''}
+                        class="permission-checkbox size-5 accent-sky-600"
+                      >
+                    </label>
+                  </td>
+                `;
+              }
               return `
                 <td class="px-lg py-lg text-center">
-                  <button
-                    type="button"
-                    data-role="${role}"
-                    data-permission="${permission.key}"
-                    data-active="${active ? 'true' : 'false'}"
-                    class="permission-toggle inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl border text-2xl font-black transition-fast ${active ? 'border-brand-lettuce/18 bg-brand-lettuce/12 text-brand-lettuce' : 'border-brand-ketchup/18 bg-brand-ketchup/10 text-brand-ketchup'}"
-                  >
+                  <span class="inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl border text-2xl font-black ${active ? 'border-brand-lettuce/18 bg-brand-lettuce/12 text-brand-lettuce' : 'border-brand-ketchup/18 bg-brand-ketchup/10 text-brand-ketchup'}">
                     ${active ? '✓' : '×'}
-                  </button>
+                  </span>
                 </td>
               `;
             }).join('')}
@@ -675,37 +756,61 @@ function renderPermissionsMatrix() {
         `).join('')}
       </tbody>
     </table>
-    <div class="flex justify-end border-t border-neutral-charcoal/8 bg-[#fffaf1] px-lg py-lg">
+    </div>
+    <div class="flex flex-wrap items-center justify-end gap-sm border-t border-neutral-charcoal/8 bg-[#fffaf1] px-lg py-lg">
       <div id="permissionsSaveFeedback" class="mr-auto hidden rounded-2xl border border-brand-cheese/28 bg-brand-cheese/18 px-lg py-md text-sm font-bold text-brand-bun-dark"></div>
-      <button type="button" id="btnSavePermissionsMatrix" class="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-sm font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Guardar permisos</button>
+      ${state.editingPermissions
+        ? `
+          <button type="button" id="btnCancelPermissionsEdit" class="inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-neutral-charcoal/12 bg-white/92 px-xl py-md text-sm font-black text-neutral-charcoal">Cancelar</button>
+          <button type="button" id="btnSavePermissionsMatrix" class="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-sm font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Guardar</button>
+        `
+        : '<button type="button" id="btnEditPermissionsMatrix" class="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-sm font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Editar permisos</button>'
+      }
     </div>
   `;
 
-  matrix.querySelectorAll('.permission-toggle').forEach((button) => {
-    button.addEventListener('click', () => {
-      const active = button.dataset.active === 'true';
-      button.dataset.active = active ? 'false' : 'true';
-      button.textContent = active ? '×' : '✓';
-      button.className = `permission-toggle inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-2xl border text-2xl font-black transition-fast ${
-        active
-          ? 'border-brand-ketchup/18 bg-brand-ketchup/10 text-brand-ketchup'
-          : 'border-brand-lettuce/18 bg-brand-lettuce/12 text-brand-lettuce'
-      }`;
+  if (!state.editingPermissions) {
+    matrix.querySelector('#btnEditPermissionsMatrix').addEventListener('click', () => {
+      state.editingPermissions = true;
+      state.draftPermissions = JSON.parse(JSON.stringify(getRoleMap()));
+      renderPermissionsMatrix();
     });
+    return;
+  }
+
+  matrix.querySelectorAll('.permission-checkbox').forEach((input) => {
+    input.addEventListener('change', () => {
+      const role = input.dataset.role;
+      const permission = input.dataset.permission;
+      if (!state.draftPermissions[role]) state.draftPermissions[role] = {};
+      state.draftPermissions[role][permission] = input.checked;
+      renderPermissionsMatrix();
+    });
+  });
+
+  matrix.querySelector('#btnCancelPermissionsEdit').addEventListener('click', () => {
+    state.editingPermissions = false;
+    state.draftPermissions = null;
+    renderPermissionsMatrix();
   });
 
   matrix.querySelector('#btnSavePermissionsMatrix').addEventListener('click', async () => {
     const saveButton = matrix.querySelector('#btnSavePermissionsMatrix');
+    const cancelButton = matrix.querySelector('#btnCancelPermissionsEdit');
     const feedback = matrix.querySelector('#permissionsSaveFeedback');
+    const overlayNode = matrix.querySelector('#permissionsOverlay');
     saveButton.disabled = true;
+    if (cancelButton) cancelButton.disabled = true;
     saveButton.textContent = 'Guardando...';
     feedback.textContent = 'Guardando matriz de permisos...';
     feedback.classList.remove('hidden');
+    overlayNode.classList.remove('hidden');
+    overlayNode.classList.add('grid');
     try {
       for (const role of ROLE_ORDER) {
         const payload = { accion: 'ActualizarPermisosRolAdmin', role };
-        matrix.querySelectorAll(`.permission-toggle[data-role="${role}"]`).forEach((button) => {
-          payload[button.dataset.permission] = button.dataset.active === 'true' ? 'SI' : 'NO';
+        PERMISSION_DEFS.forEach((permission) => {
+          payload[permission.key] = state.draftPermissions[role] && state.draftPermissions[role][permission.key] ? 'SI' : 'NO';
         });
 
         const response = await window.LVAuth.apiPost(payload);
@@ -718,13 +823,18 @@ function renderPermissionsMatrix() {
         ));
       }
 
+      state.editingPermissions = false;
+      state.draftPermissions = null;
       toast.show('success', 'Matriz de permisos actualizada.');
       renderPermissionsMatrix();
     } catch (error) {
       feedback.classList.add('hidden');
+      overlayNode.classList.add('hidden');
+      overlayNode.classList.remove('grid');
       toast.show('error', error.message || 'No se pudieron guardar los permisos.');
     } finally {
       saveButton.disabled = false;
+      if (cancelButton) cancelButton.disabled = false;
       saveButton.textContent = 'Guardar permisos';
     }
   });
