@@ -199,7 +199,6 @@ function createEditModal() {
           ${createInputGroup('idUsuario', 'ID usuario', true)}
           ${createInputGroup('nombreCompleto', 'Nombre completo')}
           ${createInputGroup('usuarioLogin', 'Usuario login')}
-          ${createInputGroup('pin', 'PIN')}
           ${createSelectGroup('rol', 'Rol', ROLE_ORDER)}
           ${createInputGroup('local', 'Local')}
           ${createInputGroup('cargo', 'Cargo')}
@@ -208,10 +207,24 @@ function createEditModal() {
           ${createInputGroup('telefono', 'Telefono')}
           ${createInputGroup('fechaCreacion', 'Fecha creacion')}
         </div>
+        <section class="rounded-3xl border border-neutral-charcoal/10 bg-white/72 p-lg">
+          <div class="flex flex-col gap-md md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Acceso</p>
+              <p class="mt-sm text-sm font-bold leading-7 text-neutral-charcoal/72">El PIN actual no se muestra. Usa esta sección solo si necesitas definir un nuevo PIN.</p>
+            </div>
+            <button type="button" id="btnTogglePinChange" class="inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-neutral-charcoal/12 bg-white/92 px-lg py-sm text-sm font-black text-neutral-charcoal">Nuevo PIN</button>
+          </div>
+          <div id="pinChangePanel" class="mt-lg hidden grid gap-lg md:grid-cols-2">
+            ${createInputGroup('newPin', 'Nuevo PIN', false, 'password')}
+            ${createInputGroup('confirmNewPin', 'Confirmar nuevo PIN', false, 'password')}
+          </div>
+        </section>
         <label class="grid gap-sm">
           <span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Observaciones</span>
           <textarea id="fieldObservaciones" rows="5" class="rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/70 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30"></textarea>
         </label>
+        <div id="editUserFeedback" class="hidden rounded-2xl border border-brand-cheese/28 bg-brand-cheese/18 px-lg py-md text-sm font-bold text-brand-bun-dark"></div>
         <div class="grid gap-sm md:flex md:justify-end">
           <button type="button" id="btnCancelEditUser" class="inline-flex min-h-[52px] items-center justify-center rounded-2xl border border-neutral-charcoal/12 bg-white/92 px-xl py-md text-base font-black text-neutral-charcoal">Cancelar</button>
           <button type="submit" id="btnSaveEditUser" class="inline-flex min-h-[52px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-base font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Guardar cambios</button>
@@ -227,21 +240,47 @@ function createEditModal() {
   const title = root.querySelector('#editUserTitle');
   const subtitle = root.querySelector('#editUserSubtitle');
   const saveButton = root.querySelector('#btnSaveEditUser');
+  const cancelButton = root.querySelector('#btnCancelEditUser');
+  const closeButton = root.querySelector('#btnCloseEditUser');
+  const togglePinButton = root.querySelector('#btnTogglePinChange');
+  const pinChangePanel = root.querySelector('#pinChangePanel');
+  const feedback = root.querySelector('#editUserFeedback');
   let currentUserId = '';
+  let changingPin = false;
 
   function close() {
     root.classList.add('hidden');
     root.classList.remove('grid');
     currentUserId = '';
+    changingPin = false;
+    pinChangePanel.classList.add('hidden');
+    togglePinButton.textContent = 'Nuevo PIN';
+    setFieldValue('fieldNewPin', '');
+    setFieldValue('fieldConfirmNewPin', '');
+    setFeedback('');
   }
 
   function setLoading(loading) {
     saveButton.disabled = loading;
+    cancelButton.disabled = loading;
+    closeButton.disabled = loading;
+    togglePinButton.disabled = loading;
+    saveButton.textContent = loading ? 'Guardando...' : 'Guardar cambios';
   }
 
   function setFieldValue(fieldId, value) {
     const field = root.querySelector(`#${fieldId}`);
     if (field) field.value = value || '';
+  }
+
+  function setFeedback(message) {
+    if (!message) {
+      feedback.textContent = '';
+      feedback.classList.add('hidden');
+      return;
+    }
+    feedback.textContent = message;
+    feedback.classList.remove('hidden');
   }
 
   function open(user) {
@@ -251,7 +290,6 @@ function createEditModal() {
     setFieldValue('fieldIdUsuario', user.idUsuario);
     setFieldValue('fieldNombreCompleto', user.nombreCompleto);
     setFieldValue('fieldUsuarioLogin', user.usuarioLogin);
-    setFieldValue('fieldPin', user.pin);
     setFieldValue('fieldRol', user.rol);
     setFieldValue('fieldLocal', user.local);
     setFieldValue('fieldCargo', user.cargo);
@@ -260,20 +298,41 @@ function createEditModal() {
     setFieldValue('fieldTelefono', user.telefono);
     setFieldValue('fieldFechaCreacion', user.fechaCreacion);
     setFieldValue('fieldObservaciones', user.observaciones);
+    setFieldValue('fieldNewPin', '');
+    setFieldValue('fieldConfirmNewPin', '');
+    setFeedback('');
+    changingPin = false;
+    pinChangePanel.classList.add('hidden');
+    togglePinButton.textContent = 'Nuevo PIN';
     root.classList.remove('hidden');
     root.classList.add('grid');
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+    const newPin = root.querySelector('#fieldNewPin').value.trim();
+    const confirmNewPin = root.querySelector('#fieldConfirmNewPin').value.trim();
+
+    if (changingPin) {
+      if (!newPin) {
+        toast.show('error', 'Debes ingresar el nuevo PIN.');
+        return;
+      }
+      if (newPin !== confirmNewPin) {
+        toast.show('error', 'La confirmación del nuevo PIN no coincide.');
+        return;
+      }
+    }
+
     setLoading(true);
+    setFeedback('Guardando cambios del usuario...');
     try {
       const response = await window.LVAuth.apiPost({
         accion: 'ActualizarUsuarioAdmin',
         idUsuario: currentUserId,
         nombreCompleto: root.querySelector('#fieldNombreCompleto').value.trim(),
         usuarioLogin: root.querySelector('#fieldUsuarioLogin').value.trim(),
-        pin: root.querySelector('#fieldPin').value.trim(),
+        newPin: changingPin ? newPin : '',
         rol: root.querySelector('#fieldRol').value.trim(),
         local: root.querySelector('#fieldLocal').value.trim(),
         cargo: root.querySelector('#fieldCargo').value.trim(),
@@ -296,6 +355,7 @@ function createEditModal() {
       toast.show('success', `${response.user.nombreCompleto} actualizado correctamente.`);
       close();
     } catch (error) {
+      setFeedback('');
       toast.show('error', error.message || 'No se pudo actualizar el usuario.');
     } finally {
       setLoading(false);
@@ -303,6 +363,15 @@ function createEditModal() {
   }
 
   form.addEventListener('submit', handleSubmit);
+  togglePinButton.addEventListener('click', () => {
+    changingPin = !changingPin;
+    pinChangePanel.classList.toggle('hidden', !changingPin);
+    togglePinButton.textContent = changingPin ? 'Cancelar cambio de PIN' : 'Nuevo PIN';
+    if (!changingPin) {
+      setFieldValue('fieldNewPin', '');
+      setFieldValue('fieldConfirmNewPin', '');
+    }
+  });
   root.querySelector('#btnCloseEditUser').addEventListener('click', close);
   root.querySelector('#btnCancelEditUser').addEventListener('click', close);
   backdrop.addEventListener('click', close);
@@ -310,11 +379,11 @@ function createEditModal() {
   return { open, close };
 }
 
-function createInputGroup(id, label, disabled = false) {
+function createInputGroup(id, label, disabled = false, type = 'text') {
   return `
     <label class="grid gap-sm">
       <span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">${label}</span>
-      <input id="field${id.charAt(0).toUpperCase()}${id.slice(1)}" ${disabled ? 'disabled' : ''} class="min-h-[52px] rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/70 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30 ${disabled ? 'opacity-60' : ''}">
+      <input type="${type}" id="field${id.charAt(0).toUpperCase()}${id.slice(1)}" ${disabled ? 'disabled' : ''} class="min-h-[52px] rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/70 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30 ${disabled ? 'opacity-60' : ''}">
     </label>
   `;
 }
@@ -607,6 +676,7 @@ function renderPermissionsMatrix() {
       </tbody>
     </table>
     <div class="flex justify-end border-t border-neutral-charcoal/8 bg-[#fffaf1] px-lg py-lg">
+      <div id="permissionsSaveFeedback" class="mr-auto hidden rounded-2xl border border-brand-cheese/28 bg-brand-cheese/18 px-lg py-md text-sm font-bold text-brand-bun-dark"></div>
       <button type="button" id="btnSavePermissionsMatrix" class="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-sm font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Guardar permisos</button>
     </div>
   `;
@@ -626,7 +696,11 @@ function renderPermissionsMatrix() {
 
   matrix.querySelector('#btnSavePermissionsMatrix').addEventListener('click', async () => {
     const saveButton = matrix.querySelector('#btnSavePermissionsMatrix');
+    const feedback = matrix.querySelector('#permissionsSaveFeedback');
     saveButton.disabled = true;
+    saveButton.textContent = 'Guardando...';
+    feedback.textContent = 'Guardando matriz de permisos...';
+    feedback.classList.remove('hidden');
     try {
       for (const role of ROLE_ORDER) {
         const payload = { accion: 'ActualizarPermisosRolAdmin', role };
@@ -647,9 +721,11 @@ function renderPermissionsMatrix() {
       toast.show('success', 'Matriz de permisos actualizada.');
       renderPermissionsMatrix();
     } catch (error) {
+      feedback.classList.add('hidden');
       toast.show('error', error.message || 'No se pudieron guardar los permisos.');
     } finally {
       saveButton.disabled = false;
+      saveButton.textContent = 'Guardar permisos';
     }
   });
 }

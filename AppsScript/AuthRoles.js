@@ -267,6 +267,19 @@ function buildUserRecordFromModernRow_(row, indices) {
   };
 }
 
+function sanitizeManagedUserForAdminView_(record) {
+  var nextRecord = {};
+  Object.keys(record || {}).forEach(function(key) {
+    nextRecord[key] = record[key];
+  });
+
+  if (nextRecord.pin) {
+    nextRecord.pin = "";
+  }
+
+  return nextRecord;
+}
+
 function findModernUserRecordByIdentity_(identity) {
   var context = getUsuariosSheetContext_();
   if (!context) return null;
@@ -363,7 +376,7 @@ function listManagedUsers_() {
   for (var i = 1; i < context.data.length; i++) {
     var record = buildUserRecordFromModernRow_(context.data[i], context.indices);
     if (!record.nombreCompleto) continue;
-    users.push(record);
+    users.push(sanitizeManagedUserForAdminView_(record));
   }
 
   users.sort(function(a, b) {
@@ -552,10 +565,12 @@ function actualizarUsuarioAdmin(params) {
 
   getRolePermissionsStrict_(nextRole);
 
+  var existingPin = String(match.record.pin || "").trim();
+  var requestedPin = String(params.pin || params.newPin || "").trim();
   var nextValues = {
     nombreCompleto: String(params.nombreCompleto || "").trim(),
     usuarioLogin: String(params.usuarioLogin || "").trim(),
-    pin: String(params.pin || "").trim(),
+    pin: requestedPin || existingPin,
     rol: nextRole,
     local: String(params.local || "").trim(),
     cargo: String(params.cargo || "").trim(),
@@ -606,7 +621,7 @@ function actualizarUsuarioAdmin(params) {
   return responderJSON({
     status: "SUCCESS",
     mensaje: "Usuario actualizado correctamente.",
-    user: buildUserRecordFromModernRow_(refreshedRow, context.indices)
+    user: sanitizeManagedUserForAdminView_(buildUserRecordFromModernRow_(refreshedRow, context.indices))
   });
 }
 
