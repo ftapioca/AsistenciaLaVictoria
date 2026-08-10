@@ -132,6 +132,14 @@ function doGet(e) {
     return versionSistema();
   }
 
+  if (accion === "LocalesPorSesion") {
+    try {
+      return obtenerLocalesPorSesion(params);
+    } catch (error) {
+      return responderErrorAccion_(error, "No se pudieron cargar los locales disponibles.");
+    }
+  }
+
   if (accion === "PlantillasTurnos") {
     try {
       requirePlantillasTurnosSession(params);
@@ -222,6 +230,14 @@ function doGet(e) {
       return bootstrapGestionUsuarios(params);
     } catch (error) {
       return responderErrorAccion_(error, "No se pudo cargar la gestión de usuarios.");
+    }
+  }
+
+  if (accion === "BootstrapAdministracionLocales") {
+    try {
+      return bootstrapAdministracionLocales(params);
+    } catch (error) {
+      return responderErrorAccion_(error, "No se pudo cargar la administracion de locales.");
     }
   }
 
@@ -350,6 +366,39 @@ function doPost(e) {
     }
   }
 
+  if (accion === "CrearUsuarioAdmin") {
+    try {
+      return crearUsuarioAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo crear el usuario."
+      });
+    }
+  }
+
+  if (accion === "CambiarEstadoUsuarioAdmin") {
+    try {
+      return cambiarEstadoUsuarioAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo cambiar el estado del usuario."
+      });
+    }
+  }
+
+  if (accion === "MigrarUsuariosUnicosAdmin") {
+    try {
+      return migrarUsuariosUnicosAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo migrar a usuarios unicos."
+      });
+    }
+  }
+
   if (accion === "ActualizarPermisosRolAdmin") {
     try {
       return actualizarPermisosRolAdmin(params);
@@ -357,6 +406,28 @@ function doPost(e) {
       return responderJSON({
         status: error.code || "FORBIDDEN",
         mensaje: error.message || "No se pudieron actualizar los permisos del rol."
+      });
+    }
+  }
+
+  if (accion === "GuardarLocalAdmin") {
+    try {
+      return guardarLocalAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo guardar el local."
+      });
+    }
+  }
+
+  if (accion === "DesactivarLocalAdmin") {
+    try {
+      return desactivarLocalAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo desactivar el local."
       });
     }
   }
@@ -474,22 +545,297 @@ function obtenerParametrosPost_(e) {
 // Obtener lista de trabajadores por local
 function obtenerColaboradoresPorLocal(params) {
   var localSolicitado = params.local;
-  var sheetColab = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
-  var datos = sheetColab.getDataRange().getValues();
-  var colaboradoresFiltrados = [];
+  var localNormalizado = normalizarTexto(localSolicitado);
 
-  for (var i = 1; i < datos.length; i++) {
-    var nombre = datos[i][0];
-    var localTrabajador = datos[i][3];
+  if (!localNormalizado) {
+    return responderJSON({
+      empleados: []
+    });
+  }
 
-    if (normalizarTexto(localTrabajador) === normalizarTexto(localSolicitado)) {
-      colaboradoresFiltrados.push(nombre);
+  var cache = null;
+  var cacheKey = "";
+
+  try {
+    cache = CacheService.getScriptCache();
+    cacheKey = "lv:asistencia:public-local:" + localNormalizado;
+    var cachedPayload = cache.get(cacheKey);
+    if (cachedPayload) {
+      var parsedPayload = JSON.parse(cachedPayload);
+      if (parsedPayload && Array.isArray(parsedPayload.empleados)) {
+        return responderJSON(parsedPayload);
+      }
+    }
+  } catch (error) {}
+
+  var payload = {
+    empleados: listarUsuariosAsistenciaPorLocal_(localSolicitado)
+  };
+
+  try {
+    if (cache && cacheKey) {
+      cache.put(cacheKey, JSON.stringify(payload), 180);
+    }
+  } catch (error) {}
+
+  return responderJSON(payload);
+}
+
+function isAttendanceEligibleRole_(role) {
+  return isRole_(role, USER_TYPES.COLABORADOR.id) || isRole_(role, USER_TYPES.SUPERVISOR.id);
+}
+
+function listStructuredAssignmentsForAttendanceUser_(record) {
+  var context = null;
+
+  try {
+    ensureUsuariosLocalesSheetReady_();
+    context = getUsuariosLocalesSheetContext_();
+  } catch (error) {
+    context = null;
+  }
+
+  if (!context || !context.data || !context.data.length) {
+    return [];
+  }
+
+  var principalKey = buildSessionPrincipalKey_(record, record.rol);
+  var assignments = [];
+
+  for (var i = 1; i < context.data.length; i++) {
+    var assignment = buildUserLocalRecordFromSheetRow_(context.data[i], context.headerMap, i + 1);
+    if (!assignment.activo || !assignment.localNombre) continue;
+
+    var sameUserById = assignment.idUsuario && record.idUsuario
+      && normalizarTexto(assignment.idUsuario) === normalizarTexto(record.idUsuario);
+    var sameUserByLogin = assignment.usuarioLogin && record.usuarioLogin
+      && normalizarTexto(assignment.usuarioLogin) === normalizarTexto(record.usuarioLogin);
+    var samePrincipal = buildSessionPrincipalKey_(assignment, assignment.rol) === principalKey;
+
+    if (!sameUserById && !sameUserByLogin && !samePrincipal) continue;
+    assignments.push(assignment);
+  }
+
+  assignments.sort(function(a, b) {
+    return String(a.localNombre || "").localeCompare(String(b.localNombre || ""), "es");
+  });
+
+  return assignments;
+}
+
+function listAttendanceAssignedLocalsForUser_(record) {
+  return resolveAssignedLocalsForUserRecord_(record);
+}
+
+function listModernAttendanceUsers_() {
+  var context = getUsuariosSheetContext_();
+  if (!context) {
+    throw new Error('No se encontró la hoja "Usuarios" para resolver asistencia.');
+  }
+
+  var assignmentIndex = null;
+  try {
+    ensureUsuariosLocalesSheetReady_();
+    assignmentIndex = buildActiveAssignmentIndexByPrincipal_(getUsuariosLocalesSheetContext_());
+  } catch (error) {
+    assignmentIndex = null;
+  }
+
+  var users = [];
+  var dedupe = {};
+
+  for (var i = 1; i < context.data.length; i++) {
+    var record = buildUserRecordFromModernRow_(context.data[i], context.indices);
+    if (!record.activo || !record.nombreCompleto || !isAttendanceEligibleRole_(record.rol)) continue;
+
+    var principalKey = buildSessionPrincipalKey_(record, record.rol);
+    if (!principalKey || dedupe[principalKey]) continue;
+    dedupe[principalKey] = true;
+
+    users.push({
+      idUsuario: record.idUsuario,
+      principalKey: principalKey,
+      nombre: record.nombreCompleto,
+      usuarioLogin: record.usuarioLogin,
+      pin: record.pin,
+      rol: record.rol,
+      locales: resolveAssignedLocalsForUserRecord_(record, assignmentIndex)
+    });
+  }
+
+  return users;
+}
+
+function listarUsuariosAsistenciaPorLocal_(local) {
+  var localNormalizado = normalizarTexto(local);
+  if (!localNormalizado) return [];
+
+  var nombres = [];
+  var dedupe = {};
+
+  function buildAttendanceNameKey_(value) {
+    return normalizarTexto(
+      String(value || "")
+        .replace(/\s+/g, " ")
+        .replace(/\u00A0/g, " ")
+        .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    );
+  }
+
+  listModernAttendanceUsers_().forEach(function(user) {
+    var tieneLocal = user.locales.some(function(localAsignado) {
+      return normalizarTexto(localAsignado) === localNormalizado;
+    });
+
+    if (tieneLocal) {
+      var nombreKey = buildAttendanceNameKey_(user.nombre);
+      if (!nombreKey || dedupe[nombreKey]) return;
+      dedupe[nombreKey] = true;
+      nombres.push(String(user.nombre || "").replace(/\s+/g, " ").trim());
+    }
+  });
+
+  nombres.sort(function(a, b) {
+    return a.localeCompare(b, "es");
+  });
+
+  return nombres;
+}
+
+function buscarUsuarioAsistenciaPorNombrePinYLocal_(nombreOUsuario, pin, local) {
+  var identidad = normalizarTexto(nombreOUsuario);
+  var localNormalizado = normalizarTexto(local);
+  var pinNormalizado = String(pin || "").trim();
+
+  if (!identidad || !pinNormalizado || !localNormalizado) return null;
+
+  var users = listModernAttendanceUsers_();
+  for (var i = 0; i < users.length; i++) {
+    var user = users[i];
+    if (String(user.pin || "").trim() !== pinNormalizado) continue;
+
+    var matchesIdentity =
+      normalizarTexto(user.nombre) === identidad ||
+      normalizarTexto(user.usuarioLogin) === identidad;
+    if (!matchesIdentity) continue;
+
+    var matchesLocal = user.locales.some(function(localAsignado) {
+      return normalizarTexto(localAsignado) === localNormalizado;
+    });
+    if (!matchesLocal) continue;
+
+    return {
+      idUsuario: user.idUsuario,
+      principalKey: user.principalKey,
+      nombre: user.nombre,
+      rut: "",
+      local: local,
+      rol: user.rol
+    };
+  }
+
+  return null;
+}
+
+function buscarUsuarioAsistenciaPorNombreYLocal_(nombreOUsuario, local) {
+  var identidad = normalizarTexto(nombreOUsuario);
+  var localNormalizado = normalizarTexto(local);
+
+  if (!identidad || !localNormalizado) return null;
+
+  var users = listModernAttendanceUsers_();
+  for (var i = 0; i < users.length; i++) {
+    var user = users[i];
+    var matchesIdentity =
+      normalizarTexto(user.nombre) === identidad ||
+      normalizarTexto(user.usuarioLogin) === identidad;
+    if (!matchesIdentity) continue;
+
+    var matchesLocal = user.locales.some(function(localAsignado) {
+      return normalizarTexto(localAsignado) === localNormalizado;
+    });
+    if (!matchesLocal) continue;
+
+    return {
+      idUsuario: user.idUsuario,
+      principalKey: user.principalKey,
+      nombre: user.nombre,
+      rut: "",
+      local: local,
+      rol: user.rol
+    };
+  }
+
+  return null;
+}
+
+function validarSecuenciaAsistencia_(accion, localSolicitado, ultimoRegistro) {
+  var accionNormalizada = normalizarTexto(accion);
+  var localNormalizado = normalizarTexto(localSolicitado);
+  var ultimoLocalNormalizado = normalizarTexto(ultimoRegistro && ultimoRegistro.local);
+
+  if (!ultimoRegistro || !ultimoRegistro.encontrado) {
+    if (accionNormalizada === "salida") {
+      return {
+        ok: false,
+        payload: {
+          status: "ERROR_SECUENCIA",
+          mensaje: "No puedes marcar salida sin un ingreso previo."
+        }
+      };
+    }
+
+    return { ok: true };
+  }
+
+  var ultimaAccionNormalizada = normalizarTexto(ultimoRegistro.accion);
+
+  if (accionNormalizada === "ingreso" && ultimaAccionNormalizada === "ingreso") {
+    var mensajeIngreso = ultimoLocalNormalizado && ultimoLocalNormalizado !== localNormalizado
+      ? 'Tienes un turno abierto en "' + ultimoRegistro.local + '". Debes cerrarlo antes de marcar ingreso en otro local.'
+      : "Ya tienes registrada una marca de Ingreso. Debes marcar salida antes de volver a ingresar.";
+
+    return {
+      ok: false,
+      payload: {
+        status: "ERROR_SECUENCIA",
+        mensaje: mensajeIngreso,
+        ultimaAccion: ultimoRegistro.accion,
+        ultimaFechaHora: formatearFechaHora(ultimoRegistro.fechaHora),
+        ultimoLocal: ultimoRegistro.local
+      }
+    };
+  }
+
+  if (accionNormalizada === "salida") {
+    if (ultimaAccionNormalizada === "salida") {
+      return {
+        ok: false,
+        payload: {
+          status: "ERROR_SECUENCIA",
+          mensaje: "Ya tienes registrada una marca de Salida. Debes marcar Ingreso antes de volver a salir.",
+          ultimaAccion: ultimoRegistro.accion,
+          ultimaFechaHora: formatearFechaHora(ultimoRegistro.fechaHora),
+          ultimoLocal: ultimoRegistro.local
+        }
+      };
+    }
+
+    if (ultimoLocalNormalizado && ultimoLocalNormalizado !== localNormalizado) {
+      return {
+        ok: false,
+        payload: {
+          status: "ERROR_LOCAL_ABIERTO",
+          mensaje: 'Tu turno abierto pertenece a "' + ultimoRegistro.local + '". Debes cerrarlo en ese mismo local.',
+          ultimaAccion: ultimoRegistro.accion,
+          ultimaFechaHora: formatearFechaHora(ultimoRegistro.fechaHora),
+          ultimoLocal: ultimoRegistro.local
+        }
+      };
     }
   }
 
-  return responderJSON({
-    empleados: colaboradoresFiltrados.sort()
-  });
+  return { ok: true };
 }
 
 
@@ -540,7 +886,7 @@ function registrarAsistencia(params) {
     });
   }
 
-  var validacion = verificarColaborador(nombre, pinIngresado);
+  var validacion = verificarColaborador(nombre, pinIngresado, local);
 
   if (!validacion.valido) {
     return responderJSON({
@@ -549,41 +895,29 @@ function registrarAsistencia(params) {
     });
   }
 
-  var ultimoRegistro = obtenerUltimoRegistroPorNombre(nombre);
+  var ultimoRegistro = obtenerUltimoRegistroPorNombre(validacion.nombre);
+  var validacionSecuencia = validarSecuenciaAsistencia_(accion, local, ultimoRegistro);
 
-  if (!ultimoRegistro.encontrado && accion === "Salida") {
-    return responderJSON({
-      status: "ERROR_SECUENCIA",
-      mensaje: "No puedes marcar salida sin un ingreso previo."
-    });
-  }
-
-  if (ultimoRegistro.encontrado && ultimoRegistro.accion === accion) {
-    return responderJSON({
-      status: "ERROR_SECUENCIA",
-      mensaje: "Ya tienes registrada una marca de " + accion + ". Debes marcar la acción contraria antes de volver a marcar " + accion + ".",
-      ultimaAccion: ultimoRegistro.accion,
-      ultimaFechaHora: formatearFechaHora(ultimoRegistro.fechaHora),
-      ultimoLocal: ultimoRegistro.local
-    });
+  if (!validacionSecuencia.ok) {
+    return responderJSON(validacionSecuencia.payload);
   }
 
   var sheetRegistroAsistencia = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
 
   sheetRegistroAsistencia.appendRow([
     fechaHora,
-    nombre,
+    validacion.nombre,
     validacion.rut,
-    local,
+    validacion.local,
     accion
   ]);
 
   return responderJSON({
     status: "SUCCESS",
     mensaje: accion + " registrado correctamente.",
-    nombre: nombre,
+    nombre: validacion.nombre,
     rut: validacion.rut,
-    local: local,
+    local: validacion.local,
     accion: accion,
     fechaHora: formatearFechaHora(fechaHora)
   });
@@ -621,22 +955,10 @@ function registrarAsistenciaAdmin(params) {
 
   var accion = accionNormalizada === "ingreso" ? "Ingreso" : "Salida";
   var ultimoRegistro = obtenerUltimoRegistroPorNombre(colaborador.nombre);
+  var validacionSecuencia = validarSecuenciaAsistencia_(accion, colaborador.local, ultimoRegistro);
 
-  if (!ultimoRegistro.encontrado && accion === "Salida") {
-    return responderJSON({
-      status: "ERROR_SECUENCIA",
-      mensaje: "No puedes marcar salida sin un ingreso previo."
-    });
-  }
-
-  if (ultimoRegistro.encontrado && ultimoRegistro.accion === accion) {
-    return responderJSON({
-      status: "ERROR_SECUENCIA",
-      mensaje: "Ya existe una marca de " + accion + ". Debes registrar la acción contraria antes de repetirla.",
-      ultimaAccion: ultimoRegistro.accion,
-      ultimaFechaHora: formatearFechaHora(ultimoRegistro.fechaHora),
-      ultimoLocal: ultimoRegistro.local
-    });
+  if (!validacionSecuencia.ok) {
+    return responderJSON(validacionSecuencia.payload);
   }
 
   var sheetRegistroAsistencia = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
@@ -665,16 +987,17 @@ function registrarAsistenciaAdmin(params) {
 function consultarUltimoRegistro(params) {
   var nombre = params.nombre;
   var pinIngresado = params.pin;
+  var local = String(params.local || "").trim();
 
-  if (!nombre || !pinIngresado) {
+  if (!nombre || !pinIngresado || !local) {
     return responderJSON({
       status: "ERROR_DATOS",
-      mensaje: "Debes seleccionar tu nombre e ingresar tu PIN."
+      mensaje: "Debes seleccionar tu nombre, indicar tu local e ingresar tu PIN."
     });
   }
 
   // Primero valida identidad con nombre + PIN
-  var validacion = verificarColaborador(nombre, pinIngresado);
+  var validacion = verificarColaborador(nombre, pinIngresado, local);
 
   if (!validacion.valido) {
     return responderJSON({
@@ -684,7 +1007,7 @@ function consultarUltimoRegistro(params) {
   }
 
   // Luego busca el último registro SOLO por nombre
-  var nombreBuscado = normalizarTexto(nombre);
+  var nombreBuscado = normalizarTexto(validacion.nombre || nombre);
 
   var sheetRegistroAsistencia = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
 
@@ -714,7 +1037,7 @@ function consultarUltimoRegistro(params) {
   return responderJSON({
     status: "SUCCESS",
     encontrado: false,
-    nombre: nombre,
+    nombre: validacion.nombre || nombre,
     mensaje: "No se encontraron registros anteriores para este trabajador."
   });
 }
@@ -722,62 +1045,29 @@ function consultarUltimoRegistro(params) {
 
 // Validar trabajador con nombre + PIN
 function verificarColaborador(nombre, pin) {
-  var sheetColab = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
+  var local = arguments.length > 2 ? arguments[2] : "";
+  var usuario = buscarUsuarioAsistenciaPorNombrePinYLocal_(nombre, pin, local);
 
-  var datos = sheetColab.getDataRange().getValues();
-  var nombreNormalizado = normalizarTexto(nombre);
-  var pinNormalizado = pin.toString().trim();
-
-  for (var i = 1; i < datos.length; i++) {
-    var nombreColaborador = normalizarTexto(datos[i][0]);
-    var rutColaborador = datos[i][1];
-    var pinColaborador = datos[i][2].toString().trim();
-
-    if (nombreColaborador === nombreNormalizado) {
-      if (pinColaborador === pinNormalizado) {
-        return {
-          valido: true,
-          rut: rutColaborador
-        };
-      }
-
-      return {
-        valido: false,
-        rut: ""
-      };
-    }
+  if (usuario) {
+    return {
+      valido: true,
+      nombre: usuario.nombre,
+      rut: usuario.rut,
+      local: usuario.local,
+      rol: usuario.rol
+    };
   }
 
   return {
     valido: false,
-    rut: ""
+    nombre: "",
+    rut: "",
+    local: ""
   };
 }
 
 function buscarColaboradorPorNombreYLocal_(nombre, local) {
-  var sheetColab = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
-  var datos = sheetColab.getDataRange().getValues();
-  var nombreNormalizado = normalizarTexto(nombre);
-  var localNormalizado = normalizarTexto(local);
-
-  for (var i = 1; i < datos.length; i++) {
-    var nombreColaborador = String(datos[i][0] || "").trim();
-    var rutColaborador = String(datos[i][1] || "").trim();
-    var localColaborador = String(datos[i][3] || "").trim();
-
-    if (
-      normalizarTexto(nombreColaborador) === nombreNormalizado &&
-      normalizarTexto(localColaborador) === localNormalizado
-    ) {
-      return {
-        nombre: nombreColaborador,
-        rut: rutColaborador,
-        local: localColaborador
-      };
-    }
-  }
-
-  return null;
+  return buscarUsuarioAsistenciaPorNombreYLocal_(nombre, local);
 }
 
 

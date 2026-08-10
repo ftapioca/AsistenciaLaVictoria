@@ -730,7 +730,7 @@
         <div class="hero-copy">
           <span class="eyebrow">🍔 Bar · Cocina · Smash Burger</span>
           <h1>Registro rápido y seguro.</h1>
-          <p>Marca tu asistencia en pocos segundos. Diseñado para el equipo de La Victoria, local Segunda Faja.</p>
+          <p>Marca tu asistencia en pocos segundos. Diseñado para colaboradores y supervisores de La Victoria, local Segunda Faja.</p>
         </div>
       </div>
       <div class="mini-stats" aria-hidden="true">
@@ -747,13 +747,13 @@
       </div>
 
       <h2 id="pageTitle">Control de asistencia</h2>
-      <p class="subtitle">Selecciona tu nombre, confirma tu último movimiento si tienes dudas y registra tu ingreso o salida.</p>
+      <p class="subtitle">Selecciona tu nombre, confirma tu último movimiento si tienes dudas y registra tu ingreso o salida. Si ya tienes un turno abierto en otro local, primero debes cerrarlo.</p>
 
       <form id="asistenciaForm" autocomplete="off">
         <div class="field">
-          <label for="nombre">Nombre del colaborador</label>
+          <label for="nombre">Nombre del colaborador o supervisor</label>
           <select id="nombre" required aria-describedby="statusBox">
-            <option value="">Cargando personal...</option>
+            <option value="">Cargando personal habilitado...</option>
           </select>
         </div>
 
@@ -777,7 +777,7 @@
 
       <div id="pinHint" class="hint">
         <span class="dot"></span>
-        <span>Tu PIN se limpia automáticamente después de una marca exitosa para mantener la seguridad.</span>
+          <span>Tu PIN se limpia automáticamente después de una marca exitosa. Solo puedes mantener un turno abierto a la vez entre todos tus locales.</span>
       </div>
     </section>
 
@@ -884,6 +884,50 @@
       $('pin').disabled = loading;
     }
 
+    function getEmployeeCacheKey() {
+      return `lv-asistencia-empleados-${LOCAL_ACTUAL.toLowerCase()}`;
+    }
+
+    function renderEmployeeOptions(empleados) {
+      const selectNombre = $('nombre');
+      selectNombre.innerHTML = '<option value="">Selecciona tu nombre</option>';
+
+      if (!Array.isArray(empleados) || empleados.length === 0) {
+        selectNombre.innerHTML = '<option value="">Sin personal habilitado</option>';
+        return false;
+      }
+
+      empleados.forEach(empleado => {
+        const option = document.createElement('option');
+        option.value = empleado;
+        option.innerText = empleado;
+        selectNombre.appendChild(option);
+      });
+
+      return true;
+    }
+
+    function loadCachedEmployees() {
+      try {
+        const raw = localStorage.getItem(getEmployeeCacheKey());
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.empleados) || !parsed.empleados.length) return false;
+        return renderEmployeeOptions(parsed.empleados);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function storeCachedEmployees(empleados) {
+      try {
+        localStorage.setItem(getEmployeeCacheKey(), JSON.stringify({
+          empleados,
+          updatedAt: Date.now()
+        }));
+      } catch (_) {}
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       $('nombreLocal').innerText = `📍 Sucursal: ${LOCAL_ACTUAL}`;
       actualizarReloj();
@@ -891,29 +935,30 @@
       cargarTurnosAbiertos();
       setInterval(cargarTurnosAbiertos, 30 * 60 * 1000);
 
+      const hadCachedEmployees = loadCachedEmployees();
+      if (!hadCachedEmployees) {
+        setStatus('loading', 'Cargando personal habilitado...');
+      }
+
       const urlConsulta = `${WEB_APP_URL}?local=${encodeURIComponent(LOCAL_ACTUAL)}`;
 
       fetch(urlConsulta)
         .then(res => res.json())
         .then(data => {
-          const selectNombre = $('nombre');
-          selectNombre.innerHTML = '<option value="">Selecciona tu nombre</option>';
-
           if (!data.empleados || data.empleados.length === 0) {
-            selectNombre.innerHTML = '<option value="">Sin empleados registrados</option>';
-            setStatus('error', 'No hay colaboradores registrados para este local.');
+            renderEmployeeOptions([]);
+            setStatus('error', 'No hay colaboradores o supervisores habilitados para este local.');
             return;
           }
 
-          data.empleados.forEach(empleado => {
-            const option = document.createElement('option');
-            option.value = empleado;
-            option.innerText = empleado;
-            selectNombre.appendChild(option);
-          });
+          renderEmployeeOptions(data.empleados);
+          storeCachedEmployees(data.empleados);
+          clearStatus();
         })
         .catch(() => {
-          setStatus('error', 'No se pudo cargar la lista de trabajadores. Verifica la conexión a internet.');
+          if (!hadCachedEmployees) {
+            setStatus('error', 'No se pudo cargar la lista de trabajadores. Verifica la conexión a internet.');
+          }
         });
     });
 
@@ -965,7 +1010,7 @@
           }
 
           if (data.status === 'SUCCESS' && data.encontrado === false) {
-            setStatus('error', data.mensaje || 'No encontramos registros previos para este colaborador.');
+            setStatus('error', data.mensaje || 'No encontramos registros previos para esta persona.');
             setUltimoRegistro('<strong>Sin registros previos</strong><span>Puedes marcar tu ingreso o salida según corresponda.</span>');
             return;
           }
@@ -1098,7 +1143,7 @@
       const pin = $('modalPin').value.trim();
 
       if (!nombre) {
-        setModalStatus('error', 'No se pudo identificar al colaborador. Cierra el modal e intenta nuevamente.');
+        setModalStatus('error', 'No se pudo identificar a la persona. Cierra el modal e intenta nuevamente.');
         return;
       }
 
@@ -1196,6 +1241,10 @@
 
             if (data.status === 'ERROR_PIN') {
               $('pin').select();
+            }
+
+            if (data.status === 'ERROR_LOCAL_ABIERTO' || data.status === 'ERROR_SECUENCIA') {
+              setUltimoRegistro(`<strong>Atención</strong><span>${escapeHTML(data.mensaje || 'Debes revisar tu último movimiento antes de marcar nuevamente.')}</span>`);
             }
           }
         })
