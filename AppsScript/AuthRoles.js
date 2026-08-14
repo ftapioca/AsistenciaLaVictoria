@@ -1158,6 +1158,11 @@ function actualizarRolUsuarioAdmin(params) {
     });
   }
 
+  var previousRecord = {};
+  Object.keys(match.record || {}).forEach(function(key) {
+    previousRecord[key] = match.record[key];
+  });
+
   match.context.sheet.getRange(match.rowNumber, match.context.indices.rol + 1).setValue(nextRole);
   match.record.rol = nextRole;
   match.record.local = serializeManagedLocalScope_(nextRole, match.record.local);
@@ -1165,6 +1170,7 @@ function actualizarRolUsuarioAdmin(params) {
     match.context.sheet.getRange(match.rowNumber, match.context.indices.local + 1).setValue(match.record.local);
   }
   syncStructuredAssignmentsForManagedUser_(match.record);
+  refreshAttendancePublicEmployeesForRecords_([previousRecord, match.record]);
 
   return responderJSON({
     status: "SUCCESS",
@@ -1240,8 +1246,13 @@ function actualizarUsuarioAdmin(params) {
   }
 
   var context = match.context;
+  var previousRecord = {};
+  Object.keys(match.record || {}).forEach(function(key) {
+    previousRecord[key] = match.record[key];
+  });
   writeManagedUserToSheet_(context, match.rowNumber, nextValues);
   syncStructuredAssignmentsForManagedUser_(nextValues);
+  refreshAttendancePublicEmployeesForRecords_([previousRecord, nextValues]);
 
   var refreshedRow = context.sheet.getRange(match.rowNumber, 1, 1, context.data[0].length).getValues()[0];
 
@@ -1310,6 +1321,7 @@ function crearUsuarioAdmin(params) {
   var rowNumber = context.sheet.getLastRow() + 1;
   writeManagedUserToSheet_(context, rowNumber, nextValues);
   syncStructuredAssignmentsForManagedUser_(nextValues);
+  refreshAttendancePublicEmployeesForRecords_([nextValues]);
 
   var refreshedRow = context.sheet.getRange(rowNumber, 1, 1, context.data[0].length).getValues()[0];
   logManagedUserTrace_(traceId, "CrearUsuarioAdmin:success", {
@@ -1375,8 +1387,13 @@ function cambiarEstadoUsuarioAdmin(params) {
     });
   }
 
+  var previousRecord = {};
+  Object.keys(match.record || {}).forEach(function(key) {
+    previousRecord[key] = match.record[key];
+  });
   writeManagedUserToSheet_(match.context, match.rowNumber, nextValues);
   syncStructuredAssignmentsForManagedUser_(nextValues);
+  refreshAttendancePublicEmployeesForRecords_([previousRecord, nextValues]);
 
   var refreshedRow = match.context.sheet.getRange(match.rowNumber, 1, 1, match.context.data[0].length).getValues()[0];
   return responderJSON({
@@ -1415,6 +1432,7 @@ function ejecutarMigracionUsuariosUnicos_() {
     rowsDisabled: 0,
     assignmentsRebound: 0
   };
+  var touchedRecords = [];
 
   Object.keys(groups).forEach(function(groupKey) {
     var entries = groups[groupKey];
@@ -1432,6 +1450,7 @@ function ejecutarMigracionUsuariosUnicos_() {
     var canonicalValues = canonical.record;
 
     entries.forEach(function(entry) {
+      touchedRecords.push(entry.record);
       parseLocalScope_(entry.record.local).forEach(function(localName) {
         if (!localName) return;
         mergedLocalsMap[normalizarTexto(localName)] = localName;
@@ -1457,6 +1476,7 @@ function ejecutarMigracionUsuariosUnicos_() {
 
     writeManagedUserToSheet_(context, canonical.rowNumber, canonicalValues);
     syncStructuredAssignmentsForManagedUser_(canonicalValues);
+    touchedRecords.push(canonicalValues);
 
     for (var j = 1; j < usuariosLocalesContext.data.length; j++) {
       var assignment = buildUserLocalRecordFromSheetRow_(usuariosLocalesContext.data[j], usuariosLocalesContext.headerMap, j + 1);
@@ -1519,6 +1539,8 @@ function ejecutarMigracionUsuariosUnicos_() {
       resumen.rowsDisabled += 1;
     });
   });
+
+  refreshAttendancePublicEmployeesForRecords_(touchedRecords);
 
   return resumen;
 }

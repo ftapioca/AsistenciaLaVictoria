@@ -8,6 +8,15 @@
 // A = Fecha/Hora | B = Nombre | C = RUT | D = Local | E = Acción
 // ==========================================
 
+const HOJA_ASISTENCIA_PUBLICA_CACHE = "AsistenciaPublicaCache";
+const ASISTENCIA_PUBLICA_CACHE_HEADERS = [
+  "tipo",
+  "local",
+  "payload_json",
+  "updated_at"
+];
+const ASISTENCIA_PUBLICA_TTL_SEGUNDOS = 180;
+
 
 function doGet(e) {
   var params = e.parameter || {};
@@ -541,6 +550,204 @@ function obtenerParametrosPost_(e) {
   return params;
 }
 
+function getAsistenciaPublicaCacheSheet_() {
+  return getOrCreateSheet_(
+    HOJA_ASISTENCIA_PUBLICA_CACHE,
+    SPREADSHEET_KEY_RRHH,
+    ASISTENCIA_PUBLICA_CACHE_HEADERS
+  );
+}
+
+function buildAsistenciaPublicaSheetCacheKey_(type, local) {
+  return [
+    String(type || "").trim(),
+    normalizarTexto(local)
+  ].join("::");
+}
+
+function buildAsistenciaPublicaScriptCacheKey_(type, localNormalizado) {
+  return "lv:asistencia:public:" + String(type || "").trim() + ":" + String(localNormalizado || "").trim();
+}
+
+function readAsistenciaPublicaMaterialized_(type, local) {
+  var localNormalizado = normalizarTexto(local);
+  if (!localNormalizado) return null;
+
+  var sheet = getAsistenciaPublicaCacheSheet_();
+  var data = sheet.getDataRange().getValues();
+  var targetKey = buildAsistenciaPublicaSheetCacheKey_(type, local);
+
+  for (var i = 1; i < data.length; i++) {
+    var rowType = String(data[i][0] || "").trim();
+    var rowLocal = String(data[i][1] || "").trim();
+    if (buildAsistenciaPublicaSheetCacheKey_(rowType, rowLocal) !== targetKey) continue;
+
+    try {
+      var payload = JSON.parse(String(data[i][2] || "").trim() || "null");
+      return payload && typeof payload === "object" ? payload : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function writeAsistenciaPublicaMaterialized_(type, local, payload) {
+  var localNormalizado = normalizarTexto(local);
+  if (!localNormalizado) return;
+
+  var sheet = getAsistenciaPublicaCacheSheet_();
+  var data = sheet.getDataRange().getValues();
+  var targetKey = buildAsistenciaPublicaSheetCacheKey_(type, local);
+  var rowNumber = 0;
+
+  for (var i = 1; i < data.length; i++) {
+    var rowType = String(data[i][0] || "").trim();
+    var rowLocal = String(data[i][1] || "").trim();
+    if (buildAsistenciaPublicaSheetCacheKey_(rowType, rowLocal) === targetKey) {
+      rowNumber = i + 1;
+      break;
+    }
+  }
+
+  var values = [[
+    String(type || "").trim(),
+    String(local || "").trim(),
+    JSON.stringify(payload || {}),
+    new Date()
+  ]];
+
+  if (rowNumber) {
+    sheet.getRange(rowNumber, 1, 1, ASISTENCIA_PUBLICA_CACHE_HEADERS.length).setValues(values);
+    return;
+  }
+
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, ASISTENCIA_PUBLICA_CACHE_HEADERS.length).setValues(values);
+}
+
+function readAsistenciaPublicaCachedPayload_(type, local) {
+  var localNormalizado = normalizarTexto(local);
+  if (!localNormalizado) return null;
+
+  var scriptCache = null;
+  var scriptCacheKey = buildAsistenciaPublicaScriptCacheKey_(type, localNormalizado);
+
+  try {
+    scriptCache = CacheService.getScriptCache();
+    var cachedPayload = scriptCache.get(scriptCacheKey);
+    if (cachedPayload) {
+      var parsedCached = JSON.parse(cachedPayload);
+      if (parsedCached && typeof parsedCached === "object") {
+        return parsedCached;
+      }
+    }
+  } catch (error) {}
+
+  var materializedPayload = null;
+  try {
+    materializedPayload = readAsistenciaPublicaMaterialized_(type, local);
+  } catch (error) {
+    materializedPayload = null;
+  }
+
+  if (!materializedPayload) return null;
+
+  try {
+    if (scriptCache) {
+      scriptCache.put(
+        scriptCacheKey,
+        JSON.stringify(materializedPayload),
+        ASISTENCIA_PUBLICA_TTL_SEGUNDOS
+      );
+    }
+  } catch (error) {}
+
+  return materializedPayload;
+}
+
+function writeAsistenciaPublicaCachedPayload_(type, local, payload) {
+  var localNormalizado = normalizarTexto(local);
+  if (!localNormalizado) return;
+
+  try {
+    writeAsistenciaPublicaMaterialized_(type, local, payload);
+  } catch (error) {}
+
+  try {
+    CacheService
+      .getScriptCache()
+      .put(
+        buildAsistenciaPublicaScriptCacheKey_(type, localNormalizado),
+        JSON.stringify(payload || {}),
+        ASISTENCIA_PUBLICA_TTL_SEGUNDOS
+      );
+  } catch (error) {}
+}
+
+function collectAttendanceLocalNamesFromRecord_(record) {
+  if (!record || isRole_(record.rol, USER_TYPES.ADMINISTRADOR.id)) return [];
+
+  var dedupe = {};
+  var locals = [];
+
+  function addLocal(localName) {
+    var localNormalizado = normalizarTexto(localName);
+    if (!localNormalizado || dedupe[localNormalizado]) return;
+    dedupe[localNormalizado] = true;
+    locals.push(String(localName || "").trim());
+  }
+
+  parseLocalScope_(record.local).forEach(addLocal);
+
+  try {
+    resolveAssignedLocalsForUserRecord_(record).forEach(addLocal);
+  } catch (error) {}
+
+  return locals;
+}
+
+function refreshAttendancePublicEmployeesForLocals_(locals) {
+  var dedupe = {};
+
+  (locals || []).forEach(function(localName) {
+    var localNormalizado = normalizarTexto(localName);
+    if (!localNormalizado || dedupe[localNormalizado]) return;
+    dedupe[localNormalizado] = true;
+
+    writeAsistenciaPublicaCachedPayload_(
+      "empleados",
+      localName,
+      buildAttendancePublicEmployeesPayload_(localName)
+    );
+  });
+}
+
+function refreshAttendancePublicEmployeesForRecords_(records) {
+  var locals = [];
+  (records || []).forEach(function(record) {
+    collectAttendanceLocalNamesFromRecord_(record).forEach(function(localName) {
+      locals.push(localName);
+    });
+  });
+  refreshAttendancePublicEmployeesForLocals_(locals);
+}
+
+function refreshOpenShiftsPublicForLocal_(local) {
+  if (!normalizarTexto(local)) return;
+  writeAsistenciaPublicaCachedPayload_(
+    "turnos_abiertos",
+    local,
+    construirRespuestaTurnosAbiertosRaw_(local)
+  );
+}
+
+function buildAttendancePublicEmployeesPayload_(local) {
+  return {
+    empleados: listarUsuariosAsistenciaPorLocal_(local)
+  };
+}
+
 
 // Obtener lista de trabajadores por local
 function obtenerColaboradoresPorLocal(params) {
@@ -553,30 +760,11 @@ function obtenerColaboradoresPorLocal(params) {
     });
   }
 
-  var cache = null;
-  var cacheKey = "";
-
-  try {
-    cache = CacheService.getScriptCache();
-    cacheKey = "lv:asistencia:public-local:" + localNormalizado;
-    var cachedPayload = cache.get(cacheKey);
-    if (cachedPayload) {
-      var parsedPayload = JSON.parse(cachedPayload);
-      if (parsedPayload && Array.isArray(parsedPayload.empleados)) {
-        return responderJSON(parsedPayload);
-      }
-    }
-  } catch (error) {}
-
-  var payload = {
-    empleados: listarUsuariosAsistenciaPorLocal_(localSolicitado)
-  };
-
-  try {
-    if (cache && cacheKey) {
-      cache.put(cacheKey, JSON.stringify(payload), 180);
-    }
-  } catch (error) {}
+  var payload = readAsistenciaPublicaCachedPayload_("empleados", localSolicitado);
+  if (!payload || !Array.isArray(payload.empleados)) {
+    payload = buildAttendancePublicEmployeesPayload_(localSolicitado);
+    writeAsistenciaPublicaCachedPayload_("empleados", localSolicitado, payload);
+  }
 
   return responderJSON(payload);
 }
@@ -912,6 +1100,8 @@ function registrarAsistencia(params) {
     accion
   ]);
 
+  refreshOpenShiftsPublicForLocal_(validacion.local);
+
   return responderJSON({
     status: "SUCCESS",
     mensaje: accion + " registrado correctamente.",
@@ -970,6 +1160,8 @@ function registrarAsistenciaAdmin(params) {
     colaborador.local,
     accion
   ]);
+
+  refreshOpenShiftsPublicForLocal_(colaborador.local);
 
   return responderJSON({
     status: "SUCCESS",

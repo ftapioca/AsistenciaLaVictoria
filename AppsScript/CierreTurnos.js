@@ -44,6 +44,17 @@ function construirRespuestaTurnosAbiertos_(params) {
     };
   }
 
+  var payload = readAsistenciaPublicaCachedPayload_("turnos_abiertos", localSolicitado);
+  if (payload && payload.status === "SUCCESS") {
+    return payload;
+  }
+
+  payload = construirRespuestaTurnosAbiertosRaw_(localSolicitado);
+  writeAsistenciaPublicaCachedPayload_("turnos_abiertos", localSolicitado, payload);
+  return payload;
+}
+
+function construirRespuestaTurnosAbiertosRaw_(localSolicitado) {
   var sheetRegistroAsistencia = getSheet_("RegistroAsistencia", SPREADSHEET_KEY_RRHH);
 
   var datos = sheetRegistroAsistencia.getDataRange().getValues();

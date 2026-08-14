@@ -175,3 +175,51 @@ Notas:
 - seguir con la consolidacion fisica de `Usuarios` desde modelo "duplicado por local" a modelo "usuario unico con multiples asignaciones"
 - exponer el flujo de consolidacion desde UI administrativa de forma segura
 - si la latencia inicial de primera carga sigue siendo alta en horas punta, evaluar una hoja indice o materializacion de lista publica por local
+
+## Actualizacion 2026-08-14
+
+Objetivo:
+
+- reducir la latencia de primera carga tanto para la lista publica de personal por local como para `TurnosAbiertosPublico`
+
+Cambios backend aplicados:
+
+- se introduce la hoja `AsistenciaPublicaCache` como materializacion por local para payloads publicos
+- se materializan dos tipos de respuesta:
+  - `empleados`
+  - `turnos_abiertos`
+- ambos endpoints publicos ahora leen primero desde:
+  - `CacheService`
+  - hoja `AsistenciaPublicaCache`
+- solo si no existe materializacion valida, recalculan en vivo y vuelven a persistir el resultado
+
+Refresh automatico implementado:
+
+- la lista publica de `empleados` se refresca al:
+  - crear usuario
+  - editar usuario
+  - cambiar rol
+  - activar o desactivar usuario
+  - consolidar usuarios durante migracion
+- la lista publica de `turnos_abiertos` se refresca al registrar:
+  - `Ingreso`
+  - `Salida`
+  - `RegistrarAsistenciaAdmin`
+
+Impacto esperado:
+
+- la primera apertura del HTML despues de una expiracion corta deja de recalcular desde cero la lista de personal
+- `TurnosAbiertosPublico` deja de recorrer la hoja completa `RegistroAsistencia` en cada consulta publica
+- el costo pesado de calculo se mueve hacia los eventos de escritura administrativa y de marcacion
+
+Archivos involucrados:
+
+- `AppsScript/RegistroAsistencias.js`
+- `AppsScript/CierreTurnos.js`
+- `AppsScript/AuthRoles.js`
+
+Consideraciones operativas:
+
+- la hoja `AsistenciaPublicaCache` se crea automaticamente en el spreadsheet `rrhh` cuando el backend la necesita por primera vez
+- no requiere cambiar la URL del deployment productivo
+- no requiere redistribuir HTML descargables porque el cambio es backend
