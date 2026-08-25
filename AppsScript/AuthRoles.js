@@ -179,6 +179,10 @@ function isUnrestrictedLocalValue_(localValue) {
   return !normalized || normalized === "todos" || normalized === "todas";
 }
 
+function isReservedPseudoLocal_(localValue) {
+  return isUnrestrictedLocalValue_(localValue);
+}
+
 function getUsuariosSheetContext_() {
   var sheet = findSheet_(HOJA_USUARIOS, SPREADSHEET_KEY_RRHH);
   if (!sheet) return null;
