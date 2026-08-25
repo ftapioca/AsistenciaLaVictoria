@@ -36,7 +36,7 @@ En `AppsScript/AuthRoles.js`, `listResolvedLocalScope_(...)` invocaba `isReserve
 
 ## Correccion aplicada
 
-Se agrego la funcion faltante:
+Primero se agrego la funcion faltante:
 
 ```js
 function isReservedPseudoLocal_(localValue) {
@@ -44,7 +44,24 @@ function isReservedPseudoLocal_(localValue) {
 }
 ```
 
-Esto mantiene la semantica existente para locales globales como `Todos` / `Todas` y elimina el fallo de referencia al cargar el modulo.
+Luego, al reintentar el bootstrap en produccion, aparecio un segundo error encadenado:
+
+```json
+{"status":"ERROR","mensaje":"generateStableLocalIdForSeed_ is not defined"}
+```
+
+La misma ruta `listResolvedLocalScope_(...)` usaba tambien una segunda funcion no definida para generar un `idLocal` deterministico cuando el local aun no existe en el catalogo.
+
+Se agrego tambien:
+
+```js
+function generateStableLocalIdForSeed_(localValue) {
+  var normalized = normalizarTexto(localValue).replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return "LOC-" + (normalized || "sin_local");
+}
+```
+
+Esto conserva un identificador estable y legible para nombres de local fuera del catalogo y evita un segundo `ReferenceError` en el bootstrap.
 
 ## Verificacion esperada despues del deploy
 

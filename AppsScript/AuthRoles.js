@@ -183,6 +183,11 @@ function isReservedPseudoLocal_(localValue) {
   return isUnrestrictedLocalValue_(localValue);
 }
 
+function generateStableLocalIdForSeed_(localValue) {
+  var normalized = normalizarTexto(localValue).replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return "LOC-" + (normalized || "sin_local");
+}
+
 function getUsuariosSheetContext_() {
   var sheet = findSheet_(HOJA_USUARIOS, SPREADSHEET_KEY_RRHH);
   if (!sheet) return null;
