@@ -4,7 +4,7 @@ export function createLoadingOverlay(initialText = 'Procesando...') {
   document.documentElement.setAttribute('data-lv-build', '2026-07-05-staging-fix');
 
   const overlay = document.createElement('div');
-  overlay.className = 'fixed inset-0 z-notification hidden place-items-center bg-neutral-charcoal/20 backdrop-blur-sm';
+  overlay.className = 'fixed inset-0 z-[200] hidden place-items-center bg-neutral-charcoal/40 backdrop-blur-md';
   overlay.setAttribute('aria-live', 'polite');
   overlay.setAttribute('aria-busy', 'true');
 

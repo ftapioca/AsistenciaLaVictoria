@@ -378,7 +378,13 @@ function createEditModal() {
     }
 
     setLoading(true);
-    setFeedback('Guardando cambios del usuario...');
+    setFeedback('');
+    overlay.setLoading(
+      true,
+      'Guardando cambios del usuario...',
+      'Estamos actualizando sus datos de acceso, rol y asignaciones.'
+    );
+    await waitNextFrame();
     try {
       const response = await window.LVAuth.apiPost({
         accion: 'ActualizarUsuarioAdmin',
@@ -404,13 +410,14 @@ function createEditModal() {
         entry.idUsuario === response.user.idUsuario ? response.user : entry
       ));
       updateHighlights();
-      renderUserAccordions();
+      renderUsersTable();
       toast.show('success', `${response.user.nombreCompleto} actualizado correctamente.`);
       close();
     } catch (error) {
-      setFeedback('');
+      setFeedback(error.message || 'No se pudo actualizar el usuario. Corrige los datos e inténtalo nuevamente.');
       toast.show('error', error.message || 'No se pudo actualizar el usuario.');
     } finally {
+      overlay.setLoading(false);
       setLoading(false);
     }
   }
@@ -486,7 +493,7 @@ function buildShell() {
   const hero = createPageHero({
     badge: 'La Victoria · Seguridad',
     title: 'Usuarios y permisos',
-    lead: 'Gestiona usuarios por local con acordeones dedicados y edita cada ficha desde un modal completo. La matriz inferior resume permisos por rol en formato comparativo.',
+    lead: 'Gestiona usuarios desde una lista única ordenada por jerarquía y local. La matriz inferior resume permisos por rol en formato comparativo.',
     highlights: buildHighlights(),
     sideTitle: 'Sesión y control',
     sideStatus: sessionStatus,
@@ -500,7 +507,7 @@ function buildShell() {
   const filters = createCard({
     eyebrow: 'Filtro',
     title: 'Buscar usuarios',
-    body: 'Filtra por nombre, usuario, local, cargo o rol. Los acordeones se actualizan con el subconjunto visible.',
+    body: 'Filtra por nombre, usuario, local, cargo o rol. La lista conserva el orden por jerarquía y local.',
     className: 'rounded-3xl md:p-2xl',
   });
 
@@ -514,8 +521,8 @@ function buildShell() {
 
   const usersCard = createCard({
     eyebrow: 'Usuarios',
-    title: 'Roles por persona',
-    body: 'Separamos la operación por acordeón: cada local muestra sus propios usuarios y el bloque de administradores queda aparte.',
+    title: 'Lista de usuarios',
+    body: 'Administradores, supervisores y colaboradores se muestran en una sola tabla, ordenados por jerarquía y local asignado.',
     className: 'rounded-3xl md:p-2xl',
   });
 
@@ -523,10 +530,10 @@ function buildShell() {
   usersMeta.id = 'usersMeta';
   usersMeta.className = 'mt-lg text-sm font-bold text-neutral-muted';
 
-  const accordions = document.createElement('div');
-  accordions.id = 'usersAccordions';
-  accordions.className = 'mt-xl grid gap-lg';
-  usersCard.append(usersMeta, accordions);
+  const usersTable = document.createElement('div');
+  usersTable.id = 'usersTable';
+  usersTable.className = 'mt-xl overflow-hidden rounded-2xl border border-neutral-charcoal/10 bg-white/84';
+  usersCard.append(usersMeta, usersTable);
 
   const rolesCard = createCard({
     eyebrow: 'Permisos',
@@ -554,6 +561,7 @@ function getRoleMap() {
 
 function getVisibleUsers() {
   const search = normalizeText(state.search);
+  const roleRank = new Map(ROLE_ORDER.map((role, index) => [role, index]));
   return state.users.filter((user) => {
     if (!search) return true;
     const haystack = normalizeText([
@@ -566,45 +574,15 @@ function getVisibleUsers() {
       user.telefono,
     ].join(' '));
     return haystack.includes(search);
+  }).sort((left, right) => {
+    const roleDifference = (roleRank.get(left.rol) ?? ROLE_ORDER.length) - (roleRank.get(right.rol) ?? ROLE_ORDER.length);
+    if (roleDifference) return roleDifference;
+
+    const localDifference = String(left.local || '').localeCompare(String(right.local || ''), 'es');
+    if (localDifference) return localDifference;
+
+    return String(left.nombreCompleto || '').localeCompare(String(right.nombreCompleto || ''), 'es');
   });
-}
-
-function getLocalSections() {
-  const visibleUsers = getVisibleUsers();
-  const locals = [...new Set(
-    visibleUsers
-      .filter((user) => user.rol !== 'Administrador')
-      .flatMap((user) => parseLocalList(user.local))
-      .filter(Boolean)
-  )].sort((a, b) => a.localeCompare(b, 'es'));
-
-  const sections = locals.map((local) => ({
-    id: `local-${normalizeText(local)}`,
-    title: local,
-    subtitle: 'Usuarios operativos asignados a este local',
-    users: visibleUsers.filter((user) => user.rol !== 'Administrador' && parseLocalList(user.local).includes(local)),
-  }));
-
-  const usersWithoutLocal = visibleUsers.filter((user) => (
-    user.rol !== 'Administrador' && !parseLocalList(user.local).length
-  ));
-  if (usersWithoutLocal.length) {
-    sections.push({
-      id: 'sin-local',
-      title: 'Sin local asignado',
-      subtitle: 'Usuarios operativos sin alcance local, incluidos los inactivos heredados',
-      users: usersWithoutLocal,
-    });
-  }
-
-  sections.push({
-    id: 'administradores',
-    title: 'Administradores',
-    subtitle: 'Usuarios con control global del sistema',
-    users: visibleUsers.filter((user) => user.rol === 'Administrador'),
-  });
-
-  return sections;
 }
 
 function createUserTable(users, openEditModal) {
@@ -660,49 +638,19 @@ function createUserTable(users, openEditModal) {
   return wrapper;
 }
 
-function renderUserAccordions() {
-  const accordionsRoot = $('usersAccordions');
+function renderUsersTable() {
+  const usersTable = $('usersTable');
   const modal = window.__lvEditUserModal;
-  const sections = getLocalSections();
-  $('usersMeta').textContent = `${getVisibleUsers().length} usuario(s) visibles distribuidos por acordeón.`;
-  accordionsRoot.innerHTML = '';
+  const users = getVisibleUsers();
+  $('usersMeta').textContent = `${users.length} usuario(s) visibles. Orden: rol, local y nombre.`;
+  usersTable.innerHTML = '';
 
-  const accordionSections = [];
-  sections.forEach((sectionData) => {
-    const section = createAccordionSection({
-      id: sectionData.id,
-      title: sectionData.title,
-      subtitle: sectionData.subtitle,
-      badgeText: String(sectionData.users.length),
-      open: !isMobileView(),
-    });
-
-    if (!sectionData.users.length) {
-      section.panel.innerHTML = '<div class="rounded-2xl border border-neutral-charcoal/10 bg-white/84 px-lg py-lg text-sm font-bold text-neutral-muted">No hay usuarios visibles en este grupo.</div>';
-    } else {
-      section.panel.appendChild(createUserTable(sectionData.users, modal.open));
-    }
-
-    accordionsRoot.appendChild(section.element);
-    accordionSections.push(section);
-  });
-
-  function setExclusiveOpen(sectionToToggle) {
-    const shouldOpen = !sectionToToggle.isOpen();
-    accordionSections.forEach((section) => {
-      section.setOpen(section === sectionToToggle ? shouldOpen : false);
-    });
+  if (!users.length) {
+    usersTable.innerHTML = '<div class="px-lg py-xl text-sm font-bold text-neutral-muted">No hay usuarios que coincidan con la búsqueda.</div>';
+    return;
   }
 
-  accordionSections.forEach((section) => {
-    section.bindToggle(() => {
-      if (isMobileView()) {
-        setExclusiveOpen(section);
-        return;
-      }
-      section.setOpen(!section.isOpen());
-    });
-  });
+  usersTable.appendChild(createUserTable(users, modal.open));
 }
 
 function renderPermissionsMatrix() {
@@ -810,14 +758,16 @@ function renderPermissionsMatrix() {
     const saveButton = matrix.querySelector('#btnSavePermissionsMatrix');
     const cancelButton = matrix.querySelector('#btnCancelPermissionsEdit');
     const feedback = matrix.querySelector('#permissionsSaveFeedback');
-    const overlayNode = matrix.querySelector('#permissionsOverlay');
     saveButton.disabled = true;
     if (cancelButton) cancelButton.disabled = true;
     saveButton.textContent = 'Guardando...';
-    feedback.textContent = 'Guardando matriz de permisos...';
-    feedback.classList.remove('hidden');
-    overlayNode.classList.remove('hidden');
-    overlayNode.classList.add('grid');
+    feedback.classList.add('hidden');
+    overlay.setLoading(
+      true,
+      'Guardando matriz de permisos...',
+      'Estamos aplicando los permisos definidos para cada rol.'
+    );
+    await waitNextFrame();
     try {
       for (const role of ROLE_ORDER) {
         const payload = { accion: 'ActualizarPermisosRolAdmin', role };
@@ -840,11 +790,11 @@ function renderPermissionsMatrix() {
       toast.show('success', 'Matriz de permisos actualizada.');
       renderPermissionsMatrix();
     } catch (error) {
-      feedback.classList.add('hidden');
-      overlayNode.classList.add('hidden');
-      overlayNode.classList.remove('grid');
+      feedback.textContent = error.message || 'No se pudieron guardar los permisos.';
+      feedback.classList.remove('hidden');
       toast.show('error', error.message || 'No se pudieron guardar los permisos.');
     } finally {
+      overlay.setLoading(false);
       saveButton.disabled = false;
       if (cancelButton) cancelButton.disabled = false;
       saveButton.textContent = 'Guardar permisos';
@@ -866,7 +816,7 @@ async function loadData() {
 function bindFilters() {
   $('userSearchInput').addEventListener('input', (event) => {
     state.search = event.target.value || '';
-    renderUserAccordions();
+    renderUsersTable();
   });
 }
 
@@ -890,7 +840,7 @@ async function bootstrap() {
   try {
     await loadData();
     updateHighlights();
-    renderUserAccordions();
+    renderUsersTable();
     renderPermissionsMatrix();
   } finally {
     overlay.setLoading(false);
