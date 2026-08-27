@@ -772,6 +772,9 @@ function listManagedUsers_() {
   var context = getUsuariosSheetContext_();
   if (!context) return [];
 
+  // Reuse the assignment index for the whole response. Rebuilding it per user
+  // causes repeated Sheets reads and makes the administrative bootstrap time out.
+  var assignmentIndex = buildActiveAssignmentIndexByPrincipal_(getUsuariosLocalesSheetContext_());
   var users = [];
   var mergedUsers = {};
   for (var i = 1; i < context.data.length; i++) {
@@ -786,13 +789,13 @@ function listManagedUsers_() {
     var mergeKey = buildManagedUserMergeKey_(record);
     if (!mergedUsers[mergeKey]) {
       mergedUsers[mergeKey] = safeRecord;
-      mergedUsers[mergeKey].local = serializeManagedLocalScope_(record.rol, resolveAssignedLocalsForUserRecord_(record).join(", "));
+      mergedUsers[mergeKey].local = serializeManagedLocalScope_(record.rol, resolveAssignedLocalsForUserRecord_(record, assignmentIndex).join(", "));
       continue;
     }
 
     var mergedRecord = mergedUsers[mergeKey];
     var mergedLocals = parseLocalScope_(mergedRecord.local);
-    resolveAssignedLocalsForUserRecord_(record).forEach(function(localName) {
+    resolveAssignedLocalsForUserRecord_(record, assignmentIndex).forEach(function(localName) {
       if (mergedLocals.map(normalizarTexto).indexOf(normalizarTexto(localName)) === -1) {
         mergedLocals.push(localName);
       }
