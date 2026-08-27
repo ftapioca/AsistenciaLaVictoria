@@ -408,6 +408,22 @@ function doPost(e) {
     }
   }
 
+  if (accion === "AuditarDuplicadosUsuariosAdmin") {
+    try {
+      return auditarDuplicadosUsuariosAdmin(params);
+    } catch (error) {
+      return responderJSON({ status: error.code || "FORBIDDEN", mensaje: error.message || "No se pudo auditar duplicados." });
+    }
+  }
+
+  if (accion === "ConsolidarDuplicadosUsuariosAdmin") {
+    try {
+      return consolidarDuplicadosUsuariosAdmin(params);
+    } catch (error) {
+      return responderJSON({ status: error.code || "FORBIDDEN", mensaje: error.message || "No se pudo consolidar el grupo." });
+    }
+  }
+
   if (accion === "ActualizarPermisosRolAdmin") {
     try {
       return actualizarPermisosRolAdmin(params);

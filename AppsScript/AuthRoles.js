@@ -1588,10 +1588,110 @@ function ejecutarMigracionUsuariosUnicos_() {
 function migrarUsuariosUnicosAdmin(params) {
   requireAdminSession(params);
   return responderJSON({
-    status: "SUCCESS",
-    mensaje: "Migracion de usuarios unicos completada.",
-    resumen: ejecutarMigracionUsuariosUnicos_()
+    status: "ERROR_DEPRECATED",
+    mensaje: "La migracion masiva fue deshabilitada. Usa la consolidacion revisada por grupo."
   });
+}
+
+function buildDuplicateUserGroups_() {
+  var context = getUsuariosSheetContext_();
+  if (!context) return [];
+
+  var groupsByKey = {};
+  for (var i = 1; i < context.data.length; i++) {
+    var record = buildUserRecordFromModernRow_(context.data[i], context.indices);
+    if (!record.nombreCompleto || isRole_(record.rol, USER_TYPES.ADMINISTRADOR.id)) continue;
+
+    var hasLogin = Boolean(record.usuarioLogin);
+    var identity = hasLogin ? normalizarTexto(record.usuarioLogin) : normalizarTexto(record.nombreCompleto);
+    var groupKey = (hasLogin ? "login" : "name") + ":" + normalizarTexto(record.rol) + ":" + identity;
+    if (!groupsByKey[groupKey]) {
+      groupsByKey[groupKey] = { groupKey: groupKey, matchType: hasLogin ? "usuario_login" : "nombre_rol", entries: [] };
+    }
+    groupsByKey[groupKey].entries.push({ rowNumber: i + 1, record: record });
+  }
+
+  return Object.keys(groupsByKey).map(function(key) {
+    var group = groupsByKey[key];
+    if (group.entries.length < 2) return null;
+    group.entries.sort(function(left, right) {
+      if (left.record.activo !== right.record.activo) return left.record.activo ? -1 : 1;
+      return left.rowNumber - right.rowNumber;
+    });
+    return group;
+  }).filter(function(group) { return group; });
+}
+
+function auditarDuplicadosUsuariosAdmin(params) {
+  requireAdminSession(params);
+  return responderJSON({
+    status: "SUCCESS",
+    groups: buildDuplicateUserGroups_().map(function(group) {
+      return {
+        groupKey: group.groupKey,
+        matchType: group.matchType,
+        role: group.entries[0].record.rol,
+        candidates: group.entries.map(function(entry, index) {
+          var record = sanitizeManagedUserForAdminView_(entry.record);
+          record.rowNumber = entry.rowNumber;
+          record.recommended = index === 0;
+          return record;
+        })
+      };
+    })
+  });
+}
+
+function consolidarDuplicadosUsuariosAdmin(params) {
+  requireAdminSession(params);
+  if (String(params.confirmar || "").trim() !== "SI") {
+    throw crearErrorAuth("ERROR_DATOS", "Debes confirmar la consolidacion del grupo.");
+  }
+
+  var groupKey = String(params.groupKey || "").trim();
+  var canonicalId = String(params.canonicalId || "").trim();
+  var group = buildDuplicateUserGroups_().filter(function(item) { return item.groupKey === groupKey; })[0];
+  if (!group) throw crearErrorAuth("ERROR_DATOS", "El grupo ya no existe o no es valido.");
+
+  var canonical = group.entries.filter(function(entry) { return entry.record.idUsuario === canonicalId; })[0];
+  if (!canonical) throw crearErrorAuth("ERROR_DATOS", "El usuario canonico no pertenece al grupo.");
+
+  ensureUsuariosLocalesSheetReady_();
+  var context = getUsuariosSheetContext_();
+  var canonicalValues = {};
+  Object.keys(canonical.record).forEach(function(key) { canonicalValues[key] = canonical.record[key]; });
+  var locals = {};
+  var touchedRecords = [];
+
+  group.entries.forEach(function(entry) {
+    touchedRecords.push(entry.record);
+    parseLocalScope_(entry.record.local).concat(resolveAssignedLocalsForUserRecord_(entry.record)).forEach(function(local) {
+      if (local) locals[normalizarTexto(local)] = local;
+    });
+    ["usuarioLogin", "email", "telefono", "cargo", "observaciones"].forEach(function(field) {
+      if (!canonicalValues[field] && entry.record[field]) canonicalValues[field] = entry.record[field];
+    });
+  });
+
+  canonicalValues.local = Object.keys(locals).map(function(key) { return locals[key]; }).sort(function(a, b) { return a.localeCompare(b, "es"); }).join(", ");
+  canonicalValues.activo = group.entries.some(function(entry) { return entry.record.activo; });
+  writeManagedUserToSheet_(context, canonical.rowNumber, canonicalValues);
+  syncStructuredAssignmentsForManagedUser_(canonicalValues);
+
+  var disabledIds = [];
+  group.entries.forEach(function(entry) {
+    if (entry.rowNumber === canonical.rowNumber) return;
+    var duplicateValues = {};
+    Object.keys(entry.record).forEach(function(key) { duplicateValues[key] = entry.record[key]; });
+    duplicateValues.local = "";
+    duplicateValues.activo = false;
+    duplicateValues.observaciones = "Consolidado en " + canonicalValues.idUsuario + " el " + formatTodayDateForSheet_();
+    writeManagedUserToSheet_(context, entry.rowNumber, duplicateValues);
+    disabledIds.push(entry.record.idUsuario);
+  });
+
+  refreshAttendancePublicEmployeesForRecords_(touchedRecords.concat([canonicalValues]));
+  return responderJSON({ status: "SUCCESS", canonicalId: canonicalValues.idUsuario, disabledIds: disabledIds, locales: canonicalValues.local });
 }
 
 function actualizarPermisosRolAdmin(params) {

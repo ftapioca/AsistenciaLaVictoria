@@ -37,6 +37,7 @@ const state = {
   search: '',
   sortKey: 'rol',
   sortDirection: 'asc',
+  duplicateGroups: [],
   editingPermissions: false,
   draftPermissions: null,
 };
@@ -527,6 +528,19 @@ function buildShell() {
   usersTable.className = 'mt-xl overflow-hidden rounded-2xl border border-neutral-charcoal/10 bg-white/84';
   usersCard.append(usersToolbar, usersTable);
 
+  const duplicatesCard = createCard({
+    eyebrow: 'Limpieza controlada',
+    title: 'Duplicados de usuarios',
+    body: 'Revisa cada coincidencia, elige el registro canónico y confirma antes de consolidar. No se eliminan filas: los duplicados quedan inactivos y trazables.',
+    className: 'rounded-3xl md:p-2xl',
+  });
+  const auditButton = createButton('Revisar duplicados', { variant: 'secondary', className: 'mt-xl bg-white/88 text-neutral-charcoal hover:bg-white' });
+  auditButton.id = 'btnAuditDuplicates';
+  const duplicatesRoot = document.createElement('div');
+  duplicatesRoot.id = 'duplicatesRoot';
+  duplicatesRoot.className = 'mt-xl grid gap-lg';
+  duplicatesCard.append(auditButton, duplicatesRoot);
+
   const rolesCard = createCard({
     eyebrow: 'Permisos',
     title: 'Matriz por tipo de usuario',
@@ -539,7 +553,7 @@ function buildShell() {
   matrix.className = 'mt-xl overflow-hidden rounded-3xl border border-neutral-charcoal/10 bg-white/88 shadow-brand-sm';
   rolesCard.appendChild(matrix);
 
-  shell.append(hero, usersCard, rolesCard);
+  shell.append(hero, usersCard, duplicatesCard, rolesCard);
   app.replaceChildren(shell);
 }
 
@@ -681,6 +695,67 @@ function renderUsersTable() {
   }
 
   usersTable.appendChild(createUserTable(users, modal.open));
+}
+
+async function fetchDuplicateGroups() {
+  const response = await window.LVAuth.apiGet({ accion: 'AuditarDuplicadosUsuariosAdmin' });
+  if (response.status !== 'SUCCESS') throw new Error(response.mensaje || 'No se pudieron revisar los duplicados.');
+  return Array.isArray(response.groups) ? response.groups : [];
+}
+
+function renderDuplicateAudit() {
+  const root = $('duplicatesRoot');
+  root.innerHTML = '';
+  if (!state.duplicateGroups.length) {
+    root.innerHTML = '<div class="rounded-2xl border border-brand-lettuce/20 bg-brand-lettuce/10 px-lg py-lg text-sm font-bold text-brand-lettuce">No se detectaron grupos duplicados.</div>';
+    return;
+  }
+
+  state.duplicateGroups.forEach((group) => {
+    const card = document.createElement('section');
+    card.className = 'rounded-3xl border border-brand-cheese/30 bg-brand-cheese/10 p-lg';
+    card.innerHTML = `
+      <div class="flex flex-col gap-sm md:flex-row md:items-start md:justify-between">
+        <div>
+          <p class="text-sm font-black text-neutral-charcoal">${group.candidates.length} registros · ${escapeHtml(group.role)}</p>
+          <p class="mt-xs text-sm font-bold text-neutral-muted">${group.matchType === 'usuario_login' ? 'Coincidencia por usuario login.' : 'Coincidencia por nombre y rol sin usuario login. Revísala antes de consolidar.'}</p>
+        </div>
+      </div>
+      <label class="mt-lg grid gap-sm text-sm font-black text-neutral-charcoal">
+        Registro canónico
+        <select class="duplicate-canonical min-h-[50px] rounded-2xl border border-neutral-charcoal/10 bg-white px-lg py-md font-bold">
+          ${group.candidates.map((candidate) => `<option value="${escapeHtml(candidate.idUsuario)}" ${candidate.recommended ? 'selected' : ''}>${escapeHtml(candidate.nombreCompleto)} · ${escapeHtml(candidate.idUsuario)} · ${candidate.activo ? 'Activo' : 'Inactivo'} · ${escapeHtml(candidate.local || 'Sin local')}</option>`).join('')}
+        </select>
+      </label>
+      <label class="mt-md flex items-start gap-sm text-sm font-bold text-neutral-charcoal">
+        <input type="checkbox" class="duplicate-confirm mt-1 size-4 accent-brand-bun">
+        Confirmo que el registro seleccionado conservará sus datos y los demás quedarán inactivos con trazabilidad.
+      </label>
+      <button type="button" class="consolidate-duplicate mt-lg inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-brand-bun px-xl py-md text-sm font-black text-neutral-charcoal disabled:cursor-not-allowed disabled:opacity-45" disabled>Consolidar este grupo</button>
+    `;
+    const confirm = card.querySelector('.duplicate-confirm');
+    const button = card.querySelector('.consolidate-duplicate');
+    confirm.addEventListener('change', () => { button.disabled = !confirm.checked; });
+    button.addEventListener('click', async () => {
+      overlay.setLoading(true, 'Consolidando usuarios...', 'Estamos preservando el registro elegido y dejando trazabilidad en los duplicados.');
+      await waitNextFrame();
+      try {
+        const response = await window.LVAuth.apiPost({ accion: 'ConsolidarDuplicadosUsuariosAdmin', groupKey: group.groupKey, canonicalId: card.querySelector('.duplicate-canonical').value, confirmar: 'SI' });
+        if (response.status !== 'SUCCESS') throw new Error(response.mensaje || 'No se pudo consolidar el grupo.');
+        await loadData();
+        updateHighlights();
+        renderUsersTable();
+        state.duplicateGroups = await fetchDuplicateGroups();
+        renderDuplicateAudit();
+        toast.show('success', `Grupo consolidado en ${response.canonicalId}.`);
+      } catch (error) {
+        toast.show('error', error.message || 'No se pudo consolidar el grupo.');
+      } finally {
+        overlay.setLoading(false);
+      }
+    });
+    root.appendChild(card);
+  });
 }
 
 function renderPermissionsMatrix() {
@@ -847,6 +922,19 @@ function bindFilters() {
   $('userSearchInput').addEventListener('input', (event) => {
     state.search = event.target.value || '';
     renderUsersTable();
+  });
+
+  $('btnAuditDuplicates').addEventListener('click', async () => {
+    overlay.setLoading(true, 'Revisando duplicados...', 'Estamos comparando identidades sin modificar registros.');
+    await waitNextFrame();
+    try {
+      state.duplicateGroups = await fetchDuplicateGroups();
+      renderDuplicateAudit();
+    } catch (error) {
+      toast.show('error', error.message || 'No se pudieron revisar los duplicados.');
+    } finally {
+      overlay.setLoading(false);
+    }
   });
 }
 
