@@ -242,6 +242,14 @@ function doGet(e) {
     }
   }
 
+  if (accion === "AuditarDuplicadosUsuariosAdmin") {
+    try {
+      return auditarDuplicadosUsuariosAdmin(params);
+    } catch (error) {
+      return responderErrorAccion_(error, "No se pudieron revisar los duplicados.");
+    }
+  }
+
   if (accion === "BootstrapAdministracionLocales") {
     try {
       return bootstrapAdministracionLocales(params);
