@@ -266,21 +266,25 @@ function getRolePermissions_(role) {
     for (var i = 1; i < rolesContext.data.length; i++) {
       var row = rolesContext.data[i];
       if (!isRole_(row[rolesContext.roleIndex], roleName)) continue;
-      if (!parseBooleanCell_(row[rolesContext.activeIndex])) return null;
-
-      var permissions = {};
-      for (var c = 0; c < rolesContext.headers.length; c++) {
-        if (c === rolesContext.roleIndex || c === rolesContext.activeIndex) continue;
-        permissions[normalizeHeaderKey_(rolesContext.headers[c])] = parseBooleanCell_(row[c]);
-      }
-      permissions.activo = true;
-      return permissions;
+      return buildRolePermissionsFromRow_(rolesContext, row);
     }
 
     return null;
   }
 
   return ROLE_PERMISSIONS_FALLBACK[roleName] || null;
+}
+
+function buildRolePermissionsFromRow_(rolesContext, row) {
+  if (!parseBooleanCell_(row[rolesContext.activeIndex])) return null;
+
+  var permissions = {};
+  for (var c = 0; c < rolesContext.headers.length; c++) {
+    if (c === rolesContext.roleIndex || c === rolesContext.activeIndex) continue;
+    permissions[normalizeHeaderKey_(rolesContext.headers[c])] = parseBooleanCell_(row[c]);
+  }
+  permissions.activo = true;
+  return permissions;
 }
 
 function getRolePermissionsStrict_(role) {
@@ -774,14 +778,16 @@ function resolveAssignedLocalsForUserRecord_(record, prebuiltAssignmentIndex) {
 }
 
 
-function listManagedUsers_() {
+function listManagedUsers_(prebuiltLocalCatalog) {
   var context = getUsuariosSheetContext_();
   if (!context) return [];
 
   // Reuse the assignment index for the whole response. Rebuilding it per user
   // causes repeated Sheets reads and makes the administrative bootstrap time out.
   var assignmentIndex = buildActiveAssignmentIndexByPrincipal_(getUsuariosLocalesSheetContext_());
-  var localCatalog = listarLocalesCatalogo_({ onlyActive: false });
+  var localCatalog = Array.isArray(prebuiltLocalCatalog)
+    ? prebuiltLocalCatalog
+    : listarLocalesCatalogo_({ onlyActive: false });
   var users = [];
   var mergedUsers = {};
   for (var i = 1; i < context.data.length; i++) {
@@ -874,9 +880,10 @@ function listManagedRoles_() {
     for (var i = 1; i < rolesContext.data.length; i++) {
       var roleName = String(rolesContext.data[i][rolesContext.roleIndex] || "").trim();
       if (!roleName || seen[roleName]) continue;
-      if (!getRolePermissions_(roleName)) continue;
+      var permissions = buildRolePermissionsFromRow_(rolesContext, rolesContext.data[i]);
+      if (!permissions) continue;
       seen[roleName] = true;
-      roles.push(buildRoleSummary_(roleName));
+      roles.push({ role: roleName, permissions: permissions });
     }
   } else {
     Object.keys(ROLE_PERMISSIONS_FALLBACK).forEach(function(roleName) {
@@ -1121,13 +1128,13 @@ function bootstrapGestionUsuarios(params) {
   }
   var modernAuthCheckedAt = Date.now();
 
-  ensureUsuariosLocalesSheetReady_();
-  var assignmentsReadyAt = Date.now();
   var roles = listManagedRoles_();
   var rolesListedAt = Date.now();
-  var users = listManagedUsers_();
+  var localCatalog = listarLocalesCatalogo_({ onlyActive: false });
+  var locales = localCatalog.map(mapLocalRecordToOption_);
+  var localesListedAt = Date.now();
+  var users = listManagedUsers_(localCatalog);
   var usersListedAt = Date.now();
-  var locales = listarLocalesCatalogo_({ onlyActive: false }).map(mapLocalRecordToOption_);
   var completedAt = Date.now();
 
   return responderJSON({
@@ -1137,10 +1144,11 @@ function bootstrapGestionUsuarios(params) {
       performanceMs: {
         authentication: authenticatedAt - startedAt,
         modernAuthCheck: modernAuthCheckedAt - authenticatedAt,
-        assignmentsBackfill: assignmentsReadyAt - modernAuthCheckedAt,
-        roles: rolesListedAt - assignmentsReadyAt,
-        users: usersListedAt - rolesListedAt,
-        locales: completedAt - usersListedAt,
+        assignmentsBackfill: 0,
+        roles: rolesListedAt - modernAuthCheckedAt,
+        locales: localesListedAt - rolesListedAt,
+        users: usersListedAt - localesListedAt,
+        response: completedAt - usersListedAt,
         total: completedAt - startedAt
       }
     },
