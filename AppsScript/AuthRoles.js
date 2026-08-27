@@ -802,7 +802,10 @@ function listManagedUsers_(prebuiltLocalCatalog) {
     var mergeKey = buildManagedUserMergeKey_(record);
     if (!mergedUsers[mergeKey]) {
       mergedUsers[mergeKey] = safeRecord;
-      mergedUsers[mergeKey].local = serializeManagedLocalScope_(record.rol, resolveAssignedLocalsForUserRecord_(record, assignmentIndex).join(", "), localCatalog);
+      var localScope = record.activo
+        ? resolveAssignedLocalsForUserRecord_(record, assignmentIndex).join(", ")
+        : record.local;
+      mergedUsers[mergeKey].local = serializeManagedLocalScope_(record.rol, localScope, localCatalog);
       continue;
     }
 
@@ -1058,7 +1061,7 @@ function writeManagedUserToSheet_(context, rowNumber, values) {
     var range = context.sheet.getRange(rowNumber, columnIndex + 1);
 
     var cellValue = valueKey === "activo"
-      ? (values[valueKey] ? "SI" : "NO")
+      ? (values[valueKey] ? "SI" : "No")
       : values[valueKey];
 
     if (indexKey === "local") {
