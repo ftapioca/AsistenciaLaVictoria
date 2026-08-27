@@ -391,15 +391,17 @@ function buildUserLocalRecordFromSheetRow_(row, headerMap, rowNumber) {
   };
 }
 
-function listResolvedLocalScope_(localValue) {
+function listResolvedLocalScope_(localValue, prebuiltCatalog) {
   var requestedLocals = parseLocalScope_(localValue);
   var dedupe = {};
   var sorted = [];
-  var catalog = [];
+  var catalog = Array.isArray(prebuiltCatalog) ? prebuiltCatalog : [];
 
-  try {
-    catalog = listarLocalesCatalogo_({ onlyActive: false });
-  } catch (error) {}
+  if (!Array.isArray(prebuiltCatalog)) {
+    try {
+      catalog = listarLocalesCatalogo_({ onlyActive: false });
+    } catch (error) {}
+  }
 
   var catalogByName = {};
   catalog.forEach(function(record) {
@@ -444,6 +446,10 @@ function ensureUsuariosLocalesSheetReady_() {
   if (!usuariosContext) return;
 
   var assignmentsContext = getUsuariosLocalesSheetContext_();
+  var localCatalog = [];
+  try {
+    localCatalog = listarLocalesCatalogo_({ onlyActive: false });
+  } catch (error) {}
   var existingMap = {};
 
   for (var i = 1; i < assignmentsContext.data.length; i++) {
@@ -460,7 +466,7 @@ function ensureUsuariosLocalesSheetReady_() {
     if (isUnrestrictedLocalValue_(userRecord.local)) continue;
 
     var principalKey = buildSessionPrincipalKey_(userRecord, userRecord.rol);
-    var localRecords = listResolvedLocalScope_(userRecord.local);
+    var localRecords = listResolvedLocalScope_(userRecord.local, localCatalog);
 
     localRecords.forEach(function(localRecord) {
       var assignmentKey = buildStructuredAssignmentKey_(userRecord.rol, principalKey, localRecord.nombre);
