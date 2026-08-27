@@ -204,7 +204,7 @@ function createEditModal() {
           ${createSelectGroup('rol', 'Rol', ROLE_ORDER)}
           ${createInputGroup('local', 'Local')}
           ${createInputGroup('cargo', 'Cargo')}
-          ${createSelectGroup('activo', 'Activo', ['SI', 'NO'])}
+          ${createSelectGroup('activo', 'Activo', ['SI', 'No'])}
           ${createInputGroup('email', 'Email')}
           ${createInputGroup('telefono', 'Telefono')}
           ${createInputGroup('fechaCreacion', 'Fecha creacion')}
@@ -346,7 +346,7 @@ function createEditModal() {
     setFieldValue('fieldRol', user.rol);
     setFieldValue('fieldLocal', user.local);
     setFieldValue('fieldCargo', user.cargo);
-    setFieldValue('fieldActivo', user.activo ? 'SI' : 'NO');
+    setFieldValue('fieldActivo', user.activo ? 'SI' : 'No');
     setFieldValue('fieldEmail', user.email);
     setFieldValue('fieldTelefono', user.telefono);
     setFieldValue('fieldFechaCreacion', user.fechaCreacion);
@@ -584,6 +584,18 @@ function getLocalSections() {
     subtitle: 'Usuarios operativos asignados a este local',
     users: visibleUsers.filter((user) => user.rol !== 'Administrador' && parseLocalList(user.local).includes(local)),
   }));
+
+  const usersWithoutLocal = visibleUsers.filter((user) => (
+    user.rol !== 'Administrador' && !parseLocalList(user.local).length
+  ));
+  if (usersWithoutLocal.length) {
+    sections.push({
+      id: 'sin-local',
+      title: 'Sin local asignado',
+      subtitle: 'Usuarios operativos sin alcance local, incluidos los inactivos heredados',
+      users: usersWithoutLocal,
+    });
+  }
 
   sections.push({
     id: 'administradores',

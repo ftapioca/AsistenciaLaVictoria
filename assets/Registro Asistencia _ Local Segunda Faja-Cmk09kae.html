@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#14100d" />
-  <title>Asistencia La Victoria · Paseo del Lago</title>
+  <title>Asistencia La Victoria · Segunda Faja</title>
   <style>
     :root {
       --bun: #ff8a13;
@@ -730,7 +730,7 @@
         <div class="hero-copy">
           <span class="eyebrow">🍔 Bar · Cocina · Smash Burger</span>
           <h1>Registro rápido y seguro.</h1>
-          <p>Marca tu asistencia en pocos segundos. Diseñado para colaboradores y supervisores de La Victoria, local Paseo del Lago.</p>
+          <p>Marca tu asistencia en pocos segundos. Diseñado para colaboradores y supervisores de La Victoria, local Segunda Faja.</p>
         </div>
       </div>
       <div class="mini-stats" aria-hidden="true">
@@ -838,7 +838,7 @@
     // CONFIGURACIÓN INDIVIDUAL POR COMPUTADOR
     // ==========================================
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyqIaw4SLUy1pYl7iAv1QPrgWvHNE51H4dVk-R0qRZ8DppTZNAWRhN0W8bdmG3W23rq/exec";
-    const LOCAL_ACTUAL = "Paseo del Lago";
+    const LOCAL_ACTUAL = "Segunda Faja";
     // ==========================================
 
     const $ = (id) => document.getElementById(id);
@@ -884,6 +884,50 @@
       $('pin').disabled = loading;
     }
 
+    function getEmployeeCacheKey() {
+      return `lv-asistencia-empleados-${LOCAL_ACTUAL.toLowerCase()}`;
+    }
+
+    function renderEmployeeOptions(empleados) {
+      const selectNombre = $('nombre');
+      selectNombre.innerHTML = '<option value="">Selecciona tu nombre</option>';
+
+      if (!Array.isArray(empleados) || empleados.length === 0) {
+        selectNombre.innerHTML = '<option value="">Sin personal habilitado</option>';
+        return false;
+      }
+
+      empleados.forEach(empleado => {
+        const option = document.createElement('option');
+        option.value = empleado;
+        option.innerText = empleado;
+        selectNombre.appendChild(option);
+      });
+
+      return true;
+    }
+
+    function loadCachedEmployees() {
+      try {
+        const raw = localStorage.getItem(getEmployeeCacheKey());
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.empleados) || !parsed.empleados.length) return false;
+        return renderEmployeeOptions(parsed.empleados);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function storeCachedEmployees(empleados) {
+      try {
+        localStorage.setItem(getEmployeeCacheKey(), JSON.stringify({
+          empleados,
+          updatedAt: Date.now()
+        }));
+      } catch (_) {}
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       $('nombreLocal').innerText = `📍 Sucursal: ${LOCAL_ACTUAL}`;
       actualizarReloj();
@@ -891,29 +935,30 @@
       cargarTurnosAbiertos();
       setInterval(cargarTurnosAbiertos, 30 * 60 * 1000);
 
+      const hadCachedEmployees = loadCachedEmployees();
+      if (!hadCachedEmployees) {
+        setStatus('loading', 'Cargando personal habilitado...');
+      }
+
       const urlConsulta = `${WEB_APP_URL}?local=${encodeURIComponent(LOCAL_ACTUAL)}`;
 
       fetch(urlConsulta)
         .then(res => res.json())
         .then(data => {
-          const selectNombre = $('nombre');
-            selectNombre.innerHTML = '<option value="">Selecciona tu nombre</option>';
-
           if (!data.empleados || data.empleados.length === 0) {
-            selectNombre.innerHTML = '<option value="">Sin personal habilitado</option>';
+            renderEmployeeOptions([]);
             setStatus('error', 'No hay colaboradores o supervisores habilitados para este local.');
             return;
           }
 
-          data.empleados.forEach(empleado => {
-            const option = document.createElement('option');
-            option.value = empleado;
-            option.innerText = empleado;
-            selectNombre.appendChild(option);
-          });
+          renderEmployeeOptions(data.empleados);
+          storeCachedEmployees(data.empleados);
+          clearStatus();
         })
         .catch(() => {
-          setStatus('error', 'No se pudo cargar la lista de trabajadores. Verifica la conexión a internet.');
+          if (!hadCachedEmployees) {
+            setStatus('error', 'No se pudo cargar la lista de trabajadores. Verifica la conexión a internet.');
+          }
         });
     });
 
@@ -934,7 +979,7 @@
       // El Apps Script valida identidad con nombre + PIN,
       // y luego busca el último registro SOLO por nombre.
       // Respuesta esperada:
-      // { status: 'SUCCESS', encontrado: true, accion: 'Ingreso', fechaHora: '28-05-2026 09:00:00', local: 'Paseo del Lago' }
+      // { status: 'SUCCESS', encontrado: true, accion: 'Ingreso', fechaHora: '28-05-2026 09:00:00', local: 'Segunda Faja' }
       const urlConsulta = `${WEB_APP_URL}?nombre=${encodeURIComponent(nombre)}&pin=${encodeURIComponent(pin)}&local=${encodeURIComponent(LOCAL_ACTUAL)}&accion=UltimoRegistro`;
 
       fetch(urlConsulta, { method: 'POST' })
