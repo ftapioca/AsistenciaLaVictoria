@@ -14,7 +14,6 @@ import { createStatGrid } from '../components/StatGrid.js';
 import { createToast } from '../components/Toast.js';
 
 const $ = (id) => document.getElementById(id);
-const MOBILE_BREAKPOINT = 980;
 const ROLE_ORDER = ['Administrador', 'Supervisor', 'Colaborador'];
 
 const PERMISSION_DEFS = [
@@ -36,6 +35,8 @@ const state = {
   users: [],
   roles: [],
   search: '',
+  sortKey: 'rol',
+  sortDirection: 'asc',
   editingPermissions: false,
   draftPermissions: null,
 };
@@ -82,10 +83,6 @@ function parseLocalList(localValue) {
     .filter(Boolean);
 }
 
-function isMobileView() {
-  return window.innerWidth <= MOBILE_BREAKPOINT;
-}
-
 function buildHighlights() {
   const activeUsers = state.users.filter((user) => user.activo).length;
   const localCount = [...new Set(state.users.flatMap((user) => parseLocalList(user.local)).filter(Boolean))].length;
@@ -98,7 +95,7 @@ function buildHighlights() {
     {
       label: 'Locales',
       value: String(localCount || 2),
-      detail: 'La vista separa operación por local y administración global.',
+      detail: 'Usuarios ordenados por jerarquía y nombre.',
     },
     {
       label: 'Entorno',
@@ -504,21 +501,6 @@ function buildShell() {
     sideClassName: 'lg:w-[340px]',
   });
 
-  const filters = createCard({
-    eyebrow: 'Filtro',
-    title: 'Buscar usuarios',
-    body: 'Filtra por nombre, usuario, local, cargo o rol. La lista conserva el orden por jerarquía y local.',
-    className: 'rounded-3xl md:p-2xl',
-  });
-
-  const searchLabel = document.createElement('label');
-  searchLabel.className = 'mt-xl grid gap-sm';
-  searchLabel.innerHTML = `
-    <span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Buscar</span>
-    <input id="userSearchInput" type="search" placeholder="Ej: Ana, supervisor, Paseo del Lago" class="min-h-[54px] rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/80 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30">
-  `;
-  filters.appendChild(searchLabel);
-
   const usersCard = createCard({
     eyebrow: 'Usuarios',
     title: 'Lista de usuarios',
@@ -528,12 +510,22 @@ function buildShell() {
 
   const usersMeta = document.createElement('div');
   usersMeta.id = 'usersMeta';
-  usersMeta.className = 'mt-lg text-sm font-bold text-neutral-muted';
+  usersMeta.className = 'text-sm font-bold text-neutral-muted';
+
+  const usersToolbar = document.createElement('div');
+  usersToolbar.className = 'mt-xl flex flex-col gap-md lg:flex-row lg:items-end lg:justify-between';
+  const searchLabel = document.createElement('label');
+  searchLabel.className = 'grid w-full gap-sm lg:max-w-[420px]';
+  searchLabel.innerHTML = `
+    <span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Buscar en usuarios</span>
+    <input id="userSearchInput" type="search" placeholder="Ej: Ana, supervisor, Paseo del Lago" class="min-h-[52px] rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold text-neutral-charcoal placeholder:text-neutral-muted/80 focus:border-brand-bun focus:outline-none focus:ring-2 focus:ring-brand-bun/30">
+  `;
+  usersToolbar.append(usersMeta, searchLabel);
 
   const usersTable = document.createElement('div');
   usersTable.id = 'usersTable';
   usersTable.className = 'mt-xl overflow-hidden rounded-2xl border border-neutral-charcoal/10 bg-white/84';
-  usersCard.append(usersMeta, usersTable);
+  usersCard.append(usersToolbar, usersTable);
 
   const rolesCard = createCard({
     eyebrow: 'Permisos',
@@ -547,7 +539,7 @@ function buildShell() {
   matrix.className = 'mt-xl overflow-hidden rounded-3xl border border-neutral-charcoal/10 bg-white/88 shadow-brand-sm';
   rolesCard.appendChild(matrix);
 
-  shell.append(hero, filters, usersCard, rolesCard);
+  shell.append(hero, usersCard, rolesCard);
   app.replaceChildren(shell);
 }
 
@@ -575,35 +567,73 @@ function getVisibleUsers() {
     ].join(' '));
     return haystack.includes(search);
   }).sort((left, right) => {
-    const roleDifference = (roleRank.get(left.rol) ?? ROLE_ORDER.length) - (roleRank.get(right.rol) ?? ROLE_ORDER.length);
-    if (roleDifference) return roleDifference;
+    const compareText = (first, second) => String(first || '').localeCompare(String(second || ''), 'es');
+    const compareRole = () => (roleRank.get(left.rol) ?? ROLE_ORDER.length) - (roleRank.get(right.rol) ?? ROLE_ORDER.length);
+    const comparisonByKey = {
+      nombreCompleto: compareText(left.nombreCompleto, right.nombreCompleto),
+      usuarioLogin: compareText(left.usuarioLogin, right.usuarioLogin),
+      rol: compareRole(),
+      local: compareText(left.local, right.local),
+      cargo: compareText(left.cargo, right.cargo),
+      activo: Number(Boolean(left.activo)) - Number(Boolean(right.activo)),
+    };
+    const primaryComparison = comparisonByKey[state.sortKey] ?? 0;
+    if (primaryComparison) return primaryComparison * (state.sortDirection === 'asc' ? 1 : -1);
 
-    const localDifference = String(left.local || '').localeCompare(String(right.local || ''), 'es');
-    if (localDifference) return localDifference;
+    if (state.sortKey !== 'rol') {
+      const roleDifference = compareRole();
+      if (roleDifference) return roleDifference;
+    }
 
-    return String(left.nombreCompleto || '').localeCompare(String(right.nombreCompleto || ''), 'es');
+    return compareText(left.nombreCompleto, right.nombreCompleto);
   });
 }
 
 function createUserTable(users, openEditModal) {
+  const columns = [
+    { key: 'nombreCompleto', label: 'Nombre' },
+    { key: 'usuarioLogin', label: 'Usuario' },
+    { key: 'rol', label: 'Rol' },
+    { key: 'local', label: 'Local' },
+    { key: 'cargo', label: 'Cargo' },
+    { key: 'activo', label: 'Estado' },
+  ];
   const wrapper = document.createElement('div');
   wrapper.className = 'overflow-x-auto';
   wrapper.innerHTML = `
     <table class="min-w-[1080px] w-full border-collapse">
       <thead class="bg-[#fff5e8]">
         <tr>
-          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Nombre</th>
-          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Usuario</th>
-          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Rol</th>
-          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Local</th>
-          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Cargo</th>
-          <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Estado</th>
+          ${columns.map(({ key, label }) => {
+            const isActiveSort = state.sortKey === key;
+            const indicator = isActiveSort ? (state.sortDirection === 'asc' ? '↑' : '↓') : '↕';
+            return `
+              <th class="px-lg py-md text-left">
+                <button type="button" data-sort-key="${key}" aria-sort="${isActiveSort ? (state.sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}" class="inline-flex items-center gap-xs text-xs font-black uppercase tracking-[0.16em] text-neutral-muted transition-fast hover:text-neutral-charcoal">
+                  ${label}<span aria-hidden="true">${indicator}</span>
+                </button>
+              </th>
+            `;
+          }).join('')}
           <th class="px-lg py-md text-left text-xs font-black uppercase tracking-[0.16em] text-neutral-muted">Acción</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   `;
+
+  wrapper.querySelectorAll('[data-sort-key]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.sortKey;
+      if (state.sortKey === key) {
+        state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.sortKey = key;
+        state.sortDirection = 'asc';
+      }
+      renderUsersTable();
+    });
+  });
 
   const tbody = wrapper.querySelector('tbody');
 
