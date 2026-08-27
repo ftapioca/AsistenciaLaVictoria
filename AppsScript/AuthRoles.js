@@ -431,12 +431,12 @@ function listResolvedLocalScope_(localValue, prebuiltCatalog) {
   return sorted;
 }
 
-function serializeManagedLocalScope_(role, localValue) {
+function serializeManagedLocalScope_(role, localValue, prebuiltCatalog) {
   if (isRole_(role, USER_TYPES.ADMINISTRADOR.id)) {
     return "Todos";
   }
 
-  return listResolvedLocalScope_(localValue).map(function(record) {
+  return listResolvedLocalScope_(localValue, prebuiltCatalog).map(function(record) {
     return record.nombre;
   }).join(", ");
 }
@@ -781,6 +781,7 @@ function listManagedUsers_() {
   // Reuse the assignment index for the whole response. Rebuilding it per user
   // causes repeated Sheets reads and makes the administrative bootstrap time out.
   var assignmentIndex = buildActiveAssignmentIndexByPrincipal_(getUsuariosLocalesSheetContext_());
+  var localCatalog = listarLocalesCatalogo_({ onlyActive: false });
   var users = [];
   var mergedUsers = {};
   for (var i = 1; i < context.data.length; i++) {
@@ -795,7 +796,7 @@ function listManagedUsers_() {
     var mergeKey = buildManagedUserMergeKey_(record);
     if (!mergedUsers[mergeKey]) {
       mergedUsers[mergeKey] = safeRecord;
-      mergedUsers[mergeKey].local = serializeManagedLocalScope_(record.rol, resolveAssignedLocalsForUserRecord_(record, assignmentIndex).join(", "));
+      mergedUsers[mergeKey].local = serializeManagedLocalScope_(record.rol, resolveAssignedLocalsForUserRecord_(record, assignmentIndex).join(", "), localCatalog);
       continue;
     }
 
@@ -806,7 +807,7 @@ function listManagedUsers_() {
         mergedLocals.push(localName);
       }
     });
-    mergedRecord.local = serializeManagedLocalScope_(record.rol, mergedLocals.join(", "));
+    mergedRecord.local = serializeManagedLocalScope_(record.rol, mergedLocals.join(", "), localCatalog);
     if (!mergedRecord.idUsuario && safeRecord.idUsuario) mergedRecord.idUsuario = safeRecord.idUsuario;
     if (!mergedRecord.usuarioLogin && safeRecord.usuarioLogin) mergedRecord.usuarioLogin = safeRecord.usuarioLogin;
     if (!mergedRecord.email && safeRecord.email) mergedRecord.email = safeRecord.email;
