@@ -1108,7 +1108,9 @@ function refreshSessionFromUsersSheet_(sheetSesiones, sessionRowNumber, sessionD
 }
 
 function bootstrapGestionUsuarios(params) {
+  var startedAt = Date.now();
   requireAdminSession(params);
+  var authenticatedAt = Date.now();
 
   if (!isModernAuthEnabled_()) {
     return responderJSON({
@@ -1116,17 +1118,34 @@ function bootstrapGestionUsuarios(params) {
       mensaje: "La gestión moderna de usuarios requiere las hojas Usuarios y RolesPermisos."
     });
   }
+  var modernAuthCheckedAt = Date.now();
 
   ensureUsuariosLocalesSheetReady_();
+  var assignmentsReadyAt = Date.now();
+  var roles = listManagedRoles_();
+  var rolesListedAt = Date.now();
+  var users = listManagedUsers_();
+  var usersListedAt = Date.now();
+  var locales = listarLocalesCatalogo_({ onlyActive: false }).map(mapLocalRecordToOption_);
+  var completedAt = Date.now();
 
   return responderJSON({
     status: "SUCCESS",
     meta: {
-      permissionKeys: PERMISSION_KEYS.slice()
+      permissionKeys: PERMISSION_KEYS.slice(),
+      performanceMs: {
+        authentication: authenticatedAt - startedAt,
+        modernAuthCheck: modernAuthCheckedAt - authenticatedAt,
+        assignmentsBackfill: assignmentsReadyAt - modernAuthCheckedAt,
+        roles: rolesListedAt - assignmentsReadyAt,
+        users: usersListedAt - rolesListedAt,
+        locales: completedAt - usersListedAt,
+        total: completedAt - startedAt
+      }
     },
-    roles: listManagedRoles_(),
-    users: listManagedUsers_(),
-    locales: listarLocalesCatalogo_({ onlyActive: false }).map(mapLocalRecordToOption_)
+    roles: roles,
+    users: users,
+    locales: locales
   });
 }
 
