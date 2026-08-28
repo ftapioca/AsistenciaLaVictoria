@@ -84,6 +84,15 @@ table {
   animation: field-shake 0.26s ease-in-out;
 }
 
+@keyframes field-heartbeat {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.48; }
+}
+
+.animate-field-heartbeat {
+  animation: field-shake 0.26s ease-in-out, field-heartbeat 0.62s ease-in-out 2;
+}
+
 @media print {
   body {
     background: #ffffff;
