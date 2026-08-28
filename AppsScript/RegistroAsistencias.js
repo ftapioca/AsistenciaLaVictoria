@@ -405,6 +405,17 @@ function doPost(e) {
     }
   }
 
+  if (accion === "EliminarUsuarioAdmin") {
+    try {
+      return eliminarUsuarioAdmin(params);
+    } catch (error) {
+      return responderJSON({
+        status: error.code || "FORBIDDEN",
+        mensaje: error.message || "No se pudo eliminar el usuario."
+      });
+    }
+  }
+
   if (accion === "MigrarUsuariosUnicosAdmin") {
     try {
       return migrarUsuariosUnicosAdmin(params);

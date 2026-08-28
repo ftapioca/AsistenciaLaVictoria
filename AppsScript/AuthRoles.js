@@ -1443,6 +1443,65 @@ function cambiarEstadoUsuarioAdmin(params) {
   });
 }
 
+function eliminarUsuarioAdmin(params) {
+  requireAdminSession(params);
+
+  if (!isModernAuthEnabled_()) {
+    return responderJSON({
+      status: "ERROR_HOJA",
+      mensaje: "La hoja Usuarios no está disponible en este entorno."
+    });
+  }
+
+  if (String(params.confirmacion || "").trim().toUpperCase() !== "SI") {
+    return responderJSON({
+      status: "ERROR_CONFIRMACION",
+      mensaje: "Debes confirmar la eliminación definitiva del usuario."
+    });
+  }
+
+  var idUsuario = String(params.idUsuario || "").trim();
+  if (!idUsuario) {
+    return responderJSON({
+      status: "ERROR_DATOS",
+      mensaje: "Debes indicar idUsuario."
+    });
+  }
+
+  var match = findModernUserRecordByIdentity_(idUsuario);
+  if (!match) {
+    return responderJSON({
+      status: "ERROR_DATOS",
+      mensaje: "No se encontró el usuario indicado."
+    });
+  }
+
+  if (match.record.activo) {
+    return responderJSON({
+      status: "ERROR_DATOS",
+      mensaje: "Solo puedes eliminar definitivamente usuarios inactivos."
+    });
+  }
+
+  var assignmentContext = getUsuariosLocalesSheetContext_();
+  var deletedAssignments = 0;
+  for (var i = assignmentContext.data.length - 1; i >= 1; i--) {
+    var assignment = buildUserLocalRecordFromSheetRow_(assignmentContext.data[i], assignmentContext.headerMap, i + 1);
+    var sameId = assignment.idUsuario && normalizarTexto(assignment.idUsuario) === normalizarTexto(match.record.idUsuario);
+    var sameLogin = assignment.usuarioLogin && match.record.usuarioLogin
+      && normalizarTexto(assignment.usuarioLogin) === normalizarTexto(match.record.usuarioLogin);
+    if (!sameId && !sameLogin) continue;
+    assignmentContext.sheet.deleteRow(i + 1);
+    deletedAssignments += 1;
+  }
+
+  match.context.sheet.deleteRow(match.rowNumber);
+  return responderJSON({
+    status: "SUCCESS",
+    mensaje: "Usuario eliminado definitivamente. Se retiraron " + deletedAssignments + " asignación(es) de locales."
+  });
+}
+
 function ejecutarMigracionUsuariosUnicos_() {
   if (!isModernAuthEnabled_()) {
     throw crearErrorAuth("ERROR_HOJA", "La hoja Usuarios no está disponible en este entorno.");

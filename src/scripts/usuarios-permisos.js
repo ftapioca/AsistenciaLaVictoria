@@ -34,6 +34,7 @@ const state = {
   session: null,
   users: [],
   roles: [],
+  locales: [],
   search: '',
   sortKey: 'rol',
   sortDirection: 'asc',
@@ -449,6 +450,59 @@ function createInputGroup(id, label, disabled = false, type = 'text', help = '')
   `;
 }
 
+function createInactiveUserActionModal() {
+  const root = document.createElement('div');
+  root.className = 'fixed inset-0 z-[150] hidden items-center justify-center bg-neutral-charcoal/68 px-lg py-lg backdrop-blur';
+  root.innerHTML = `
+    <div class="absolute inset-0" data-backdrop></div>
+    <section class="relative z-[1] w-full max-w-[580px] rounded-[32px] border border-neutral-charcoal/12 bg-[#fff8ee] p-xl shadow-brand md:p-2xl">
+      <p class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Confirmar acción</p>
+      <h2 data-title class="mt-sm text-[clamp(30px,4vw,42px)] font-black tracking-[-0.05em] text-neutral-charcoal"></h2>
+      <p data-copy class="mt-md text-sm font-bold leading-7 text-neutral-muted"></p>
+      <div class="mt-xl flex flex-col-reverse gap-sm sm:flex-row sm:justify-end"><button type="button" data-cancel class="min-h-[52px] rounded-2xl border border-neutral-charcoal/12 bg-white px-xl py-md font-black">Cancelar</button><button type="button" data-confirm class="min-h-[52px] rounded-2xl bg-brand-bun px-xl py-md font-black text-neutral-charcoal"></button></div>
+    </section>`;
+  document.body.appendChild(root);
+  const title = root.querySelector('[data-title]'); const copy = root.querySelector('[data-copy]'); const confirm = root.querySelector('[data-confirm]');
+  let currentUser = null; let action = '';
+  const close = () => { root.classList.add('hidden'); root.classList.remove('grid'); currentUser = null; action = ''; };
+  root.querySelectorAll('[data-backdrop], [data-cancel]').forEach((node) => node.addEventListener('click', close));
+  confirm.addEventListener('click', async () => {
+    if (!currentUser || !action) return;
+    confirm.disabled = true;
+    overlay.setLoading(true, action === 'reactivate' ? 'Reactivando usuario...' : 'Eliminando usuario definitivamente...', action === 'reactivate' ? 'Estamos habilitando nuevamente el acceso.' : 'Estamos retirando la cuenta y sus asignaciones de locales.');
+    await waitNextFrame();
+    try {
+      const response = await window.LVAuth.apiPost(action === 'reactivate'
+        ? { accion: 'CambiarEstadoUsuarioAdmin', idUsuario: currentUser.idUsuario, activo: 'SI' }
+        : { accion: 'EliminarUsuarioAdmin', idUsuario: currentUser.idUsuario, confirmacion: 'SI' });
+      if (response.status !== 'SUCCESS') throw new Error(response.mensaje || 'No se pudo completar la acción.');
+      await loadData();
+      updateHighlights();
+      renderUsersTable();
+      toast.show('success', response.mensaje || 'Usuario actualizado correctamente.');
+      close();
+    } catch (error) {
+      toast.show('error', error.message || 'No se pudo completar la acción.');
+    } finally {
+      overlay.setLoading(false);
+      confirm.disabled = false;
+    }
+  });
+  return {
+    open(user, nextAction) {
+      currentUser = user; action = nextAction;
+      const deleting = action === 'delete';
+      title.textContent = deleting ? 'Eliminar definitivamente' : 'Reactivar usuario';
+      copy.textContent = deleting
+        ? `Eliminarás definitivamente a ${user.nombreCompleto || 'este usuario'} y sus asignaciones de locales. Los registros históricos de asistencia, turnos y ventas se conservan.`
+        : `Reactivarás a ${user.nombreCompleto || 'este usuario'} con su rol y locales actuales.`;
+      confirm.textContent = deleting ? 'Sí, eliminar definitivamente' : 'Sí, reactivar usuario';
+      confirm.className = `min-h-[52px] rounded-2xl px-xl py-md font-black text-neutral-charcoal ${deleting ? 'bg-brand-ketchup text-neutral-cream' : 'bg-brand-bun'}`;
+      root.classList.remove('hidden'); root.classList.add('grid');
+    },
+  };
+}
+
 function createNewUserModal() {
   const root = document.createElement('div');
   root.className = 'fixed inset-0 z-[140] hidden items-center justify-center bg-neutral-charcoal/68 px-lg py-lg backdrop-blur';
@@ -458,8 +512,8 @@ function createNewUserModal() {
       <div class="flex items-start justify-between gap-lg"><div><p class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Nuevo usuario</p><h2 class="mt-sm text-[clamp(30px,4vw,46px)] font-black tracking-[-0.05em]">Crear acceso</h2><p class="mt-sm text-sm font-bold text-neutral-muted">Completa el alta en tres pasos claros.</p></div><button type="button" data-close class="grid size-11 place-items-center rounded-2xl border border-neutral-charcoal/10 bg-white text-xl font-black">×</button></div>
       <div class="mt-xl grid grid-cols-3 gap-sm text-center text-xs font-black uppercase tracking-[0.12em]"><div data-step-indicator="1" class="rounded-xl bg-brand-bun px-sm py-sm">1. Rol</div><div data-step-indicator="2" class="rounded-xl bg-neutral-charcoal/8 px-sm py-sm text-neutral-muted">2. Datos</div><div data-step-indicator="3" class="rounded-xl bg-neutral-charcoal/8 px-sm py-sm text-neutral-muted">3. Confirmar</div></div>
       <form class="mt-xl grid gap-lg">
-        <section data-step="1" class="grid gap-lg"><div class="rounded-3xl border border-brand-cheese/30 bg-brand-cheese/12 p-lg"><p class="text-sm font-black uppercase tracking-[0.16em] text-brand-bun-dark">Paso 1 · Rol y atributos</p><p id="newUserRequirements" class="mt-sm text-sm font-bold leading-7 text-neutral-charcoal/72"></p></div>${createSelectGroup('newRol', 'Rol del nuevo usuario', ROLE_ORDER)}</section>
-        <section data-step="2" class="hidden grid gap-lg"><div class="rounded-3xl border border-neutral-charcoal/10 bg-white/72 p-lg text-sm font-bold text-neutral-muted">Ingresa los datos de acceso y operación. Los campos obligatorios dependen del rol y solo se exigen si el usuario queda activo.</div><div class="grid gap-lg md:grid-cols-2">${createInputGroup('newNombreCompleto', 'Nombre completo', false, 'text', 'Nombre con el que se identificará al colaborador en la operación.')}${createInputGroup('newUsuarioLogin', 'Usuario login', false, 'text', 'Obligatorio para administradores y supervisores; se usa para iniciar sesión.')}${createInputGroup('newLocal', 'Local asignado', false, 'text', 'Obligatorio para supervisores y colaboradores. Puedes separar varios locales con coma.')}${createInputGroup('newCargo', 'Cargo', false, 'text', 'Describe su función operativa; es opcional.')}${createSelectGroup('newActivo', 'Activo', ['SI', 'No'])}${createInputGroup('createPin', 'PIN', false, 'password', 'Clave personal de acceso. Es obligatoria para usuarios activos.')}${createInputGroup('createConfirmPin', 'Confirmar PIN', false, 'password', 'Repítelo para evitar crear el acceso con una clave equivocada.')}${createInputGroup('newEmail', 'Email', false, 'email', 'Dato de contacto opcional.')}${createInputGroup('newTelefono', 'Teléfono', false, 'tel', 'Dato de contacto opcional.')}</div></section>
+        <section data-step="1" class="grid gap-lg"><div class="rounded-3xl border border-brand-cheese/30 bg-brand-cheese/12 p-lg"><p class="text-sm font-black uppercase tracking-[0.16em] text-brand-bun-dark">Paso 1 · Elige un rol</p><p class="mt-sm text-sm font-bold leading-7 text-neutral-charcoal/72">Selecciona una única opción. El rol determina el alcance del acceso y los datos que solicitaremos después.</p></div><div class="grid gap-md">${ROLE_ORDER.map((role) => `<label class="block cursor-pointer rounded-3xl border border-neutral-charcoal/12 bg-white/78 p-lg transition-fast has-[:checked]:border-brand-bun has-[:checked]:bg-brand-cheese/16"><input type="radio" name="newUserRole" value="${role}" class="mr-md accent-brand-bun" ${role === 'Administrador' ? 'checked' : ''}><span class="text-base font-black text-neutral-charcoal">${role}</span><span class="mt-sm block text-sm font-bold leading-6 text-neutral-muted">${role === 'Administrador' ? 'Control global de la plataforma. Usa usuario login y PIN; no requiere locales asignados.' : role === 'Supervisor' ? 'Gestión operativa en los locales que selecciones. Usa usuario login y PIN.' : 'Acceso personal para asistencia y turnos en uno o más locales. Usa PIN, sin usuario login.'}</span></label>`).join('')}</div></section>
+        <section data-step="2" class="hidden grid gap-lg"><div class="rounded-3xl border border-neutral-charcoal/10 bg-white/72 p-lg text-sm font-bold text-neutral-muted">Los campos con <strong class="text-brand-ketchup">*</strong> son obligatorios para crear el acceso.</div><div class="grid gap-lg md:grid-cols-2">${createInputGroup('newNombreCompleto', 'Nombre completo *', false, 'text', 'Nombre con el que se identificará al usuario en la operación.')}<div data-new-user-login>${createInputGroup('newUsuarioLogin', 'Usuario login *', false, 'text', 'Se usa para iniciar sesión como administrador o supervisor.')}</div><div data-new-user-local class="md:col-span-2"><div class="grid gap-sm"><span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Locales asignados *</span><span class="text-xs font-bold leading-5 text-neutral-muted">Selecciona todos los locales donde podrá operar.</span><div id="newUserLocals" class="mt-sm grid gap-sm sm:grid-cols-2"></div></div></div>${createInputGroup('newCargo', 'Cargo', false, 'text', 'Describe su función operativa; es opcional.')}${createSelectGroup('newActivo', 'Activo', ['SI', 'No'])}${createInputGroup('createPin', 'PIN *', false, 'password', 'Clave personal de acceso.')}${createInputGroup('createConfirmPin', 'Confirmar PIN *', false, 'password', 'Repítelo para evitar crear el acceso con una clave equivocada.')}${createInputGroup('newEmail', 'Email', false, 'email', 'Dato de contacto opcional.')}${createInputGroup('newTelefono', 'Teléfono', false, 'tel', 'Dato de contacto opcional.')}</div></section>
         <section data-step="3" class="hidden grid gap-lg"><div class="rounded-3xl border border-brand-lettuce/25 bg-brand-lettuce/10 p-lg"><p class="text-sm font-black text-brand-lettuce">Paso 3 · Revisión final</p><p id="newUserSummary" class="mt-sm text-sm font-bold leading-7 text-neutral-charcoal/72"></p></div><label class="grid gap-sm"><span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Observaciones</span><textarea id="fieldNewObservaciones" rows="4" class="rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold"></textarea></label></section>
         <div data-feedback class="hidden rounded-2xl border border-brand-ketchup/25 bg-brand-ketchup/10 px-lg py-md text-sm font-bold text-brand-ketchup"></div><div class="flex justify-between gap-sm"><button type="button" data-close class="min-h-[52px] rounded-2xl border border-neutral-charcoal/12 bg-white px-xl py-md font-black">Cancelar</button><div class="flex gap-sm"><button type="button" data-back class="hidden min-h-[52px] rounded-2xl border border-neutral-charcoal/12 bg-white px-xl py-md font-black">Atrás</button><button type="button" data-next class="min-h-[52px] rounded-2xl bg-brand-bun px-xl py-md font-black">Continuar</button><button type="submit" class="hidden min-h-[52px] rounded-2xl bg-brand-bun px-xl py-md font-black">Agregar nuevo usuario</button></div></div>
       </form>
@@ -467,17 +521,20 @@ function createNewUserModal() {
   document.body.appendChild(root);
   const form = root.querySelector('form'); const feedback = root.querySelector('[data-feedback]'); const submit = root.querySelector('[type="submit"]'); const next = root.querySelector('[data-next]'); const back = root.querySelector('[data-back]'); let step = 1;
   const setStep = (value) => { step = value; root.querySelectorAll('[data-step]').forEach((node) => node.classList.toggle('hidden', Number(node.dataset.step) !== step)); root.querySelectorAll('[data-step-indicator]').forEach((node) => { const active = Number(node.dataset.stepIndicator) === step; node.className = `rounded-xl px-sm py-sm ${active ? 'bg-brand-bun text-neutral-charcoal' : 'bg-neutral-charcoal/8 text-neutral-muted'}`; }); back.classList.toggle('hidden', step === 1); next.classList.toggle('hidden', step === 3); submit.classList.toggle('hidden', step !== 3); };
-  const close = () => { root.classList.add('hidden'); root.classList.remove('grid'); feedback.classList.add('hidden'); form.reset(); root.querySelector('#fieldNewActivo').value = 'SI'; setStep(1); };
-  const updateRequirements = () => { const role = root.querySelector('#fieldNewRol').value; const attributes = { Administrador: 'Administra toda la plataforma y puede operar sin local asignado.', Supervisor: 'Gestiona la operación de los locales que se le asignen.', Colaborador: 'Accede a sus funciones personales dentro de los locales asignados.' }; const requiresLogin = role === 'Administrador' || role === 'Supervisor'; const requiresLocal = role !== 'Administrador'; root.querySelector('#newUserRequirements').textContent = `${role}: ${attributes[role]} Si queda activo, nombre y PIN son obligatorios.${requiresLogin ? ' También requiere usuario login.' : ''}${requiresLocal ? ' Debe tener al menos un local asignado.' : ''}`; };
+  const selectedRole = () => root.querySelector('[name="newUserRole"]:checked').value;
+  const selectedLocals = () => Array.from(root.querySelectorAll('[name="newUserLocal"]:checked')).map((input) => input.value);
+  const renderLocalOptions = () => { const localRoot = root.querySelector('#newUserLocals'); const selected = new Set(selectedLocals()); const locales = state.locales.filter((local) => local.activo); localRoot.innerHTML = locales.length ? locales.map((local) => `<label class="flex cursor-pointer items-center gap-sm rounded-2xl border border-neutral-charcoal/10 bg-white px-md py-md text-sm font-black text-neutral-charcoal"><input type="checkbox" name="newUserLocal" value="${escapeHtml(local.nombre)}" class="size-4 accent-brand-bun" ${selected.has(local.nombre) ? 'checked' : ''}>${escapeHtml(local.nombre)}</label>`).join('') : '<p class="rounded-2xl border border-brand-ketchup/20 bg-brand-ketchup/10 px-md py-md text-sm font-bold text-brand-ketchup">No hay locales activos disponibles.</p>'; };
+  const updateDataFieldsForRole = () => { const role = selectedRole(); const requiresLogin = role === 'Administrador' || role === 'Supervisor'; const requiresLocal = role !== 'Administrador'; root.querySelector('[data-new-user-login]').classList.toggle('hidden', !requiresLogin); root.querySelector('[data-new-user-local]').classList.toggle('hidden', !requiresLocal); if (!requiresLogin) root.querySelector('#fieldNewUsuarioLogin').value = ''; if (!requiresLocal) root.querySelectorAll('[name="newUserLocal"]').forEach((input) => { input.checked = false; }); };
+  const close = () => { root.classList.add('hidden'); root.classList.remove('grid'); feedback.classList.add('hidden'); form.reset(); root.querySelector('#fieldNewActivo').value = 'SI'; renderLocalOptions(); updateDataFieldsForRole(); setStep(1); };
   root.querySelectorAll('[data-close], [data-backdrop]').forEach((node) => node.addEventListener('click', close));
-  root.querySelector('#fieldNewRol').addEventListener('change', updateRequirements); updateRequirements();
-  next.addEventListener('click', () => { if (step === 1) { setStep(2); return; } const role = root.querySelector('#fieldNewRol').value; const active = root.querySelector('#fieldNewActivo').value === 'SI'; const name = root.querySelector('#fieldNewNombreCompleto').value.trim(); const pin = root.querySelector('#fieldCreatePin').value.trim(); const login = root.querySelector('#fieldNewUsuarioLogin').value.trim(); const local = root.querySelector('#fieldNewLocal').value.trim(); if (active && (!name || !pin || pin !== root.querySelector('#fieldCreateConfirmPin').value.trim() || ((role === 'Administrador' || role === 'Supervisor') && !login) || (role !== 'Administrador' && !local))) { feedback.textContent = 'Completa los campos obligatorios del rol y confirma el PIN antes de continuar.'; feedback.classList.remove('hidden'); return; } feedback.classList.add('hidden'); root.querySelector('#newUserSummary').textContent = `${name || 'Usuario nuevo'} · ${role} · ${local || 'Sin local'} · ${active ? 'Activo' : 'Inactivo'}`; setStep(3); });
+  root.querySelectorAll('[name="newUserRole"]').forEach((input) => input.addEventListener('change', updateDataFieldsForRole)); renderLocalOptions(); updateDataFieldsForRole();
+  next.addEventListener('click', () => { if (step === 1) { setStep(2); return; } const role = selectedRole(); const active = root.querySelector('#fieldNewActivo').value === 'SI'; const name = root.querySelector('#fieldNewNombreCompleto').value.trim(); const pin = root.querySelector('#fieldCreatePin').value.trim(); const login = root.querySelector('#fieldNewUsuarioLogin').value.trim(); const local = selectedLocals(); if (!name || !pin || pin !== root.querySelector('#fieldCreateConfirmPin').value.trim() || ((role === 'Administrador' || role === 'Supervisor') && !login) || (role !== 'Administrador' && !local.length)) { feedback.textContent = 'Completa los campos obligatorios marcados con * y confirma el PIN antes de continuar.'; feedback.classList.remove('hidden'); return; } feedback.classList.add('hidden'); root.querySelector('#newUserSummary').textContent = `${name} · ${role} · ${local.join(', ') || 'Todos los locales'} · ${active ? 'Activo' : 'Inactivo'}`; setStep(3); });
   back.addEventListener('click', () => setStep(step - 1));
   form.addEventListener('submit', async (event) => { event.preventDefault(); const pin = root.querySelector('#fieldCreatePin').value.trim(); if (pin !== root.querySelector('#fieldCreateConfirmPin').value.trim()) { feedback.textContent = 'Los PIN no coinciden.'; feedback.classList.remove('hidden'); return; }
     submit.disabled = true; overlay.setLoading(true, 'Creando usuario...', 'Estamos creando el acceso y sus asignaciones.'); await waitNextFrame();
-    try { const response = await window.LVAuth.apiPost({ accion: 'CrearUsuarioAdmin', nombreCompleto: root.querySelector('#fieldNewNombreCompleto').value.trim(), usuarioLogin: root.querySelector('#fieldNewUsuarioLogin').value.trim(), rol: root.querySelector('#fieldNewRol').value, local: root.querySelector('#fieldNewLocal').value.trim(), cargo: root.querySelector('#fieldNewCargo').value.trim(), activo: root.querySelector('#fieldNewActivo').value, pin, email: root.querySelector('#fieldNewEmail').value.trim(), telefono: root.querySelector('#fieldNewTelefono').value.trim(), observaciones: root.querySelector('#fieldNewObservaciones').value.trim() }); if (response.status !== 'SUCCESS') throw new Error(response.mensaje || 'No se pudo crear el usuario.'); await loadData(); updateHighlights(); renderUsersTable(); toast.show('success', `${response.user.nombreCompleto} creado correctamente.`); close(); } catch (error) { feedback.textContent = error.message || 'No se pudo crear el usuario.'; feedback.classList.remove('hidden'); } finally { overlay.setLoading(false); submit.disabled = false; }
+    try { const response = await window.LVAuth.apiPost({ accion: 'CrearUsuarioAdmin', nombreCompleto: root.querySelector('#fieldNewNombreCompleto').value.trim(), usuarioLogin: root.querySelector('#fieldNewUsuarioLogin').value.trim(), rol: selectedRole(), local: selectedLocals().join(', '), cargo: root.querySelector('#fieldNewCargo').value.trim(), activo: root.querySelector('#fieldNewActivo').value, pin, email: root.querySelector('#fieldNewEmail').value.trim(), telefono: root.querySelector('#fieldNewTelefono').value.trim(), observaciones: root.querySelector('#fieldNewObservaciones').value.trim() }); if (response.status !== 'SUCCESS') throw new Error(response.mensaje || 'No se pudo crear el usuario.'); await loadData(); updateHighlights(); renderUsersTable(); toast.show('success', `${response.user.nombreCompleto} creado correctamente.`); close(); } catch (error) { feedback.textContent = error.message || 'No se pudo crear el usuario.'; feedback.classList.remove('hidden'); } finally { overlay.setLoading(false); submit.disabled = false; }
   });
-  return { open: () => { setStep(1); updateRequirements(); root.classList.remove('hidden'); root.classList.add('grid'); } };
+  return { open: () => { renderLocalOptions(); updateDataFieldsForRole(); setStep(1); root.classList.remove('hidden'); root.classList.add('grid'); } };
 }
 
 function createSelectGroup(id, label, options) {
@@ -628,7 +685,7 @@ function getVisibleUsers() {
   });
 }
 
-function createUserTable(users, openEditModal) {
+function createUserTable(users, openEditModal, openInactiveActionModal) {
   const columns = [
     { key: 'nombreCompleto', label: 'Nombre' },
     { key: 'usuarioLogin', label: 'Usuario' },
@@ -695,12 +752,18 @@ function createUserTable(users, openEditModal) {
           ${user.activo ? 'Activo' : 'Inactivo'}
         </span>
       </td>
-      <td class="px-lg py-lg">
-        <button type="button" class="edit-user inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-brand-bun px-lg py-sm text-sm font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Editar</button>
-      </td>
+      <td class="px-lg py-lg"><div class="flex flex-wrap gap-sm">${user.activo
+        ? '<button type="button" class="edit-user inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-brand-bun px-lg py-sm text-sm font-black text-neutral-charcoal transition-fast hover:bg-brand-bun-dark hover:text-neutral-cream">Editar</button>'
+        : '<button type="button" class="reactivate-user inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-brand-lettuce px-lg py-sm text-sm font-black text-neutral-cream">Reactivar</button><button type="button" class="delete-user inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-brand-ketchup px-lg py-sm text-sm font-black text-neutral-cream">Eliminar definitivamente</button>'
+      }</div></td>
     `;
 
-    row.querySelector('.edit-user').addEventListener('click', () => openEditModal(user));
+    const editButton = row.querySelector('.edit-user');
+    const reactivateButton = row.querySelector('.reactivate-user');
+    const deleteButton = row.querySelector('.delete-user');
+    if (editButton) editButton.addEventListener('click', () => openEditModal(user));
+    if (reactivateButton) reactivateButton.addEventListener('click', () => openInactiveActionModal(user, 'reactivate'));
+    if (deleteButton) deleteButton.addEventListener('click', () => openInactiveActionModal(user, 'delete'));
     tbody.appendChild(row);
   });
 
@@ -709,6 +772,7 @@ function createUserTable(users, openEditModal) {
 
 function renderUsersTable() {
   const modal = window.__lvEditUserModal;
+  const inactiveActionModal = window.__lvInactiveUserActionModal;
   const users = getVisibleUsers();
   const activeUsers = users.filter((user) => user.activo);
   const inactiveUsers = users.filter((user) => !user.activo);
@@ -719,10 +783,10 @@ function renderUsersTable() {
   activeRoot.innerHTML = '';
   inactiveRoot.innerHTML = '';
   activeRoot.appendChild(activeUsers.length
-    ? createUserTable(activeUsers, modal.open)
+    ? createUserTable(activeUsers, modal.open, inactiveActionModal.open)
     : Object.assign(document.createElement('div'), { className: 'px-lg py-xl text-sm font-bold text-neutral-muted', textContent: 'No hay usuarios activos que coincidan con la búsqueda.' }));
   inactiveRoot.appendChild(inactiveUsers.length
-    ? createUserTable(inactiveUsers, modal.open)
+    ? createUserTable(inactiveUsers, modal.open, inactiveActionModal.open)
     : Object.assign(document.createElement('div'), { className: 'px-lg py-xl text-sm font-bold text-neutral-muted', textContent: 'No hay usuarios inactivos que coincidan con la búsqueda.' }));
 }
 
@@ -945,6 +1009,7 @@ async function loadData() {
   }
   state.users = Array.isArray(response.users) ? response.users : [];
   state.roles = Array.isArray(response.roles) ? response.roles : [];
+  state.locales = Array.isArray(response.locales) ? response.locales : [];
 }
 
 function bindFilters() {
@@ -970,6 +1035,7 @@ async function bootstrap() {
 
   buildShell();
   window.__lvEditUserModal = createEditModal();
+  window.__lvInactiveUserActionModal = createInactiveUserActionModal();
   window.__lvCreateUserModal = createNewUserModal();
   bindFilters();
   $('sessionStatus').textContent = `${state.session.displayName || 'Administrador'} · ${state.session.role}`;
