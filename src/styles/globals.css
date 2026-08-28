@@ -74,6 +74,16 @@ table {
   animation: spin 0.8s linear infinite;
 }
 
+@keyframes field-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-7px); }
+  75% { transform: translateX(7px); }
+}
+
+.animate-field-shake {
+  animation: field-shake 0.26s ease-in-out;
+}
+
 @media print {
   body {
     background: #ffffff;
