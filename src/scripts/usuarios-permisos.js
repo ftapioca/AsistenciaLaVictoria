@@ -37,7 +37,6 @@ const state = {
   search: '',
   sortKey: 'rol',
   sortDirection: 'asc',
-  duplicateGroups: [],
   editingPermissions: false,
   draftPermissions: null,
 };
@@ -449,6 +448,30 @@ function createInputGroup(id, label, disabled = false, type = 'text') {
   `;
 }
 
+function createNewUserModal() {
+  const root = document.createElement('div');
+  root.className = 'fixed inset-0 z-[140] hidden items-center justify-center bg-neutral-charcoal/68 px-lg py-lg backdrop-blur';
+  root.innerHTML = `
+    <div class="absolute inset-0" data-backdrop></div>
+    <div class="relative z-[1] max-h-[92vh] w-full max-w-[900px] overflow-auto rounded-[32px] border border-neutral-charcoal/12 bg-[#fff8ee] p-xl shadow-brand md:p-2xl">
+      <div class="flex items-start justify-between gap-lg"><div><p class="text-xs font-black uppercase tracking-[0.18em] text-neutral-muted">Nuevo usuario</p><h2 class="mt-sm text-[clamp(30px,4vw,46px)] font-black tracking-[-0.05em]">Crear acceso</h2><p id="newUserRequirements" class="mt-sm text-sm font-bold text-neutral-muted">Nombre y PIN son obligatorios para usuarios activos.</p></div><button type="button" data-close class="grid size-11 place-items-center rounded-2xl border border-neutral-charcoal/10 bg-white text-xl font-black">×</button></div>
+      <form class="mt-xl grid gap-lg"><div class="grid gap-lg md:grid-cols-2">
+        ${createInputGroup('newNombreCompleto', 'Nombre completo')}${createInputGroup('newUsuarioLogin', 'Usuario login')}${createSelectGroup('newRol', 'Rol', ROLE_ORDER)}${createInputGroup('newLocal', 'Local')}${createInputGroup('newCargo', 'Cargo')}${createSelectGroup('newActivo', 'Activo', ['SI', 'No'])}${createInputGroup('createPin', 'PIN', false, 'password')}${createInputGroup('createConfirmPin', 'Confirmar PIN', false, 'password')}${createInputGroup('newEmail', 'Email')}${createInputGroup('newTelefono', 'Telefono')}
+      </div><label class="grid gap-sm"><span class="text-sm font-black uppercase tracking-[0.16em] text-neutral-muted">Observaciones</span><textarea id="fieldNewObservaciones" rows="4" class="rounded-2xl border border-neutral-charcoal/10 bg-white/90 px-lg py-md text-base font-semibold"></textarea></label><div data-feedback class="hidden rounded-2xl border border-brand-ketchup/25 bg-brand-ketchup/10 px-lg py-md text-sm font-bold text-brand-ketchup"></div><div class="flex justify-end gap-sm"><button type="button" data-close class="min-h-[52px] rounded-2xl border border-neutral-charcoal/12 bg-white px-xl py-md font-black">Cancelar</button><button type="submit" class="min-h-[52px] rounded-2xl bg-brand-bun px-xl py-md font-black">Crear usuario</button></div></form>
+    </div>`;
+  document.body.appendChild(root);
+  const form = root.querySelector('form'); const feedback = root.querySelector('[data-feedback]'); const submit = root.querySelector('[type="submit"]');
+  const close = () => { root.classList.add('hidden'); root.classList.remove('grid'); feedback.classList.add('hidden'); form.reset(); root.querySelector('#fieldNewActivo').value = 'SI'; };
+  const updateRequirements = () => { const role = root.querySelector('#fieldNewRol').value; root.querySelector('#newUserRequirements').textContent = role === 'Administrador' ? 'Nombre y PIN son obligatorios para administradores activos.' : `Nombre, PIN y al menos un local son obligatorios para ${role.toLowerCase()} activo.${role === 'Supervisor' ? ' Usuario login también es obligatorio.' : ''}`; };
+  root.querySelectorAll('[data-close], [data-backdrop]').forEach((node) => node.addEventListener('click', close));
+  root.querySelector('#fieldNewRol').addEventListener('change', updateRequirements); updateRequirements();
+  form.addEventListener('submit', async (event) => { event.preventDefault(); const pin = root.querySelector('#fieldCreatePin').value.trim(); if (pin !== root.querySelector('#fieldCreateConfirmPin').value.trim()) { feedback.textContent = 'Los PIN no coinciden.'; feedback.classList.remove('hidden'); return; }
+    submit.disabled = true; overlay.setLoading(true, 'Creando usuario...', 'Estamos creando el acceso y sus asignaciones.'); await waitNextFrame();
+    try { const response = await window.LVAuth.apiPost({ accion: 'CrearUsuarioAdmin', nombreCompleto: root.querySelector('#fieldNewNombreCompleto').value.trim(), usuarioLogin: root.querySelector('#fieldNewUsuarioLogin').value.trim(), rol: root.querySelector('#fieldNewRol').value, local: root.querySelector('#fieldNewLocal').value.trim(), cargo: root.querySelector('#fieldNewCargo').value.trim(), activo: root.querySelector('#fieldNewActivo').value, pin, email: root.querySelector('#fieldNewEmail').value.trim(), telefono: root.querySelector('#fieldNewTelefono').value.trim(), observaciones: root.querySelector('#fieldNewObservaciones').value.trim() }); if (response.status !== 'SUCCESS') throw new Error(response.mensaje || 'No se pudo crear el usuario.'); await loadData(); updateHighlights(); renderUsersTable(); toast.show('success', `${response.user.nombreCompleto} creado correctamente.`); close(); } catch (error) { feedback.textContent = error.message || 'No se pudo crear el usuario.'; feedback.classList.remove('hidden'); } finally { overlay.setLoading(false); submit.disabled = false; }
+  });
+  return { open: () => { root.classList.remove('hidden'); root.classList.add('grid'); } };
+}
+
 function createSelectGroup(id, label, options) {
   return `
     <label class="grid gap-sm">
@@ -523,23 +546,17 @@ function buildShell() {
   `;
   usersToolbar.append(usersMeta, searchLabel);
 
-  const usersTable = document.createElement('div');
-  usersTable.id = 'usersTable';
-  usersTable.className = 'mt-xl overflow-hidden rounded-2xl border border-neutral-charcoal/10 bg-white/84';
-  usersCard.append(usersToolbar, usersTable);
+  const createUserButton = createButton('Agregar nuevo usuario', { className: 'lg:order-3' });
+  createUserButton.id = 'btnCreateUser';
+  usersToolbar.append(createUserButton);
 
-  const duplicatesCard = createCard({
-    eyebrow: 'Limpieza controlada',
-    title: 'Duplicados de usuarios',
-    body: 'Revisa cada coincidencia, elige el registro canónico y confirma antes de consolidar. No se eliminan filas: los duplicados quedan inactivos y trazables.',
-    className: 'rounded-3xl md:p-2xl',
-  });
-  const auditButton = createButton('Revisar duplicados', { variant: 'secondary', className: 'mt-xl bg-white/88 text-neutral-charcoal hover:bg-white' });
-  auditButton.id = 'btnAuditDuplicates';
-  const duplicatesRoot = document.createElement('div');
-  duplicatesRoot.id = 'duplicatesRoot';
-  duplicatesRoot.className = 'mt-xl grid gap-lg';
-  duplicatesCard.append(auditButton, duplicatesRoot);
+  const activeUsersTable = document.createElement('div');
+  activeUsersTable.id = 'activeUsersTable';
+  activeUsersTable.className = 'mt-xl overflow-hidden rounded-2xl border border-neutral-charcoal/10 bg-white/84';
+  const inactiveUsersDetails = document.createElement('details');
+  inactiveUsersDetails.className = 'mt-lg rounded-2xl border border-neutral-charcoal/10 bg-white/72';
+  inactiveUsersDetails.innerHTML = '<summary id="inactiveUsersSummary" class="cursor-pointer px-lg py-lg text-sm font-black text-neutral-charcoal">Usuarios inactivos</summary><div id="inactiveUsersTable" class="overflow-hidden border-t border-neutral-charcoal/10"></div>';
+  usersCard.append(usersToolbar, activeUsersTable, inactiveUsersDetails);
 
   const rolesCard = createCard({
     eyebrow: 'Permisos',
@@ -553,7 +570,7 @@ function buildShell() {
   matrix.className = 'mt-xl overflow-hidden rounded-3xl border border-neutral-charcoal/10 bg-white/88 shadow-brand-sm';
   rolesCard.appendChild(matrix);
 
-  shell.append(hero, usersCard, duplicatesCard, rolesCard);
+  shell.append(hero, usersCard, rolesCard);
   app.replaceChildren(shell);
 }
 
@@ -683,18 +700,22 @@ function createUserTable(users, openEditModal) {
 }
 
 function renderUsersTable() {
-  const usersTable = $('usersTable');
   const modal = window.__lvEditUserModal;
   const users = getVisibleUsers();
-  $('usersMeta').textContent = `${users.length} usuario(s) visibles. Orden: rol, local y nombre.`;
-  usersTable.innerHTML = '';
-
-  if (!users.length) {
-    usersTable.innerHTML = '<div class="px-lg py-xl text-sm font-bold text-neutral-muted">No hay usuarios que coincidan con la búsqueda.</div>';
-    return;
-  }
-
-  usersTable.appendChild(createUserTable(users, modal.open));
+  const activeUsers = users.filter((user) => user.activo);
+  const inactiveUsers = users.filter((user) => !user.activo);
+  const activeRoot = $('activeUsersTable');
+  const inactiveRoot = $('inactiveUsersTable');
+  $('usersMeta').textContent = `${activeUsers.length} activo(s) y ${inactiveUsers.length} inactivo(s). Orden: rol y nombre.`;
+  $('inactiveUsersSummary').textContent = `Usuarios inactivos (${inactiveUsers.length})`;
+  activeRoot.innerHTML = '';
+  inactiveRoot.innerHTML = '';
+  activeRoot.appendChild(activeUsers.length
+    ? createUserTable(activeUsers, modal.open)
+    : Object.assign(document.createElement('div'), { className: 'px-lg py-xl text-sm font-bold text-neutral-muted', textContent: 'No hay usuarios activos que coincidan con la búsqueda.' }));
+  inactiveRoot.appendChild(inactiveUsers.length
+    ? createUserTable(inactiveUsers, modal.open)
+    : Object.assign(document.createElement('div'), { className: 'px-lg py-xl text-sm font-bold text-neutral-muted', textContent: 'No hay usuarios inactivos que coincidan con la búsqueda.' }));
 }
 
 async function fetchDuplicateGroups() {
@@ -924,18 +945,7 @@ function bindFilters() {
     renderUsersTable();
   });
 
-  $('btnAuditDuplicates').addEventListener('click', async () => {
-    overlay.setLoading(true, 'Revisando duplicados...', 'Estamos comparando identidades sin modificar registros.');
-    await waitNextFrame();
-    try {
-      state.duplicateGroups = await fetchDuplicateGroups();
-      renderDuplicateAudit();
-    } catch (error) {
-      toast.show('error', error.message || 'No se pudieron revisar los duplicados.');
-    } finally {
-      overlay.setLoading(false);
-    }
-  });
+  $('btnCreateUser').addEventListener('click', () => window.__lvCreateUserModal.open());
 }
 
 async function bootstrap() {
@@ -951,8 +961,9 @@ async function bootstrap() {
   if (!state.session) return;
 
   buildShell();
-  bindFilters();
   window.__lvEditUserModal = createEditModal();
+  window.__lvCreateUserModal = createNewUserModal();
+  bindFilters();
   $('sessionStatus').textContent = `${state.session.displayName || 'Administrador'} · ${state.session.role}`;
 
   try {
