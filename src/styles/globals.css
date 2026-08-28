@@ -98,6 +98,11 @@ table {
   background-color: rgb(239 59 45 / 0.12) !important;
 }
 
+.pin-field-success {
+  border-color: #19a66a !important;
+  background-color: rgb(25 166 106 / 0.12) !important;
+}
+
 .animate-pin-alert {
   animation: field-shake 0.26s ease-in-out, field-heartbeat 0.62s ease-in-out 2;
 }
