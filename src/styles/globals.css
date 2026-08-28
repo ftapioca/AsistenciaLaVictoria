@@ -93,6 +93,15 @@ table {
   animation: field-shake 0.26s ease-in-out, field-heartbeat 0.62s ease-in-out 2;
 }
 
+.pin-field-alert {
+  border-color: #ef3b2d !important;
+  background-color: rgb(239 59 45 / 0.12) !important;
+}
+
+.animate-pin-alert {
+  animation: field-shake 0.26s ease-in-out, field-heartbeat 0.62s ease-in-out 2;
+}
+
 @media print {
   body {
     background: #ffffff;
