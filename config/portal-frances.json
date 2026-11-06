@@ -1,5 +1,5 @@
 {
-  "estado": "ALTA_APLICADA_Y_VERIFICADA_EN_PRODUCCION; pendiente finalizar publicacion del frontend.",
+  "estado": "OPERATIVO_EN_PRODUCCION; alta de datos, backend y frontend publicados y verificados.",
   "local": {
     "accion": "GuardarLocalAdmin",
     "nombre": "Portal Frances",
@@ -206,6 +206,23 @@
         "Portal Frances"
       ]
     },
-    "rolCandy": "Supervisor"
+    "rolCandy": "Supervisor",
+    "consultaPublica": {
+      "http": 200,
+      "empleados": [
+        "Candy Carmona",
+        "Evelyn Riffo",
+        "Jocelyn Morales",
+        "Mateo Montecinos",
+        "Matias Velasquez"
+      ]
+    },
+    "importacionesNoviembreSegundaFaja": "El usuario confirma que no se han importado; no hay calculos previos que recalcular."
+  },
+  "publicacionFrontend": {
+    "commit": "9a3feae71a1585b6f2af9bbb533113363be852ec",
+    "rama": "main",
+    "estado": "PUBLICADO_Y_VERIFICADO_HTTP_200_Y_SHA256",
+    "githubPagesRun": 42149393892
   }
 }
