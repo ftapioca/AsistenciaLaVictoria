@@ -1785,7 +1785,7 @@ function construirContextoDiarioImportacion_(importacion, ventasValidas, propina
           return nombre !== "";
         })
         .join(", ");
-      var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida, grupo.local);
+      var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida, grupo.local, grupo.fecha);
       var cantidadColaboradores = grupo.colaboradoresPresentes.length;
       var comisionIndividual = calculo.comisionTotalDia;
       var propinaIndividual = cantidadColaboradores
@@ -1993,7 +1993,7 @@ function construirFilasVentasDiarias_(importacion, ventasValidas, propinasValida
     .sort()
     .map(function(key) {
       var grupo = grupos[key];
-      var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida, grupo.local);
+      var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida, grupo.local, grupo.fecha);
 
       return [
         importacion.importId,
@@ -2021,10 +2021,10 @@ function crearGrupoVentaDiaria_(fecha, local) {
   };
 }
 
-function calcularMetricasDiarias_(ventaBrutaValida, local) {
+function calcularMetricasDiarias_(ventaBrutaValida, local, fecha) {
   var ventaBruta = normalizarMontoImportacion_(ventaBrutaValida);
   var ventaNeta = redondearMonto_(ventaBruta / 1.19);
-  var tramoConfig = resolverTramoComision_(ventaNeta, local);
+  var tramoConfig = resolverTramoComision_(ventaNeta, local, fecha);
   var tramo = tramoConfig.tramo;
   var porcentaje = tramoConfig.porcentajeComision;
   var comisionTotalDia = redondearMonto_(ventaNeta * porcentaje);
@@ -2037,7 +2037,21 @@ function calcularMetricasDiarias_(ventaBrutaValida, local) {
   };
 }
 
-function resolverTramoComision_(ventaNetaValida, local) {
+function resolverTramoComision_(ventaNetaValida, local, fecha) {
+  var localNormalizado = normalizarTexto(local);
+  if (localNormalizado === normalizarTexto("Portal Frances")) {
+    return { tramo: "SIN_COMISION", porcentajeComision: 0 };
+  }
+  if (localNormalizado === normalizarTexto("Segunda Faja")) {
+    var fechaIso = normalizarFechaOperacionAIso_(fecha);
+    if (!fechaIso) {
+      throw crearErrorImportacion_("ERROR_DATOS", "Se requiere una fecha valida para calcular la comision de Segunda Faja.");
+    }
+    // La vigencia usa el dia de venta, para conservar los recalculos historicos.
+    if (fechaIso >= "2026-11-01") {
+      return { tramo: "SIN_COMISION", porcentajeComision: 0 };
+    }
+  }
   var ventaNeta = normalizarMontoImportacion_(ventaNetaValida);
   var tramos = obtenerTramosComisionActivos_(local);
 

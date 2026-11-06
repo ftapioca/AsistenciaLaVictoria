@@ -21,6 +21,12 @@ const attachedResources = [
     href: new URL('../../descargablesLocales/Registro Asistencia _ Local Segunda Faja.html', import.meta.url).href,
     fileName: 'Registro Asistencia _ Local Segunda Faja.html',
   },
+  {
+    type: 'file',
+    label: 'Registro Asistencia · Local Portal Frances',
+    href: new URL('../../descargablesLocales/Registro Asistencia _ Local Portal Frances.html', import.meta.url).href,
+    fileName: 'Registro Asistencia _ Local Portal Frances.html',
+  },
 ];
 
 const tools = [
