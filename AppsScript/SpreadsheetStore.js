@@ -1,6 +1,5 @@
 const SPREADSHEET_KEY_RRHH = "rrhh";
 const SPREADSHEET_KEY_VENTAS = "ventas";
-const SPREADSHEET_KEY_COMISIONES = "comisiones";
 
 const SPREADSHEET_PROPERTY_BY_KEY = {
   rrhh: "LV_SPREADSHEET_RRHH_ID",

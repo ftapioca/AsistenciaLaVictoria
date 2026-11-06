@@ -1,3 +1,6 @@
+import { withCurrentEnvironment } from '../utils/navigation.js';
+import { waitNextFrame } from '../utils/async.js';
+import { cargarLocalesPorSesion, mostrarErrorInicio } from '../utils/locales.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -27,18 +30,6 @@ overlay.setLoading(true, 'Validando sesión...');
 const toast = createToast();
 document.body.appendChild(toast.element);
 
-function withCurrentEnvironment(path) {
-  const target = new URL(path, window.location.href);
-  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
-  if (env) {
-    target.searchParams.set('env', env);
-  }
-  return target.toString();
-}
-
-function waitNextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
 
 function formatJson(value) {
   return JSON.stringify(value, null, 2);
@@ -794,7 +785,7 @@ async function sendImport(payload) {
   return data;
 }
 
-function renderApp(session) {
+function renderApp(session, locales) {
   const app = $('app');
   const shell = document.createElement('div');
   shell.className = 'mx-auto flex min-h-screen w-full max-w-[1240px] flex-col gap-lg px-lg py-lg md:px-2xl md:py-2xl';
@@ -812,10 +803,7 @@ function renderApp(session) {
     id: 'localSelect',
     name: 'local',
     placeholder: 'Selecciona un local',
-    options: [
-      { value: 'Paseo del Lago', label: 'Paseo del Lago' },
-      { value: 'Segunda Faja', label: 'Segunda Faja' },
-    ],
+    options: locales.map((local) => ({ value: local.nombre, label: local.nombre })),
   });
   const localSelect = localSelectField.input;
 
@@ -1254,7 +1242,10 @@ async function bootstrap() {
 
     overlay.setLoading(true, 'Cargando importador...');
     await waitNextFrame();
-    renderApp(session);
+    const locales = await cargarLocalesPorSesion('ventas');
+    renderApp(session, locales);
+  } catch (error) {
+    mostrarErrorInicio(error);
   } finally {
     overlay.setLoading(false);
   }

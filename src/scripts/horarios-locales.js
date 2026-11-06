@@ -1,3 +1,5 @@
+import { withCurrentEnvironment } from '../utils/navigation.js';
+import { waitNextFrame } from '../utils/async.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -39,16 +41,6 @@ function $(id) {
   return document.getElementById(id);
 }
 
-function withCurrentEnvironment(path) {
-  const target = new URL(path, window.location.href);
-  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
-  if (env) target.searchParams.set('env', env);
-  return target.toString();
-}
-
-function waitNextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
 
 function escapeHtml(value) {
   return String(value || '')
@@ -143,10 +135,6 @@ function groupHorarioLocalesByLocal(items) {
   });
 
   return [...groups.values()];
-}
-
-function normalizeLocalOptions() {
-  return state.locals.length ? state.locals : ['Paseo del Lago', 'Segunda Faja'];
 }
 
 function createAccordionSection({ id, title, subtitle, badgeText = '', open = false }) {
@@ -308,7 +296,7 @@ function isBatchCreateMode(type, mode) {
 }
 
 function getModalConfig(type, mode, record = {}) {
-  const localOptions = normalizeLocalOptions();
+  const localOptions = state.locals;
 
   if (type === 'horarioLocales') {
     return {
@@ -554,6 +542,10 @@ function collectBatchEntries() {
 }
 
 function openModal(type, mode, record = null) {
+  if (['horarioLocales', 'horariosEspeciales'].includes(type) && !state.locals.length) {
+    toast.show('error', 'No hay locales disponibles. Crea primero un local desde Administración → Locales.');
+    return;
+  }
   const modal = $('scheduleModal');
   const config = getModalConfig(type, mode, record || {});
   const formGrid = $('scheduleFormGrid');

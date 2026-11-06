@@ -1,3 +1,6 @@
+import { withCurrentEnvironment } from '../utils/navigation.js';
+import { waitNextFrame } from '../utils/async.js';
+import { cargarLocalesPorSesion, mostrarErrorInicio } from '../utils/locales.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -16,10 +19,8 @@ import { createToast } from '../components/Toast.js';
 
 const $ = (id) => document.getElementById(id);
 const dias = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
-const LOCALES = ['Paseo del Lago', 'Segunda Faja'];
-let availableLocales = [...LOCALES];
-
-let localActivo = LOCALES[0];
+let availableLocales = [];
+let localActivo = '';
 let semana = [];
 let colaboradores = [];
 let turnos = [];
@@ -42,25 +43,6 @@ overlay.setLoading(true, 'Validando sesión...');
 const toast = createToast();
 document.body.appendChild(toast.element);
 
-function withCurrentEnvironment(path) {
-  const target = new URL(path, window.location.href);
-  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
-  if (env) target.searchParams.set('env', env);
-  return target.toString();
-}
-
-function waitNextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
-
-function resolveSessionLocales(session) {
-  if (session.unrestrictedLocals) {
-    return [...LOCALES];
-  }
-
-  const allowedLocals = Array.isArray(session.allowedLocals) ? session.allowedLocals : [];
-  return LOCALES.filter((local) => allowedLocals.includes(local));
-}
 
 function setStatus(tipo, mensaje) {
   const tones = {
@@ -780,7 +762,6 @@ function copiarSemanaSiguiente() {
 }
 
 function buildApp(session) {
-  availableLocales = resolveSessionLocales(session);
   localActivo = availableLocales[0] || '';
 
   const app = $('app');
@@ -1037,9 +1018,12 @@ async function bootstrap() {
       window.LVAuth.roles.SUPERVISOR,
     ]);
     if (!session) return;
+    availableLocales = (await cargarLocalesPorSesion('programador')).map((local) => local.nombre);
     buildApp(session);
     if (!availableLocales.length) return;
     await cargarSemana();
+  } catch (error) {
+    mostrarErrorInicio(error);
   } finally {
     overlay.setLoading(false);
   }

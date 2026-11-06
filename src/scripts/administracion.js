@@ -1,3 +1,5 @@
+import { withCurrentEnvironment } from '../utils/navigation.js';
+import { waitNextFrame } from '../utils/async.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -11,6 +13,11 @@ import { createPageHero } from '../components/PageHero.js';
 import { createPageSkeleton } from '../components/PageSkeletons.js';
 
 const MODULES = [
+  {
+    area: 'Operación', title: 'Locales',
+    description: 'Crea un local con sus horarios, asigna usuarios existentes y descarga su registro de asistencia.',
+    href: 'locales.html', actionLabel: 'Gestionar locales',
+  },
   {
     area: 'Seguridad',
     title: 'Usuarios y Permisos',
@@ -44,16 +51,6 @@ const MODULES = [
 const overlay = createLoadingOverlay('Procesando...');
 document.body.appendChild(overlay.element);
 
-function withCurrentEnvironment(path) {
-  const target = new URL(path, window.location.href);
-  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
-  if (env) target.searchParams.set('env', env);
-  return target.toString();
-}
-
-function waitNextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
 
 function createModuleTable(onNavigate) {
   const section = document.createElement('section');

@@ -1,3 +1,6 @@
+import { withCurrentEnvironment } from '../utils/navigation.js';
+import { waitNextFrame } from '../utils/async.js';
+import { cargarLocalesPorSesion } from '../utils/locales.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -10,18 +13,6 @@ import { createAdminPanelApp, createAdminPanelSkeleton } from './admin-panel-app
 
 const $ = (id) => document.getElementById(id);
 
-function withCurrentEnvironment(path) {
-  const target = new URL(path, window.location.href);
-  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
-  if (env) {
-    target.searchParams.set('env', env);
-  }
-  return target.toString();
-}
-
-function waitNextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
 
 const overlay = createLoadingOverlay('Procesando...');
 document.body.appendChild(overlay.element);
@@ -48,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       : ['Turnos Abiertos', 'Programador', 'Administración'];
 
     $('app').innerHTML = '';
-    createAdminPanelApp({
+    const panel = createAdminPanelApp({
       mountNode: $('app'),
       sessionLabel: `${session.displayName || session.role} · ${session.role}`,
       sideCopy: isSupervisor
@@ -65,6 +56,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       visibleToolTitles,
       showResources: !isSupervisor,
     });
+    if (!isSupervisor) {
+      cargarLocalesPorSesion('general').then((locales) => panel.setResourceLocales(locales))
+        .catch((error) => panel.showResourceError(error.message));
+    }
   } finally {
     overlay.setLoading(false);
   }

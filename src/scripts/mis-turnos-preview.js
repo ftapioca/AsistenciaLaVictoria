@@ -1,3 +1,4 @@
+import { withCurrentEnvironment } from '../utils/navigation.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -27,14 +28,6 @@ document.body.appendChild(overlay.element);
 const toast = createToast();
 document.body.appendChild(toast.element);
 
-function withCurrentEnvironment(path) {
-  const target = new URL(path, window.location.href);
-  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
-  if (env) {
-    target.searchParams.set('env', env);
-  }
-  return target.toString();
-}
 
 function fechaISO(date) {
   const y = date.getFullYear();

@@ -1,0 +1,235 @@
+{
+  "estado": "OPERATIVO_EN_PRODUCCION; alta de datos, backend y frontend publicados y verificados.",
+  "local": {
+    "accion": "GuardarLocalAdmin",
+    "nombre": "Portal Frances",
+    "codigo": "PORTAL_FRANCES",
+    "estado": "ACTIVO",
+    "permiteProgramacion": "SI",
+    "permiteAsistencia": "SI",
+    "usaHorarioBase": "SI",
+    "observaciones": "Horario operativo 11:00 a 00:00 todos los dias. Sin comision por ventas. Atencion: domingo a jueves 12:30 a 22:00; viernes y sabado 12:30 a 00:00."
+  },
+  "horarios": [
+    {
+      "accion": "GuardarHorarioLocalAdmin",
+      "local": "Portal Frances",
+      "diaSemana": "Lunes",
+      "horaApertura": "11:00",
+      "horaCierre": "00:00",
+      "permiteTrasnoche": "SI",
+      "activo": "SI"
+    },
+    {
+      "accion": "GuardarHorarioLocalAdmin",
+      "local": "Portal Frances",
+      "diaSemana": "Martes",
+      "horaApertura": "11:00",
+      "horaCierre": "00:00",
+      "permiteTrasnoche": "SI",
+      "activo": "SI"
+    },
+    {
+      "accion": "GuardarHorarioLocalAdmin",
+      "local": "Portal Frances",
+      "diaSemana": "Miercoles",
+      "horaApertura": "11:00",
+      "horaCierre": "00:00",
+      "permiteTrasnoche": "SI",
+      "activo": "SI"
+    },
+    {
+      "accion": "GuardarHorarioLocalAdmin",
+      "local": "Portal Frances",
+      "diaSemana": "Jueves",
+      "horaApertura": "11:00",
+      "horaCierre": "00:00",
+      "permiteTrasnoche": "SI",
+      "activo": "SI"
+    },
+    {
+      "accion": "GuardarHorarioLocalAdmin",
+      "local": "Portal Frances",
+      "diaSemana": "Viernes",
+      "horaApertura": "11:00",
+      "horaCierre": "00:00",
+      "permiteTrasnoche": "SI",
+      "activo": "SI"
+    },
+    {
+      "accion": "GuardarHorarioLocalAdmin",
+      "local": "Portal Frances",
+      "diaSemana": "Sabado",
+      "horaApertura": "11:00",
+      "horaCierre": "00:00",
+      "permiteTrasnoche": "SI",
+      "activo": "SI"
+    },
+    {
+      "accion": "GuardarHorarioLocalAdmin",
+      "local": "Portal Frances",
+      "diaSemana": "Domingo",
+      "horaApertura": "11:00",
+      "horaCierre": "00:00",
+      "permiteTrasnoche": "SI",
+      "activo": "SI"
+    }
+  ],
+  "usuariosAsignados": [
+    {
+      "nombreSolicitado": "Jocelyn",
+      "localAgregar": "Portal Frances",
+      "estado": "ASIGNADO_Y_VERIFICADO_EN_PRODUCCION",
+      "nombreVerificadoProduccion": "Jocelyn Morales",
+      "estadoStaging": "OMITIDO_CUENTA_NO_EXISTE_EN_PRUEBAS"
+    },
+    {
+      "nombreSolicitado": "Matias",
+      "localAgregar": "Portal Frances",
+      "estado": "ASIGNADO_Y_VERIFICADO_EN_PRODUCCION",
+      "nombreReferenciaDocumental": "Matias Velasquez",
+      "nombreVerificadoProduccion": "Matias Velasquez",
+      "estadoStaging": "ASIGNADO_Y_VERIFICADO"
+    },
+    {
+      "nombreSolicitado": "Evelyn",
+      "localAgregar": "Portal Frances",
+      "estado": "ASIGNADO_Y_VERIFICADO_EN_PRODUCCION",
+      "nombreReferenciaDocumental": "Evelyn Riffo",
+      "nombreVerificadoProduccion": "Evelyn Riffo",
+      "estadoStaging": "ASIGNADO_Y_VERIFICADO"
+    },
+    {
+      "nombreSolicitado": "Mateo",
+      "localAgregar": "Portal Frances",
+      "estado": "ASIGNADO_Y_VERIFICADO_EN_PRODUCCION",
+      "nombreReferenciaDocumental": "Mateo Montecinos",
+      "nombreVerificadoProduccion": "Mateo Montecinos",
+      "estadoStaging": "OMITIDO_CUENTA_NO_EXISTE_EN_PRUEBAS"
+    },
+    {
+      "nombreSolicitado": "Candy",
+      "localAgregar": "Portal Frances",
+      "estado": "ASIGNADO_Y_VERIFICADO_EN_PRODUCCION",
+      "nombreReferenciaDocumental": "Candy Carmona",
+      "nombreVerificadoProduccion": "Candy Carmona",
+      "rolSolicitadoEnPortalFrances": "Supervisor",
+      "validacionRol": "Revisar rol actual antes de aplicar: el sistema mantiene un rol por cuenta y lo replica en asignaciones. Conservar otros locales.",
+      "estadoStaging": "ASIGNADO_Y_VERIFICADO"
+    }
+  ],
+  "politicaAsignaciones": {
+    "modo": "AGREGAR_LOCAL",
+    "conservarOtrosLocales": true,
+    "crearUsuariosNuevos": false,
+    "validacion": "Resolver cada nombre contra usuarios existentes y verificar su identificador antes de aplicar. Si hay varias coincidencias, solicitar aclaracion. Los nombres de referencia documental no acreditan la identidad actual."
+  },
+  "verificacionPrevia": {
+    "fecha": "2026-11-05",
+    "fuente": "Consulta publica por local de produccion; no se modificaron datos.",
+    "coincidencias": "Los cinco nombres figuran en las listas de Paseo del Lago o Segunda Faja. Identificadores y roles pendientes de verificar con sesion administrativa.",
+    "staging": "Las listas publicas consultadas solo incluyen a Matias Velasquez y Evelyn Riffo entre los cinco nombres solicitados; esto no acredita ausencia de las otras cuentas."
+  },
+  "validacionStaging": {
+    "usarSoloCuentasExistentes": true,
+    "noReplicarDatosProduccion": true,
+    "cuentasDisponiblesVerificadasEnPanel": [
+      "Candy Carmona",
+      "Evelyn Riffo",
+      "Matias Velasquez"
+    ],
+    "cuentasNoListadasEnPanel": [
+      "Jocelyn Morales",
+      "Mateo Montecinos"
+    ],
+    "estadoDatos": "APLICADO_Y_VERIFICADO",
+    "cambiosAplicados": 19,
+    "fuenteVerificacion": "Registro de ejecucion compartido por el usuario: aplicarPortalFrancesStaging; verificado=true.",
+    "consultaPublica": {
+      "http": 200,
+      "empleados": [
+        "Evelyn Riffo",
+        "Matias Velasquez"
+      ],
+      "limitacion": "Backend staging anterior excluye supervisores del endpoint publico; Candy figura asignada y verificada por la funcion de alta. Produccion ya tiene soporte publico para supervisores."
+    }
+  },
+  "despliegueComisiones": {
+    "entorno": "staging",
+    "versionAnterior": 77,
+    "versionActual": 78,
+    "fecha": "2026-11-05",
+    "alcance": "Solo parche de vigencia de comisiones aplicado al snapshot remoto de staging; sin promover otros cambios locales.",
+    "pruebasFinancieras": "4 aprobadas sobre el snapshot parcheado",
+    "produccionModificada": true,
+    "versionProduccionAnterior": 72,
+    "versionProduccionActual": 73
+  },
+  "altaAppsScript": {
+    "archivo": "scripts/archive/alta-portal-frances.js",
+    "estado": "ALTA_COMPLETADA_Y_VERIFICADA; script puntual archivado fuera del backend. Las altas operativas se realizan desde Locales con AltaLocales.js.",
+    "revisionStaging": "revisarPortalFrancesStaging",
+    "aplicacionStaging": "aplicarPortalFrancesStaging",
+    "revisionProduccion": "revisarPortalFrancesProduccion",
+    "aplicacionProduccion": "aplicarPortalFrancesProduccion",
+    "validacionLocal": "14 pruebas aprobadas",
+    "reglas": "Revision sin escrituras; no crear cuentas; conservar otros locales; exigir las cinco cuentas en produccion; Candy debe tener ya el rol Supervisor; verificar idempotencia tras guardar."
+  },
+  "validacionProduccion": {
+    "cambiosAplicados": 18,
+    "verificado": true,
+    "omitidos": [],
+    "fuente": "Registro de ejecucion aplicarPortalFrancesProduccion compartido por el usuario.",
+    "usuarios": {
+      "Jocelyn Morales": [
+        "Paseo del Lago",
+        "Segunda Faja",
+        "Portal Frances"
+      ],
+      "Matias Velasquez": [
+        "Paseo del Lago",
+        "Segunda Faja",
+        "Portal Frances"
+      ],
+      "Evelyn Riffo": [
+        "Paseo del Lago",
+        "Segunda Faja",
+        "Portal Frances"
+      ],
+      "Mateo Montecinos": [
+        "Paseo del Lago",
+        "Portal Frances"
+      ],
+      "Candy Carmona": [
+        "Paseo del Lago",
+        "Segunda Faja",
+        "Portal Frances"
+      ]
+    },
+    "rolCandy": "Supervisor",
+    "consultaPublica": {
+      "http": 200,
+      "empleados": [
+        "Candy Carmona",
+        "Evelyn Riffo",
+        "Jocelyn Morales",
+        "Mateo Montecinos",
+        "Matias Velasquez"
+      ]
+    },
+    "importacionesNoviembreSegundaFaja": "El usuario confirma que no se han importado; no hay calculos previos que recalcular."
+  },
+  "publicacionFrontend": {
+    "commit": "9a3feae71a1585b6f2af9bbb533113363be852ec",
+    "rama": "main",
+    "estado": "PUBLICADO_Y_VERIFICADO_HTTP_200_Y_SHA256",
+    "githubPagesRun": 42149393892
+  },
+  "correccionProgramador": {
+    "causa": "El programador consultaba Colaboradores legacy; las asignaciones se mantienen en Usuarios y UsuariosLocales.",
+    "cambio": "BootstrapProgramadorTurnos y ColaboradoresPorLocal comparten la lista moderna de asistencia, incluidos supervisores.",
+    "versionProduccion": 74,
+    "pruebas": "17 aprobadas, incluidos bootstrap semanal y endpoint individual con cinco personas y fuente legacy bloqueada.",
+    "estado": "DESPLEGADO; pendiente comprobacion visual."
+  }
+}

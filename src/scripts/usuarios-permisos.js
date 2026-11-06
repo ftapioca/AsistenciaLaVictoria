@@ -1,3 +1,5 @@
+import { withCurrentEnvironment } from '../utils/navigation.js';
+import { waitNextFrame } from '../utils/async.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -49,16 +51,6 @@ overlay.setLoading(true, 'Validando sesión...');
 const toast = createToast();
 document.body.appendChild(toast.element);
 
-function withCurrentEnvironment(path) {
-  const target = new URL(path, window.location.href);
-  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
-  if (env) target.searchParams.set('env', env);
-  return target.toString();
-}
-
-function waitNextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
 
 function escapeHtml(value) {
   return String(value || '')
@@ -117,67 +109,6 @@ function updateHighlights() {
   }
 }
 
-function createAccordionSection({ id, title, subtitle, badgeText = '', open = false }) {
-  const card = createCard({ className: 'overflow-hidden rounded-3xl p-0' });
-  const wrapper = document.createElement('section');
-  wrapper.dataset.accordionId = id;
-
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.className = 'flex w-full items-center justify-between gap-lg px-xl py-xl text-left';
-  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-  toggle.setAttribute('aria-controls', `${id}-panel`);
-
-  const heading = document.createElement('div');
-  heading.className = 'min-w-0';
-  heading.innerHTML = `
-    <h2 class="text-[26px] font-black leading-none tracking-[-0.04em] text-neutral-charcoal">${escapeHtml(title)}</h2>
-    <p class="mt-sm text-sm font-bold text-neutral-muted">${escapeHtml(subtitle)}</p>
-  `;
-
-  const meta = document.createElement('div');
-  meta.className = 'flex items-center gap-md';
-
-  const badge = document.createElement('div');
-  badge.id = `${id}-badge`;
-  badge.className = 'grid min-h-[46px] min-w-[46px] place-items-center rounded-2xl bg-gradient-to-r from-brand-cheese to-brand-bun px-md text-xl font-black text-neutral-charcoal';
-  badge.textContent = badgeText;
-
-  const chevron = document.createElement('span');
-  chevron.className = 'grid size-8 place-items-center rounded-full border border-neutral-charcoal/10 bg-white/70 text-sm text-neutral-charcoal transition-transform';
-  chevron.textContent = '▾';
-
-  meta.append(badge, chevron);
-  toggle.append(heading, meta);
-
-  const panel = document.createElement('div');
-  panel.id = `${id}-panel`;
-  panel.className = 'p-lg';
-
-  wrapper.append(toggle, panel);
-  card.appendChild(wrapper);
-
-  function setOpen(nextOpen) {
-    const active = Boolean(nextOpen);
-    panel.hidden = !active;
-    panel.classList.toggle('hidden', !active);
-    chevron.style.transform = active ? 'rotate(180deg)' : 'rotate(0deg)';
-    toggle.setAttribute('aria-expanded', active ? 'true' : 'false');
-  }
-
-  setOpen(open);
-
-  return {
-    element: card,
-    panel,
-    badge,
-    setOpen,
-    isOpen: () => toggle.getAttribute('aria-expanded') === 'true',
-    bindToggle(handler) {
-      toggle.addEventListener('click', handler);
-    },
-  };
-}
 
 function createEditModal() {
   const root = document.createElement('div');

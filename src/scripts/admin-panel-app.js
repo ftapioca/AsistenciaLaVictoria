@@ -1,3 +1,4 @@
+import { descargarRegistroLocal } from '../utils/registro-local.js';
 import { createButton } from '../components/Button.js';
 import { createCard } from '../components/Card.js';
 import { createPageHero } from '../components/PageHero.js';
@@ -9,18 +10,7 @@ const attachedResources = [
     label: 'Reporte y registro de asistencia',
     href: 'https://docs.google.com/spreadsheets/d/1gVYjLSWMK7kkTJycXfOGkysvc4zyBBk8U9Jp4HK9V74/edit?usp=sharing',
   },
-  {
-    type: 'file',
-    label: 'Registro Asistencia · Local Paseo del Lago',
-    href: new URL('../../descargablesLocales/Registro Asistencia _ Local Paseo del Lago.html', import.meta.url).href,
-    fileName: 'Registro Asistencia _ Local Paseo del Lago.html',
-  },
-  {
-    type: 'file',
-    label: 'Registro Asistencia · Local Segunda Faja',
-    href: new URL('../../descargablesLocales/Registro Asistencia _ Local Segunda Faja.html', import.meta.url).href,
-    fileName: 'Registro Asistencia _ Local Segunda Faja.html',
-  },
+
 ];
 
 const tools = [
@@ -252,13 +242,15 @@ export function createAdminPanelApp(options = {}) {
 
   shell.append(quickAccess, hero, toolsSection);
 
+  const resourceFooter = document.createElement('div');
+  resourceFooter.appendChild(createResourceList(attachedResources));
   if (showResources) {
     const attachmentsCard = createCard({
       eyebrow: 'otros',
       title: 'Recursos',
       body: 'Documentos disponibles para descarga y revisión operativa desde esta misma vista.',
       className: 'rounded-3xl md:p-2xl',
-      footer: createResourceList(attachedResources),
+      footer: resourceFooter,
     });
     shell.appendChild(attachmentsCard);
   }
@@ -269,6 +261,20 @@ export function createAdminPanelApp(options = {}) {
 
   return {
     shell,
+    setResourceLocales(locales) {
+      const resources = locales.filter((local) => local.permiteAsistencia).map((local) => ({
+        type: 'generated', label: `Registro Asistencia · Local ${local.nombre}`,
+        onDownload: () => descargarRegistroLocal(local.nombre),
+      }));
+      resourceFooter.replaceChildren(createResourceList([...attachedResources, ...resources]));
+    },
+    showResourceError(message) {
+      const error = document.createElement('p');
+      error.setAttribute('role', 'alert');
+      error.className = 'mt-md text-sm font-bold text-brand-ketchup';
+      error.textContent = message || 'No se pudieron cargar los archivos por local. Recarga la página para reintentar.';
+      resourceFooter.appendChild(error);
+    },
     setSessionLabel(value) {
       sessionUser.textContent = value;
     },

@@ -454,6 +454,14 @@ function doPost(e) {
     }
   }
 
+  if (accion === "RevisarAltaLocalAdmin" || accion === "CrearLocalOperativoAdmin") {
+    try {
+      return accion === "RevisarAltaLocalAdmin" ? revisarAltaLocalAdmin(params) : crearLocalOperativoAdmin(params);
+    } catch (error) {
+      return responderJSON({ status: error.code || "ERROR_DATOS", mensaje: error.message || "No se pudo completar el alta del local." });
+    }
+  }
+
   if (accion === "GuardarLocalAdmin") {
     try {
       return guardarLocalAdmin(params);
@@ -808,47 +816,6 @@ function isAttendanceEligibleRole_(role) {
   return isRole_(role, USER_TYPES.COLABORADOR.id) || isRole_(role, USER_TYPES.SUPERVISOR.id);
 }
 
-function listStructuredAssignmentsForAttendanceUser_(record) {
-  var context = null;
-
-  try {
-    ensureUsuariosLocalesSheetReady_();
-    context = getUsuariosLocalesSheetContext_();
-  } catch (error) {
-    context = null;
-  }
-
-  if (!context || !context.data || !context.data.length) {
-    return [];
-  }
-
-  var principalKey = buildSessionPrincipalKey_(record, record.rol);
-  var assignments = [];
-
-  for (var i = 1; i < context.data.length; i++) {
-    var assignment = buildUserLocalRecordFromSheetRow_(context.data[i], context.headerMap, i + 1);
-    if (!assignment.activo || !assignment.localNombre) continue;
-
-    var sameUserById = assignment.idUsuario && record.idUsuario
-      && normalizarTexto(assignment.idUsuario) === normalizarTexto(record.idUsuario);
-    var sameUserByLogin = assignment.usuarioLogin && record.usuarioLogin
-      && normalizarTexto(assignment.usuarioLogin) === normalizarTexto(record.usuarioLogin);
-    var samePrincipal = buildSessionPrincipalKey_(assignment, assignment.rol) === principalKey;
-
-    if (!sameUserById && !sameUserByLogin && !samePrincipal) continue;
-    assignments.push(assignment);
-  }
-
-  assignments.sort(function(a, b) {
-    return String(a.localNombre || "").localeCompare(String(b.localNombre || ""), "es");
-  });
-
-  return assignments;
-}
-
-function listAttendanceAssignedLocalsForUser_(record) {
-  return resolveAssignedLocalsForUserRecord_(record);
-}
 
 function listModernAttendanceUsers_() {
   var context = getUsuariosSheetContext_();

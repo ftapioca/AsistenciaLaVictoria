@@ -1,3 +1,6 @@
+import { withCurrentEnvironment } from '../utils/navigation.js';
+import { waitNextFrame } from '../utils/async.js';
+import { cargarLocalesPorSesion, mostrarErrorInicio } from '../utils/locales.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -15,11 +18,7 @@ import { createToast } from '../components/Toast.js';
 
 const $ = (id) => document.getElementById(id);
 
-const LOCALES = [
-  { nombre: 'Paseo del Lago', id: 'PaseoDelLago' },
-  { nombre: 'Segunda Faja', id: 'SegundaFaja' },
-];
-let availableLocales = [...LOCALES];
+let availableLocales = [];
 
 const REFRESCO_AUTOMATICO_MS = 30 * 60 * 1000;
 const MOBILE_BREAKPOINT = 980;
@@ -32,27 +31,6 @@ const toast = createToast();
 document.body.appendChild(toast.element);
 const colaboradoresPorLocalCache = new Map();
 
-function withCurrentEnvironment(path) {
-  const target = new URL(path, window.location.href);
-  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
-  if (env) {
-    target.searchParams.set('env', env);
-  }
-  return target.toString();
-}
-
-function waitNextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
-
-function resolveSessionLocales(session) {
-  if (session.unrestrictedLocals) {
-    return [...LOCALES];
-  }
-
-  const allowedLocals = Array.isArray(session.allowedLocals) ? session.allowedLocals : [];
-  return LOCALES.filter((local) => allowedLocals.includes(local.nombre));
-}
 
 function escapeHtml(value) {
   return String(value || '')
@@ -444,7 +422,7 @@ function createAttendanceForm(options = {}) {
     id: 'adminAssistLocal',
     name: 'local',
     placeholder: 'Selecciona un local',
-    options: LOCALES.map((local) => ({ value: local.nombre, label: local.nombre })),
+    options: availableLocales.map((local) => ({ value: local.nombre, label: local.nombre })),
   });
 
   const collaboratorField = createSelectField({
@@ -647,7 +625,7 @@ async function bootstrap() {
     ]);
     if (!session) return;
 
-    availableLocales = resolveSessionLocales(session);
+    availableLocales = await cargarLocalesPorSesion('turnos_abiertos');
 
     overlay.setLoading(true, 'Cargando dashboard...');
     await waitNextFrame();
@@ -658,6 +636,8 @@ async function bootstrap() {
     }
     await app.cargarDashboard();
     window.setInterval(app.cargarDashboard, REFRESCO_AUTOMATICO_MS);
+  } catch (error) {
+    mostrarErrorInicio(error);
   } finally {
     overlay.setLoading(false);
   }

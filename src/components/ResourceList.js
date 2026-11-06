@@ -2,6 +2,19 @@ import { createButton } from './Button.js';
 import { cn } from '../utils/cn.js';
 
 function createResourceAction(resource) {
+  if (resource.onDownload) {
+    const button = createButton('Descargar', {
+      variant: 'primary',
+      className: 'min-h-[48px] rounded-full px-xl text-sm font-black md:min-w-[150px]',
+      onClick: async () => {
+        button.disabled = true;
+        try { await resource.onDownload(); button.textContent = 'Descargar'; }
+        catch (error) { button.textContent = 'Reintentar descarga'; button.title = error.message; }
+        finally { button.disabled = false; }
+      },
+    });
+    return button;
+  }
   return createButton(resource.type === 'link' ? 'Abrir' : 'Descargar', {
     as: 'a',
     variant: 'primary',

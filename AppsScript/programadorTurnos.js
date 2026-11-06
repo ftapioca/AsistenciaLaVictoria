@@ -49,26 +49,11 @@ function listarPlantillasTurnosDesdeDatos_(datos, local) {
 }
 
 function listarColaboradoresPorLocalTurnos_(local) {
-  var sheet = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
-  var datos = sheet.getDataRange().getValues();
-  return listarColaboradoresPorLocalDesdeDatos_(datos, local);
+  // Compartir la fuente moderna de asistencia: Usuarios + UsuariosLocales.
+  // Incluye supervisores que tambien reciben turnos y deduplica por nombre.
+  return listarUsuariosAsistenciaPorLocal_(local);
 }
 
-function listarColaboradoresPorLocalDesdeDatos_(datos, local) {
-  var colaboradores = [];
-
-  for (var i = 1; i < datos.length; i++) {
-    var nombre = datos[i][0];
-    var localColaborador = datos[i][3];
-
-    if (normalizarTexto(localColaborador) === normalizarTexto(local)) {
-      colaboradores.push(nombre);
-    }
-  }
-
-  colaboradores.sort();
-  return colaboradores;
-}
 
 function listarTurnosSemana_(local, fechaInicio, fechaFin) {
   var sheet = getSheet_(HOJA_TURNOS_PROGRAMADOS, SPREADSHEET_KEY_RRHH);
@@ -142,9 +127,7 @@ function obtenerColaboradoresPorLocalTurnos(params) {
     });
   }
 
-  var sheet = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
-  var datos = sheet.getDataRange().getValues();
-  var colaboradores = listarColaboradoresPorLocalDesdeDatos_(datos, local);
+  var colaboradores = listarColaboradoresPorLocalTurnos_(local);
 
   return responderJSON({
     status: "SUCCESS",
