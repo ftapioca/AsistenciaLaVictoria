@@ -454,6 +454,14 @@ function doPost(e) {
     }
   }
 
+  if (accion === "RevisarAltaLocalAdmin" || accion === "CrearLocalOperativoAdmin") {
+    try {
+      return accion === "RevisarAltaLocalAdmin" ? revisarAltaLocalAdmin(params) : crearLocalOperativoAdmin(params);
+    } catch (error) {
+      return responderJSON({ status: error.code || "ERROR_DATOS", mensaje: error.message || "No se pudo completar el alta del local." });
+    }
+  }
+
   if (accion === "GuardarLocalAdmin") {
     try {
       return guardarLocalAdmin(params);

@@ -12,6 +12,11 @@ import { createPageSkeleton } from '../components/PageSkeletons.js';
 
 const MODULES = [
   {
+    area: 'Operación', title: 'Locales',
+    description: 'Crea un local con sus horarios, asigna usuarios existentes y descarga su registro de asistencia.',
+    href: 'locales.html', actionLabel: 'Gestionar locales',
+  },
+  {
     area: 'Seguridad',
     title: 'Usuarios y Permisos',
     description: 'Gestiona roles por usuario, alcance por local y permisos por tipo desde una vista operativa dedicada.',

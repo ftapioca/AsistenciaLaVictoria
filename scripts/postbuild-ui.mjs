@@ -23,6 +23,7 @@ const builtEntryCopies = [
   { from: 'src/index.html', to: 'index.html' },
   { from: 'src/adminPanel.html', to: 'adminPanel.html' },
   { from: 'src/administracion.html', to: 'administracion.html' },
+  { from: 'src/locales.html', to: 'locales.html' },
   { from: 'src/adminPanel-preview.html', to: 'adminPanel-preview.html' },
   { from: 'src/horariosLocales.html', to: 'horariosLocales.html' },
   { from: 'src/misTurnos.html', to: 'misTurnos-design-system.html' },

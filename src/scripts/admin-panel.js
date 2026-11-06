@@ -1,3 +1,4 @@
+import { cargarLocalesPorSesion } from '../utils/locales.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -48,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       : ['Turnos Abiertos', 'Programador', 'Administración'];
 
     $('app').innerHTML = '';
-    createAdminPanelApp({
+    const panel = createAdminPanelApp({
       mountNode: $('app'),
       sessionLabel: `${session.displayName || session.role} · ${session.role}`,
       sideCopy: isSupervisor
@@ -65,6 +66,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       visibleToolTitles,
       showResources: !isSupervisor,
     });
+    if (!isSupervisor) {
+      cargarLocalesPorSesion('general').then((locales) => panel.setResourceLocales(locales))
+        .catch((error) => panel.showResourceError(error.message));
+    }
   } finally {
     overlay.setLoading(false);
   }

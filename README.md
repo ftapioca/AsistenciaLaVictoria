@@ -120,7 +120,7 @@ Este proyecto utiliza un **Design System centralizado** basado en **Tailwind CSS
   - Un enlace externo a `Reporte y registro de asistencia` en Google Sheets
   - Archivos HTML descargables contenidos en `descargablesLocales/`
 
-Nota: este proyecto es estático, por lo que el navegador no puede enumerar carpetas automáticamente. La lista de adjuntos del panel se mantiene en el arreglo `attachedResources` dentro de `adminPanel.html`.
+El panel consulta el catálogo de locales activos y genera el HTML de asistencia al descargar. Los locales nuevos no requieren agregar archivos ni enlaces a mano. Los archivos históricos de `descargablesLocales/` siguen disponibles.
 
 ## Patrón de carga protegida
 
@@ -280,3 +280,19 @@ La acción pública devuelve solo datos básicos:
 - `iniciales`
 
 No expone `rut`.
+
+## Alta de locales desde administración
+
+En `Administración → Locales → Nuevo local`, un administrador puede:
+
+1. Indicar el nombre del local.
+2. Configurar los siete días de horario operativo, incluyendo días cerrados y cierre a medianoche (`00:00`).
+3. Seleccionar colaboradores y supervisores activos ya existentes; sus roles y otros locales se conservan.
+4. Revisar el resumen antes de confirmar el alta.
+5. Descargar el HTML de registro desde Locales o desde Recursos del panel.
+
+El alta activa asistencia y programación. No crea usuarios ni reglas de comisión por ventas. Los roles se administran desde Usuarios y permisos.
+
+`RevisarAltaLocalAdmin` y `CrearLocalOperativoAdmin` son acciones POST reservadas a administradores. El servidor valida toda la solicitud antes de escribir, serializa las altas con un bloqueo y verifica lo persistido; ante un fallo de escritura intenta restaurar los valores y las validaciones anteriores.
+
+El descargable se genera con la URL del entorno actual: los archivos de staging incluyen `STAGING` en su nombre. El contenido queda independiente del sitio web y consulta los usuarios asignados al abrirlo.

@@ -15,6 +15,7 @@ export default defineConfig({
         designSystem: 'src/designSystem.html',
         adminPanel: 'src/adminPanel.html',
         administracion: 'src/administracion.html',
+        locales: 'src/locales.html',
         adminPanelPreview: 'src/adminPanel-preview.html',
         misTurnos: 'src/misTurnos.html',
         misTurnosPreview: 'src/misTurnos-preview.html',

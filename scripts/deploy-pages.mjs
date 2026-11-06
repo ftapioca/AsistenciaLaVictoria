@@ -15,6 +15,7 @@ const rootFileCopies = [
   'adminPanel.html',
   'adminPanel-preview.html',
   'administracion.html',
+  'locales.html',
   'misTurnos.html',
   'misTurnos-design-system.html',
   'misTurnos-preview.html',
