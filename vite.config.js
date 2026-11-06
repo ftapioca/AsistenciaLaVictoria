@@ -1,7 +1,8 @@
+import { uiEntries, siteBase } from './scripts/ui-entries.mjs';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/AsistenciaLaVictoria/',
+  base: siteBase,
   server: {
     open: '/src/index.html',
     port: 3000,
@@ -10,22 +11,7 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
-      input: {
-        index: 'src/index.html',
-        designSystem: 'src/designSystem.html',
-        adminPanel: 'src/adminPanel.html',
-        administracion: 'src/administracion.html',
-        locales: 'src/locales.html',
-        adminPanelPreview: 'src/adminPanel-preview.html',
-        misTurnos: 'src/misTurnos.html',
-        misTurnosPreview: 'src/misTurnos-preview.html',
-        programadorTurnos: 'src/programadorTurnos.html',
-        horariosLocales: 'src/horariosLocales.html',
-        usuariosPermisos: 'src/usuariosPermisos.html',
-        turnosAbiertos: 'src/TurnosAbiertos.html',
-        ventasMensuales: 'src/ventasMensuales.html',
-        pagosMensuales: 'src/pagosMensuales.html',
-      },
+      input: Object.fromEntries(uiEntries.map(({ name, source }) => [name, source])),
       output: {
         manualChunks: undefined,
       },

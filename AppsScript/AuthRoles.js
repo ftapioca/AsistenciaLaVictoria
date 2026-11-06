@@ -509,25 +509,6 @@ function ensureUsuariosLocalesSheetReady_() {
   }
 }
 
-function listStructuredAssignmentsByPrincipal_(role, principalKey) {
-  ensureUsuariosLocalesSheetReady_();
-  var context = getUsuariosLocalesSheetContext_();
-  var assignments = [];
-
-  for (var i = 1; i < context.data.length; i++) {
-    var record = buildUserLocalRecordFromSheetRow_(context.data[i], context.headerMap, i + 1);
-    if (!record.activo || !record.localNombre) continue;
-    if (!isRole_(record.rol, role)) continue;
-    if (buildSessionPrincipalKey_(record, role) !== principalKey) continue;
-    assignments.push(record);
-  }
-
-  assignments.sort(function(a, b) {
-    return a.localNombre.localeCompare(b.localNombre, "es");
-  });
-
-  return assignments;
-}
 
 function buildActiveAssignmentIndexByPrincipal_(context) {
   var index = {};
@@ -858,21 +839,6 @@ function buildManagedUserMergeKey_(record) {
   ].join(":");
 }
 
-function buildManagedUserConsolidationGroupKey_(record) {
-  if (!record) return "";
-  if (record.usuarioLogin) {
-    return [
-      "login",
-      normalizarTexto(record.rol),
-      normalizarTexto(record.usuarioLogin)
-    ].join(":");
-  }
-  return [
-    "name",
-    normalizarTexto(record.rol),
-    normalizarTexto(record.nombreCompleto)
-  ].join(":");
-}
 
 function listManagedRoles_() {
   var roles = [];
@@ -1502,147 +1468,6 @@ function eliminarUsuarioAdmin(params) {
   });
 }
 
-function ejecutarMigracionUsuariosUnicos_() {
-  if (!isModernAuthEnabled_()) {
-    throw crearErrorAuth("ERROR_HOJA", "La hoja Usuarios no está disponible en este entorno.");
-  }
-
-  var context = getUsuariosSheetContext_();
-  ensureUsuariosLocalesSheetReady_();
-  var usuariosLocalesContext = getUsuariosLocalesSheetContext_();
-  var groups = {};
-
-  for (var i = 1; i < context.data.length; i++) {
-    var record = buildUserRecordFromModernRow_(context.data[i], context.indices);
-    if (!record.nombreCompleto) continue;
-    if (isRole_(record.rol, USER_TYPES.ADMINISTRADOR.id)) continue;
-
-    var groupKey = buildManagedUserConsolidationGroupKey_(record);
-    if (!groups[groupKey]) groups[groupKey] = [];
-    groups[groupKey].push({
-      rowNumber: i + 1,
-      record: record
-    });
-  }
-
-  var resumen = {
-    groupsProcessed: 0,
-    usersConsolidated: 0,
-    rowsDisabled: 0,
-    assignmentsRebound: 0
-  };
-  var touchedRecords = [];
-
-  Object.keys(groups).forEach(function(groupKey) {
-    var entries = groups[groupKey];
-    if (!entries || entries.length <= 1) return;
-
-    entries.sort(function(a, b) {
-      return a.rowNumber - b.rowNumber;
-    });
-
-    resumen.groupsProcessed += 1;
-    resumen.usersConsolidated += entries.length;
-
-    var canonical = entries[0];
-    var mergedLocalsMap = {};
-    var canonicalValues = canonical.record;
-
-    entries.forEach(function(entry) {
-      touchedRecords.push(entry.record);
-      parseLocalScope_(entry.record.local).forEach(function(localName) {
-        if (!localName) return;
-        mergedLocalsMap[normalizarTexto(localName)] = localName;
-      });
-
-      resolveAssignedLocalsForUserRecord_(entry.record).forEach(function(localName) {
-        if (!localName) return;
-        mergedLocalsMap[normalizarTexto(localName)] = localName;
-      });
-
-      if (!canonicalValues.usuarioLogin && entry.record.usuarioLogin) canonicalValues.usuarioLogin = entry.record.usuarioLogin;
-      if (!canonicalValues.email && entry.record.email) canonicalValues.email = entry.record.email;
-      if (!canonicalValues.telefono && entry.record.telefono) canonicalValues.telefono = entry.record.telefono;
-      if (!canonicalValues.cargo && entry.record.cargo) canonicalValues.cargo = entry.record.cargo;
-      if (!canonicalValues.observaciones && entry.record.observaciones) canonicalValues.observaciones = entry.record.observaciones;
-    });
-
-    canonicalValues.local = Object.keys(mergedLocalsMap).map(function(key) {
-      return mergedLocalsMap[key];
-    }).sort(function(a, b) {
-      return a.localeCompare(b, "es");
-    }).join(", ");
-
-    writeManagedUserToSheet_(context, canonical.rowNumber, canonicalValues);
-    syncStructuredAssignmentsForManagedUser_(canonicalValues);
-    touchedRecords.push(canonicalValues);
-
-    for (var j = 1; j < usuariosLocalesContext.data.length; j++) {
-      var assignment = buildUserLocalRecordFromSheetRow_(usuariosLocalesContext.data[j], usuariosLocalesContext.headerMap, j + 1);
-      if (!assignment.localNombre) continue;
-
-      var isFromGroup = entries.some(function(entry) {
-        return (
-          (assignment.idUsuario && entry.record.idUsuario && normalizarTexto(assignment.idUsuario) === normalizarTexto(entry.record.idUsuario)) ||
-          (assignment.usuarioLogin && entry.record.usuarioLogin && normalizarTexto(assignment.usuarioLogin) === normalizarTexto(entry.record.usuarioLogin))
-        );
-      });
-      if (!isFromGroup) continue;
-
-      upsertSheetRecordByRowNumber_(
-        HOJA_USUARIOS_LOCALES,
-        USUARIOS_LOCALES_HEADERS,
-        {
-          idAsignacion: ["id_asignacion"],
-          idUsuario: ["id_usuario"],
-          usuarioLogin: ["usuario_login"],
-          rol: ["rol"],
-          idLocal: ["id_local"],
-          localNombre: ["local_nombre"],
-          activo: ["activo"],
-          fechaCreacion: ["fecha_creacion"],
-          observaciones: ["observaciones"]
-        },
-        assignment.rowNumber,
-        {
-          idAsignacion: assignment.idAsignacion || Utilities.getUuid(),
-          idUsuario: canonicalValues.idUsuario,
-          usuarioLogin: canonicalValues.usuarioLogin,
-          rol: canonicalValues.rol,
-          idLocal: assignment.idLocal,
-          localNombre: assignment.localNombre,
-          activo: assignment.activo ? "SI" : "NO",
-          fechaCreacion: assignment.fechaCreacion || canonicalValues.fechaCreacion || formatTodayDateForSheet_(),
-          observaciones: assignment.observaciones || "Asignacion consolidada a usuario canonico"
-        }
-      );
-      resumen.assignmentsRebound += 1;
-    }
-
-    entries.slice(1).forEach(function(entry) {
-      var duplicateValues = buildManagedUserValues_(context, {
-        idUsuario: entry.record.idUsuario,
-        nombreCompleto: entry.record.nombreCompleto,
-        usuarioLogin: entry.record.usuarioLogin,
-        pin: entry.record.pin,
-        rol: entry.record.rol,
-        local: "",
-        cargo: entry.record.cargo,
-        activo: "NO",
-        email: entry.record.email,
-        telefono: entry.record.telefono,
-        fechaCreacion: entry.record.fechaCreacion,
-        observaciones: "Consolidado en " + canonicalValues.idUsuario + " el 2026-08-10"
-      }, entry.record);
-      writeManagedUserToSheet_(context, entry.rowNumber, duplicateValues);
-      resumen.rowsDisabled += 1;
-    });
-  });
-
-  refreshAttendancePublicEmployeesForRecords_(touchedRecords);
-
-  return resumen;
-}
 
 function migrarUsuariosUnicosAdmin(params) {
   requireAdminSession(params);

@@ -1,3 +1,4 @@
+import { uiEntries, staticFiles, staticDirectories } from './ui-entries.mjs';
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,33 +11,8 @@ if (!existsSync(distDir)) {
   process.exit(1);
 }
 
-const rootFileCopies = [
-  'index.html',
-  'adminPanel.html',
-  'adminPanel-preview.html',
-  'administracion.html',
-  'locales.html',
-  'misTurnos.html',
-  'misTurnos-design-system.html',
-  'misTurnos-preview.html',
-  'TurnosAbiertos.html',
-  'horariosLocales.html',
-  'programadorTurnos.html',
-  'usuariosPermisos.html',
-  'ventasMensuales.html',
-  'pagosMensuales.html',
-  'design-system.html',
-  'app-config.js',
-  'app-config.prod.js',
-  'app-config.staging.js',
-  'auth.js',
-  'env-badge.js',
-];
-
-const directoryCopies = [
-  'assets',
-  'descargablesLocales',
-];
+const rootFileCopies = [...new Set([...staticFiles, ...uiEntries.map(({ target }) => target)])];
+const directoryCopies = ['assets', ...staticDirectories];
 
 rootFileCopies.forEach((file) => {
   const sourcePath = resolve(distDir, file);

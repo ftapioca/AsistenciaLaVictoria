@@ -153,6 +153,13 @@ Los archivos de `descargablesLocales/Registro Asistencia _ Local ...` permiten:
 - registrar ingresos y salidas por PIN
 - consultar último registro del colaborador
 - mostrar turnos abiertos del local
+- cargar en tiempo real la lista de personal habilitado por local
+
+Notas operativas:
+
+- la lista de personal no está hardcodeada en el HTML; se consulta al backend público al abrir el archivo
+- los HTML más nuevos guardan la última lista válida en `localStorage` para mostrarla más rápido en aperturas siguientes
+- el backend público mantiene un cache corto por local para reducir latencia de la primera carga
 
 La consulta de turnos abiertos en esos HTML usa la acción pública `TurnosAbiertosPublico` para no exigir sesión.
 

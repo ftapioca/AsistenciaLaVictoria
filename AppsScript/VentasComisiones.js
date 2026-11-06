@@ -14,7 +14,6 @@ const HOJA_KPI_VENTAS_DIARIAS = "KPIVentasDiarias";
 const ESTADO_IMPORTACION_SUCCESS = "SUCCESS";
 const ESTADO_IMPORTACION_PENDING = "PENDING";
 const ESTADO_IMPORTACION_ERROR = "ERROR";
-const ESTADO_IMPORTACION_ANULADO = "ANULADO";
 const ESTADO_IMPORTACION_REEMPLAZADO = "REEMPLAZADO";
 
 const VENTAS_SHEETS_CONFIG = [
@@ -1955,71 +1954,6 @@ function obtenerGrupoDiario_(grupos, fecha, local) {
   return grupos[key];
 }
 
-function construirFilasVentasDiarias_(importacion, ventasValidas, propinasValidas) {
-  var grupos = {};
-  var localDefault = limpiarTextoImportacion_(importacion.local);
-
-  ventasValidas.forEach(function(venta) {
-    var fecha = limpiarTextoImportacion_(venta.Fecha);
-    var local = limpiarTextoImportacion_(venta.Local) || localDefault;
-    if (!fecha || !local) {
-      return;
-    }
-
-    var key = fecha + "|" + local;
-    if (!grupos[key]) {
-      grupos[key] = crearGrupoVentaDiaria_(fecha, local);
-    }
-
-    grupos[key].ventaBrutaValida += normalizarMontoImportacion_(venta.TotalBruto);
-  });
-
-  propinasValidas.forEach(function(propina) {
-    var fecha = limpiarTextoImportacion_(propina.Fecha);
-    var local = limpiarTextoImportacion_(propina.Local) || localDefault;
-    if (!fecha || !local) {
-      return;
-    }
-
-    var key = fecha + "|" + local;
-    if (!grupos[key]) {
-      grupos[key] = crearGrupoVentaDiaria_(fecha, local);
-    }
-
-    grupos[key].propinasValidas += normalizarMontoImportacion_(propina.MontoPropina);
-  });
-
-  return Object.keys(grupos)
-    .sort()
-    .map(function(key) {
-      var grupo = grupos[key];
-      var calculo = calcularMetricasDiarias_(grupo.ventaBrutaValida, grupo.local, grupo.fecha);
-
-      return [
-        importacion.importId,
-        grupo.fecha,
-        grupo.local,
-        grupo.ventaBrutaValida,
-        calculo.ventaNetaValida,
-        calculo.tramoComision,
-        calculo.porcentajeComision,
-        calculo.comisionTotalDia,
-        grupo.propinasValidas,
-        0,
-        0,
-        "Calculo operativo agregado. Distribucion individual pendiente en modulo pagosColaboradores."
-      ];
-    });
-}
-
-function crearGrupoVentaDiaria_(fecha, local) {
-  return {
-    fecha: fecha,
-    local: local,
-    ventaBrutaValida: 0,
-    propinasValidas: 0
-  };
-}
 
 function calcularMetricasDiarias_(ventaBrutaValida, local, fecha) {
   var ventaBruta = normalizarMontoImportacion_(ventaBrutaValida);

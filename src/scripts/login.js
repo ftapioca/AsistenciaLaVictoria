@@ -1,3 +1,4 @@
+import { waitNextFrame } from '../utils/async.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -15,9 +16,6 @@ const $ = (id) => document.getElementById(id);
 let roleSelectFieldRef = null;
 let nameSelectFieldRef = null;
 
-function waitNextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
 
 function createFeatureCard(title, detail) {
   const card = createCard({

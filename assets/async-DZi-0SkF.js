@@ -1,0 +1,1 @@
+function e(){return new Promise(e=>requestAnimationFrame(()=>e()))}export{e as t};

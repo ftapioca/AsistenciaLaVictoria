@@ -19,11 +19,6 @@ const LOCALES_ESTADOS = {
   INACTIVO: "INACTIVO"
 };
 
-const LEGACY_LOCALES_DEFAULT = [
-  "Paseo del Lago",
-  "Segunda Faja"
-];
-
 function bootstrapAdministracionLocales(params) {
   requireAdminSession(params);
 
@@ -411,10 +406,6 @@ function collectLegacyLocalCatalog_() {
       }
     }
   } catch (error) {}
-
-  if (!Object.keys(map).length) {
-    LEGACY_LOCALES_DEFAULT.forEach(addLocal);
-  }
 
   return Object.keys(map).map(function(key) {
     return map[key];

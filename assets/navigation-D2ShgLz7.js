@@ -1,0 +1,1 @@
+function e(e){let t=new URL(e,window.location.href),n=window.APP_CONFIG&&window.APP_CONFIG.ENVIRONMENT;return n&&t.searchParams.set(`env`,n),t.toString()}export{e as t};

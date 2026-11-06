@@ -1,3 +1,4 @@
+import { withCurrentEnvironment } from '../utils/navigation.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -10,14 +11,6 @@ import { createAdminPanelApp } from './admin-panel-app.js';
 const overlay = createLoadingOverlay('Preview visual');
 document.body.appendChild(overlay.element);
 
-function withCurrentEnvironment(path) {
-  const target = new URL(path, window.location.href);
-  const env = window.APP_CONFIG && window.APP_CONFIG.ENVIRONMENT;
-  if (env) {
-    target.searchParams.set('env', env);
-  }
-  return target.toString();
-}
 
 createAdminPanelApp({
   mountNode: document.getElementById('app'),

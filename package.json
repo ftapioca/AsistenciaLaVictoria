@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/postbuild-ui.mjs",
+    "postbuild": "node scripts/postbuild-ui.mjs && node scripts/verify-build.mjs",
     "deploy:pages": "node scripts/deploy-pages.mjs",
     "preview": "vite preview",
     "gas:login": "clasp login",
@@ -30,7 +30,8 @@
     "gas:prod:version": "clasp version --project .clasp.prod.json",
     "gas:prod:deploy": "clasp deploy --project .clasp.prod.json",
     "gas:prod:update-deploy": "clasp deploy --project .clasp.prod.json",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/*.test.mjs",
+    "verify:build": "node scripts/verify-build.mjs"
   },
   "repository": {
     "type": "git",

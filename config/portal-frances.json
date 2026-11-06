@@ -166,8 +166,8 @@
     "versionProduccionActual": 73
   },
   "altaAppsScript": {
-    "archivo": "AppsScript/AltaPortalFrances.js",
-    "estado": "ALTA_APLICADA_Y_VERIFICADA_EN_STAGING_Y_PRODUCCION",
+    "archivo": "scripts/archive/alta-portal-frances.js",
+    "estado": "ALTA_COMPLETADA_Y_VERIFICADA; script puntual archivado fuera del backend. Las altas operativas se realizan desde Locales con AltaLocales.js.",
     "revisionStaging": "revisarPortalFrancesStaging",
     "aplicacionStaging": "aplicarPortalFrancesStaging",
     "revisionProduccion": "revisarPortalFrancesProduccion",

@@ -1,3 +1,4 @@
+import { withCurrentEnvironment as ruta } from '../utils/navigation.js';
 import '../styles/globals.css';
 import '../../app-config.prod.js';
 import '../../app-config.staging.js';
@@ -17,7 +18,6 @@ const state = { session: null, locales: [], usuarios: [], vista: 'lista', payloa
 const overlay = createLoadingOverlay('Cargando locales...');
 document.body.appendChild(overlay.element);
 const app = document.getElementById('app');
-function ruta(path) { const url = new URL(path, location.href); url.searchParams.set('env', window.APP_CONFIG.ENVIRONMENT); return url.href; }
 function aviso(message) { const node = document.getElementById('localFeedback'); node.textContent = message; node.hidden = !message; }
 let pendiente = false;
 async function ocupada(text, work) { if (pendiente) return; pendiente = true; overlay.setLoading(true, text); try { await work(); } catch (error) { aviso(error.message || 'No se pudo completar la operación.'); } finally { pendiente = false; overlay.setLoading(false); } }

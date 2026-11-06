@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 const c = vm.createContext({});
 vm.runInContext(readFileSync(new URL('../AppsScript/AltaLocales.js', import.meta.url), 'utf8'), c);
-vm.runInContext(readFileSync(new URL('../AppsScript/AltaPortalFrances.js', import.meta.url), 'utf8'), c);
+vm.runInContext(readFileSync(new URL('../scripts/archive/alta-portal-frances.js', import.meta.url), 'utf8'), c);
 const personas = ['Jocelyn Morales', 'Matias Velasquez', 'Evelyn Riffo', 'Mateo Montecinos', 'Candy Carmona'];
 function datos(nombres = personas) {
   return {

@@ -54,21 +54,6 @@ function listarColaboradoresPorLocalTurnos_(local) {
   return listarUsuariosAsistenciaPorLocal_(local);
 }
 
-function listarColaboradoresPorLocalDesdeDatos_(datos, local) {
-  var colaboradores = [];
-
-  for (var i = 1; i < datos.length; i++) {
-    var nombre = datos[i][0];
-    var localColaborador = datos[i][3];
-
-    if (normalizarTexto(localColaborador) === normalizarTexto(local)) {
-      colaboradores.push(nombre);
-    }
-  }
-
-  colaboradores.sort();
-  return colaboradores;
-}
 
 function listarTurnosSemana_(local, fechaInicio, fechaFin) {
   var sheet = getSheet_(HOJA_TURNOS_PROGRAMADOS, SPREADSHEET_KEY_RRHH);

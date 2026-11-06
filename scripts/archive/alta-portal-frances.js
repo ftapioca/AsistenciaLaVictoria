@@ -1,3 +1,5 @@
+// Archivo historico del alta puntual de Portal Frances (2026-11-05).
+// No se sincroniza con Apps Script. Las altas actuales usan AltaLocales.js y el panel.
 // Ejecutar desde el editor de Apps Script. No se expone ninguna ruta web nueva.
 // Las revisiones no escriben. Las aplicaciones solo agregan el local a cuentas existentes.
 function revisarPortalFrancesStaging() { return ejecutarAltaPortalFrances_("staging", false); }
