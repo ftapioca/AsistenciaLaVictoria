@@ -49,9 +49,9 @@ function listarPlantillasTurnosDesdeDatos_(datos, local) {
 }
 
 function listarColaboradoresPorLocalTurnos_(local) {
-  var sheet = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
-  var datos = sheet.getDataRange().getValues();
-  return listarColaboradoresPorLocalDesdeDatos_(datos, local);
+  // Compartir la fuente moderna de asistencia: Usuarios + UsuariosLocales.
+  // Incluye supervisores que tambien reciben turnos y deduplica por nombre.
+  return listarUsuariosAsistenciaPorLocal_(local);
 }
 
 function listarColaboradoresPorLocalDesdeDatos_(datos, local) {
@@ -142,9 +142,7 @@ function obtenerColaboradoresPorLocalTurnos(params) {
     });
   }
 
-  var sheet = getSheet_("Colaboradores", SPREADSHEET_KEY_RRHH);
-  var datos = sheet.getDataRange().getValues();
-  var colaboradores = listarColaboradoresPorLocalDesdeDatos_(datos, local);
+  var colaboradores = listarColaboradoresPorLocalTurnos_(local);
 
   return responderJSON({
     status: "SUCCESS",

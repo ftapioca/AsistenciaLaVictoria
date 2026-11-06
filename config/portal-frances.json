@@ -224,5 +224,12 @@
     "rama": "main",
     "estado": "PUBLICADO_Y_VERIFICADO_HTTP_200_Y_SHA256",
     "githubPagesRun": 42149393892
+  },
+  "correccionProgramador": {
+    "causa": "El programador consultaba Colaboradores legacy; las asignaciones se mantienen en Usuarios y UsuariosLocales.",
+    "cambio": "BootstrapProgramadorTurnos y ColaboradoresPorLocal comparten la lista moderna de asistencia, incluidos supervisores.",
+    "versionProduccion": 74,
+    "pruebas": "17 aprobadas, incluidos bootstrap semanal y endpoint individual con cinco personas y fuente legacy bloqueada.",
+    "estado": "DESPLEGADO; pendiente comprobacion visual."
   }
 }
